@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Adonis Applications"
+  short_description: "Place Adonis code with Laravel-like discipline"
+  default_prompt: "Use $build-adonis-applications to implement this backend change in the repository’s preferred architecture."
