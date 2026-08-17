@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
   MessageSquare,
@@ -21,8 +22,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { api, type Booking, type BookingInput, type Customer, type CustomerInput } from "@/lib/api";
+import { api, type Booking, type Customer } from "@/lib/api";
 import { conversations } from "@/lib/demo-data";
+import {
+  bookingsQueryOptions,
+  customersQueryOptions,
+  errorMessage,
+  queryKeys,
+} from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const statusLabels = {
@@ -31,6 +38,9 @@ const statusLabels = {
   in_progress: "In progress",
   completed: "Completed",
 } as const;
+
+const emptyCustomers: Customer[] = [];
+const emptyBookings: Booking[] = [];
 
 function formatBookingDate(booking: Booking) {
   const date = new Date(booking.scheduledAt);
@@ -47,27 +57,35 @@ function customerSince(customer: Customer) {
 
 export function CustomersScreen({ selectedId }: { selectedId?: number }) {
   const router = useRouter();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const queryClient = useQueryClient();
+  const customersQuery = useQuery(customersQueryOptions);
+  const bookingsQuery = useQuery(bookingsQueryOptions);
+  const customers = customersQuery.data ?? emptyCustomers;
+  const bookings = bookingsQuery.data ?? emptyBookings;
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer>();
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [bookingCustomer, setBookingCustomer] = useState<Customer>();
 
   useEffect(() => {
-    Promise.all([api.customers.index(), api.bookings.index()])
-      .then(([customerRecords, bookingRecords]) => {
-        setCustomers(customerRecords);
-        setBookings(bookingRecords);
-        if (!selectedId && customerRecords[0])
-          router.replace(`/customers/${customerRecords[0].id}`);
-      })
-      .catch(() => setError("Unable to load customers."))
-      .finally(() => setLoading(false));
-  }, [router, selectedId]);
+    const firstCustomer = customersQuery.data?.[0];
+    if (!selectedId && firstCustomer) router.replace(`/customers/${firstCustomer.id}`);
+  }, [customersQuery.data, router, selectedId]);
+
+  const deleteMutation = useMutation({
+    mutationFn: api.customers.destroy,
+    onSuccess: (_, deletedId) => {
+      const remaining = (queryClient.getQueryData<Customer[]>(queryKeys.customers) ?? []).filter(
+        (customer) => customer.id !== deletedId
+      );
+      queryClient.setQueryData(queryKeys.customers, remaining);
+      queryClient.setQueryData<Booking[]>(queryKeys.bookings, (current = []) =>
+        current.filter((booking) => booking.customerId !== deletedId)
+      );
+      router.replace(remaining[0] ? `/customers/${remaining[0].id}` : "/customers");
+    },
+  });
 
   const selected = customers.find((customer) => customer.id === selectedId) ?? customers[0];
   const filtered = useMemo(
@@ -86,50 +104,36 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
     ? conversations.find((conversation) => conversation.customerId === `c${selected.id}`)
     : undefined;
 
-  async function saveCustomer(input: CustomerInput) {
-    if (editingCustomer) {
-      const updated = await api.customers.update(editingCustomer.id, input);
-      setCustomers((current) =>
-        current.map((customer) => (customer.id === updated.id ? updated : customer))
-      );
-      return;
-    }
-    const created = await api.customers.store(input);
-    setCustomers((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)));
-    router.push(`/customers/${created.id}`);
-  }
-
-  async function removeCustomer() {
+  function removeCustomer() {
     if (!selected || !window.confirm(`Delete ${selected.name} and their bookings?`)) return;
-    await api.customers.destroy(selected.id);
-    const remaining = customers.filter((customer) => customer.id !== selected.id);
-    setCustomers(remaining);
-    setBookings((current) => current.filter((booking) => booking.customerId !== selected.id));
-    router.replace(remaining[0] ? `/customers/${remaining[0].id}` : "/customers");
+    deleteMutation.mutate(selected.id);
   }
 
-  async function saveBooking(input: BookingInput) {
-    const created = await api.bookings.store(input);
-    setBookings((current) =>
-      [...current, created].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
-    );
-  }
-
-  if (loading)
+  if (customersQuery.isPending || bookingsQuery.isPending)
     return (
       <div className="flex h-full items-center justify-center text-sm text-zinc-500">
         Loading customers…
       </div>
     );
-  if (error)
+  if (customersQuery.isError || bookingsQuery.isError)
     return (
-      <div className="flex h-full items-center justify-center text-sm text-red-600">{error}</div>
+      <div className="flex h-full items-center justify-center text-sm text-red-600">
+        Unable to load customers.
+      </div>
     );
 
   return (
     <>
       <div className="flex h-full min-h-0 flex-col bg-zinc-50/50">
         <h1 className="sr-only">Customers</h1>
+        {deleteMutation.isError ? (
+          <p
+            className="border-b border-red-100 bg-red-50 px-5 py-2 text-sm text-red-600"
+            role="alert"
+          >
+            {errorMessage(deleteMutation.error, "Unable to delete this customer.")}
+          </p>
+        ) : null}
         <div className="grid min-h-0 flex-1 md:grid-cols-[320px_minmax(0,1fr)]">
           <div className="flex min-h-0 flex-col border-r border-zinc-200 bg-white">
             <div className="flex gap-2 p-4 pb-2">
@@ -206,7 +210,8 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                     variant="outline"
                     size="icon"
                     aria-label="Delete customer"
-                    onClick={() => void removeCustomer()}
+                    onClick={removeCustomer}
+                    disabled={deleteMutation.isPending}
                   >
                     <Trash2 />
                   </Button>
@@ -329,11 +334,7 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
         </div>
       </div>
       {customerDialogOpen ? (
-        <CustomerDialog
-          onOpenChange={setCustomerDialogOpen}
-          customer={editingCustomer}
-          onSave={saveCustomer}
-        />
+        <CustomerDialog onOpenChange={setCustomerDialogOpen} customer={editingCustomer} />
       ) : null}
       {bookingDialogOpen ? (
         <NewBookingDialog
@@ -343,7 +344,6 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
           }}
           customers={customers}
           customer={bookingCustomer}
-          onSave={saveBooking}
         />
       ) : null}
     </>

@@ -1,68 +1,56 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api, ApiError, type User } from "@/lib/api";
+import { api, type User } from "@/lib/api";
+import { profileQueryOptions, queryKeys } from "@/lib/queries";
 
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
   refresh: () => Promise<User | null>;
-  logout: () => Promise<void>;
+  logout: () => void;
+  loggingOut: boolean;
+  logoutError: Error | null;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const profileQuery = useQuery(profileQueryOptions);
+  const {
+    mutate: mutateLogout,
+    isPending: loggingOut,
+    error: logoutError,
+  } = useMutation({
+    mutationFn: api.logout,
+    onSuccess: () => {
+      queryClient.setQueryData(queryKeys.profile, null);
+      queryClient.removeQueries({ queryKey: queryKeys.customers });
+      queryClient.removeQueries({ queryKey: queryKeys.bookings });
+      router.replace("/login");
+    },
+  });
 
   const refresh = useCallback(async () => {
-    try {
-      const profile = await api.profile();
-      setUser(profile);
-      return profile;
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        setUser(null);
-        return null;
-      }
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    api
-      .profile()
-      .then((profile) => {
-        if (active) setUser(profile);
-      })
-      .catch(() => {
-        if (active) setUser(null);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const logout = useCallback(async () => {
-    await api.logout();
-    setUser(null);
-    router.replace("/login");
-  }, [router]);
+    return queryClient.fetchQuery({ ...profileQueryOptions, staleTime: 0 });
+  }, [queryClient]);
+  const logout = useCallback(() => mutateLogout(), [mutateLogout]);
 
   const value = useMemo(
-    () => ({ user, loading, refresh, logout }),
-    [user, loading, refresh, logout]
+    () => ({
+      user: profileQuery.data ?? null,
+      loading: profileQuery.isPending,
+      refresh,
+      logout,
+      loggingOut,
+      logoutError,
+    }),
+    [profileQuery.data, profileQuery.isPending, refresh, logout, loggingOut, logoutError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

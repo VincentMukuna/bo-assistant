@@ -2,38 +2,38 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { errorMessage, queryKeys } from "@/lib/queries";
 
 export function LoginForm() {
   const router = useRouter();
-  const { user, loading, refresh } = useAuth();
+  const queryClient = useQueryClient();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState("owner@oakandpine.test");
   const [password, setPassword] = useState("password123");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      api.login(email, password),
+    onSuccess: (profile) => {
+      queryClient.setQueryData(queryKeys.profile, profile);
+      queryClient.removeQueries({ queryKey: queryKeys.customers });
+      queryClient.removeQueries({ queryKey: queryKeys.bookings });
+      router.replace("/customers");
+    },
+  });
 
   useEffect(() => {
     if (!loading && user) router.replace("/customers");
   }, [loading, router, user]);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setSubmitting(true);
-
-    try {
-      await api.login(email, password);
-      await refresh();
-      router.replace("/customers");
-    } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : "Unable to sign in right now.");
-    } finally {
-      setSubmitting(false);
-    }
+    loginMutation.mutate({ email, password });
   }
 
   return (
@@ -71,13 +71,13 @@ export function LoginForm() {
             required
           />
         </label>
-        {error ? (
+        {loginMutation.isError ? (
           <p className="text-sm text-red-600" role="alert">
-            {error}
+            {errorMessage(loginMutation.error, "Unable to sign in right now.")}
           </p>
         ) : null}
-        <Button type="submit" className="mt-1 w-full" disabled={submitting}>
-          {submitting ? "Signing in…" : "Sign in"}
+        <Button type="submit" className="mt-1 w-full" disabled={loginMutation.isPending}>
+          {loginMutation.isPending ? "Signing in…" : "Sign in"}
         </Button>
       </div>
     </form>

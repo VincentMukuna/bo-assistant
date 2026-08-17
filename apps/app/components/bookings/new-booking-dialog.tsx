@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,13 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { weekDays } from "@/lib/demo-data";
-import {
-  ApiError,
-  type Booking,
-  type BookingInput,
-  type BookingStatus,
-  type Customer,
-} from "@/lib/api";
+import { api, type Booking, type BookingInput, type BookingStatus, type Customer } from "@/lib/api";
+import { errorMessage, queryKeys } from "@/lib/queries";
 
 const dateByDay: Record<string, string> = {
   Mon: "2026-08-17",
@@ -59,14 +55,13 @@ export function NewBookingDialog({
   customers,
   customer,
   booking,
-  onSave,
 }: {
   onOpenChange: (open: boolean) => void;
   customers: Customer[];
   customer?: Customer;
   booking?: Booking;
-  onSave: (input: BookingInput) => Promise<void>;
 }) {
+  const queryClient = useQueryClient();
   const defaults = bookingDefaults(booking);
   const [customerId, setCustomerId] = useState(
     String(customer?.id ?? booking?.customerId ?? customers[0]?.id ?? "")
@@ -77,32 +72,33 @@ export function NewBookingDialog({
   const [staff, setStaff] = useState(booking?.staff ?? "Jamie");
   const [durationMinutes, setDurationMinutes] = useState(String(booking?.durationMinutes ?? 120));
   const [status, setStatus] = useState<BookingStatus>(booking?.status ?? "confirmed");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const saveMutation = useMutation({
+    mutationFn: (input: BookingInput) =>
+      booking ? api.bookings.update(booking.id, input) : api.bookings.store(input),
+    onSuccess: (savedBooking) => {
+      queryClient.setQueryData<Booking[]>(queryKeys.bookings, (current = []) =>
+        [...current.filter((item) => item.id !== savedBooking.id), savedBooking].sort((a, b) =>
+          a.scheduledAt.localeCompare(b.scheduledAt)
+        )
+      );
+      onOpenChange(false);
+    },
+  });
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const selectedCustomer = customers.find((item) => item.id === Number(customerId));
     if (!selectedCustomer) return;
 
-    setSaving(true);
-    setError("");
-    try {
-      await onSave({
-        customerId: selectedCustomer.id,
-        service,
-        staff,
-        scheduledAt: `${dateByDay[day]}T${to24Hour(time)}:00.000Z`,
-        durationMinutes: Number(durationMinutes),
-        status,
-        serviceAddress: selectedCustomer.address,
-      });
-      onOpenChange(false);
-    } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : "Unable to save this booking.");
-    } finally {
-      setSaving(false);
-    }
+    saveMutation.mutate({
+      customerId: selectedCustomer.id,
+      service,
+      staff,
+      scheduledAt: `${dateByDay[day]}T${to24Hour(time)}:00.000Z`,
+      durationMinutes: Number(durationMinutes),
+      status,
+      serviceAddress: selectedCustomer.address,
+    });
   }
 
   return (
@@ -210,9 +206,9 @@ export function NewBookingDialog({
                 </SelectContent>
               </Select>
             </label>
-            {error ? (
+            {saveMutation.isError ? (
               <p className="text-sm text-red-600" role="alert">
-                {error}
+                {errorMessage(saveMutation.error, "Unable to save this booking.")}
               </p>
             ) : null}
           </div>
@@ -220,8 +216,8 @@ export function NewBookingDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !customers.length}>
-              {saving ? "Saving…" : "Save booking"}
+            <Button type="submit" disabled={saveMutation.isPending || !customers.length}>
+              {saveMutation.isPending ? "Saving…" : "Save booking"}
             </Button>
           </DialogFooter>
         </form>

@@ -48,7 +48,7 @@ function isActivePath(pathname: string, href: string) {
 }
 
 function Navigation({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
-  const { user, logout } = useAuth();
+  const { user, logout, loggingOut, logoutError } = useAuth();
   return (
     <>
       <Link href="/inbox" className="px-5 py-5" onClick={onNavigate} aria-label="Oak and Pine home">
@@ -87,7 +87,8 @@ function Navigation({ pathname, onNavigate }: { pathname: string; onNavigate?: (
         </div>
         <button
           type="button"
-          onClick={() => void logout()}
+          onClick={logout}
+          disabled={loggingOut}
           className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-zinc-100"
         >
           <Avatar className="size-8">
@@ -101,6 +102,11 @@ function Navigation({ pathname, onNavigate }: { pathname: string; onNavigate?: (
           </div>
           <LogOut className="text-muted-foreground size-4" />
         </button>
+        {logoutError ? (
+          <p className="mt-2 px-2 text-xs text-red-600" role="alert">
+            Unable to sign out. Please try again.
+          </p>
+        ) : null}
       </div>
     </>
   );

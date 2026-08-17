@@ -12,6 +12,7 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.101.4",
     "@tuyau/core": "^1.2.2",
     "api": "*",
     "class-variance-authority": "^0.7.1",

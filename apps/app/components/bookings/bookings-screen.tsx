@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, UserRound } from "lucide-react";
 
 import { NewBookingDialog } from "@/components/bookings/new-booking-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { api, type Booking, type BookingInput, type Customer } from "@/lib/api";
+import { api, type Booking } from "@/lib/api";
 import { weekDays } from "@/lib/demo-data";
+import {
+  bookingsQueryOptions,
+  customersQueryOptions,
+  errorMessage,
+  queryKeys,
+} from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const statusLabels = {
@@ -30,44 +37,26 @@ function displayDate(booking: Booking) {
 
 export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
   const router = useRouter();
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const queryClient = useQueryClient();
+  const bookingsQuery = useQuery(bookingsQueryOptions);
+  const customersQuery = useQuery(customersQueryOptions);
+  const bookings = bookingsQuery.data ?? [];
+  const customers = customersQuery.data ?? [];
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Booking>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    Promise.all([api.bookings.index(), api.customers.index()])
-      .then(([bookingRecords, customerRecords]) => {
-        setBookings(bookingRecords);
-        setCustomers(customerRecords);
-      })
-      .catch(() => setError("Unable to load bookings."))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function saveBooking(input: BookingInput) {
-    if (editing) {
-      const updated = await api.bookings.update(editing.id, input);
-      setBookings((current) =>
-        current
-          .map((booking) => (booking.id === updated.id ? updated : booking))
-          .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+  const deleteMutation = useMutation({
+    mutationFn: api.bookings.destroy,
+    onSuccess: (_, deletedId) => {
+      queryClient.setQueryData<Booking[]>(queryKeys.bookings, (current = []) =>
+        current.filter((booking) => booking.id !== deletedId)
       );
-      return;
-    }
-    const created = await api.bookings.store(input);
-    setBookings((current) =>
-      [...current, created].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
-    );
-  }
+    },
+  });
 
-  async function removeBooking(booking: Booking) {
+  function removeBooking(booking: Booking) {
     if (!window.confirm(`Delete the ${booking.service} booking for ${booking.customer.name}?`))
       return;
-    await api.bookings.destroy(booking.id);
-    setBookings((current) => current.filter((item) => item.id !== booking.id));
+    deleteMutation.mutate(booking.id);
   }
 
   function editBooking(booking: Booking) {
@@ -75,15 +64,17 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
     setDialogOpen(true);
   }
 
-  if (loading)
+  if (bookingsQuery.isPending || customersQuery.isPending)
     return (
       <div className="flex h-full items-center justify-center text-sm text-zinc-500">
         Loading bookings…
       </div>
     );
-  if (error)
+  if (bookingsQuery.isError || customersQuery.isError)
     return (
-      <div className="flex h-full items-center justify-center text-sm text-red-600">{error}</div>
+      <div className="flex h-full items-center justify-center text-sm text-red-600">
+        Unable to load bookings.
+      </div>
     );
 
   return (
@@ -139,6 +130,11 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
           </div>
         </header>
         <ScrollArea className="min-h-0 flex-1">
+          {deleteMutation.isError ? (
+            <p className="mx-5 mt-4 text-sm text-red-600" role="alert">
+              {errorMessage(deleteMutation.error, "Unable to delete this booking.")}
+            </p>
+          ) : null}
           {view === "week" ? (
             <div className="min-w-[900px] p-5 sm:p-8">
               <div className="grid grid-cols-5 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -195,7 +191,11 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
                                     variant="ghost"
                                     size="icon-xs"
                                     aria-label="Delete booking"
-                                    onClick={() => void removeBooking(booking)}
+                                    onClick={() => removeBooking(booking)}
+                                    disabled={
+                                      deleteMutation.isPending &&
+                                      deleteMutation.variables === booking.id
+                                    }
                                   >
                                     <Trash2 />
                                   </Button>
@@ -264,7 +264,10 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
                           variant="ghost"
                           size="icon-sm"
                           aria-label="Delete booking"
-                          onClick={() => void removeBooking(booking)}
+                          onClick={() => removeBooking(booking)}
+                          disabled={
+                            deleteMutation.isPending && deleteMutation.variables === booking.id
+                          }
                         >
                           <Trash2 />
                         </Button>
@@ -285,7 +288,6 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
           }}
           customers={customers}
           booking={editing}
-          onSave={saveBooking}
         />
       ) : null}
     </>

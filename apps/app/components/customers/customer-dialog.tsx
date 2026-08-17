@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ApiError, type Customer, type CustomerInput } from "@/lib/api";
+import { api, type Booking, type Customer, type CustomerInput } from "@/lib/api";
+import { errorMessage, queryKeys } from "@/lib/queries";
 
 const emptyCustomer: CustomerInput = {
   name: "",
@@ -26,12 +29,12 @@ const emptyCustomer: CustomerInput = {
 export function CustomerDialog({
   onOpenChange,
   customer,
-  onSave,
 }: {
   onOpenChange: (open: boolean) => void;
   customer?: Customer;
-  onSave: (input: CustomerInput) => Promise<void>;
 }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<CustomerInput>(
     customer
       ? {
@@ -43,25 +46,34 @@ export function CustomerDialog({
         }
       : emptyCustomer
   );
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const saveMutation = useMutation({
+    mutationFn: (input: CustomerInput) =>
+      customer ? api.customers.update(customer.id, input) : api.customers.store(input),
+    onSuccess: (savedCustomer) => {
+      queryClient.setQueryData<Customer[]>(queryKeys.customers, (current = []) =>
+        [...current.filter((item) => item.id !== savedCustomer.id), savedCustomer].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        )
+      );
+      queryClient.setQueryData<Booking[]>(queryKeys.bookings, (current) =>
+        current?.map((booking) =>
+          booking.customerId === savedCustomer.id
+            ? { ...booking, customer: savedCustomer }
+            : booking
+        )
+      );
+      onOpenChange(false);
+      if (!customer) router.push(`/customers/${savedCustomer.id}`);
+    },
+  });
 
   function set<K extends keyof CustomerInput>(key: K, value: CustomerInput[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      await onSave(form);
-      onOpenChange(false);
-    } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : "Unable to save this customer.");
-    } finally {
-      setSaving(false);
-    }
+    saveMutation.mutate(form);
   }
 
   return (
@@ -116,9 +128,9 @@ export function CustomerDialog({
                 rows={4}
               />
             </label>
-            {error ? (
+            {saveMutation.isError ? (
               <p className="text-sm text-red-600 sm:col-span-2" role="alert">
-                {error}
+                {errorMessage(saveMutation.error, "Unable to save this customer.")}
               </p>
             ) : null}
           </div>
@@ -126,8 +138,8 @@ export function CustomerDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Save customer"}
+            <Button type="submit" disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? "Saving…" : "Save customer"}
             </Button>
           </DialogFooter>
         </form>
