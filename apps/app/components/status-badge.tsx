@@ -4,23 +4,18 @@ import { cn } from "@/lib/utils";
 export function StatusBadge({ status }: { status: string }) {
   const active = status === "In progress";
   const approval = status === "Needs approval" || status === "Approval needed";
+  const completed = status === "Completed";
 
   return (
     <Badge
       variant="outline"
       className={cn(
-        "h-6 gap-1.5 rounded-full border-zinc-200 bg-white px-2 font-normal text-zinc-600 shadow-none",
-        approval && "border-zinc-400 text-zinc-900"
+        "h-5 rounded-md border-primary/10 bg-primary/10 px-2 font-mono text-[10px] font-medium tracking-[0.02em] text-primary shadow-none",
+        approval && "border-amber-600/10 bg-amber-600/10 text-amber-700",
+        active && "border-violet-600/10 bg-violet-600/10 text-violet-700",
+        completed && "border-zinc-200 bg-zinc-100 text-zinc-500"
       )}
     >
-      <span
-        className={cn(
-          "size-1.5 rounded-full bg-zinc-400",
-          active && "bg-zinc-950",
-          approval && "bg-white ring-1 ring-zinc-950",
-          status === "Completed" && "bg-zinc-300"
-        )}
-      />
       {status}
     </Badge>
   );
