@@ -1,13 +1,6 @@
 import Customer from "#models/customer";
+import type { CreateCustomerPayload } from "#validators/customer";
 
-export type CreateCustomerInput = {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  notes: string;
-};
-
-export default function createCustomer(input: CreateCustomerInput) {
+export default function createCustomer(input: CreateCustomerPayload) {
   return Customer.create(input);
 }

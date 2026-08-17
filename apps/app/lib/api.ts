@@ -1,52 +1,19 @@
-export type User = {
-  id: number;
-  fullName: string | null;
-  email: string;
-  initials: string;
-  createdAt: string;
-  updatedAt: string | null;
-};
+import { createTuyau, TuyauError } from "@tuyau/core/client";
+import type { Data } from "api/data";
+import { registry } from "api/registry";
 
-export type Customer = {
-  id: number;
-  name: string;
-  initials: string;
-  email: string;
-  phone: string;
-  address: string;
-  notes: string;
-  createdAt: string;
-  updatedAt: string | null;
-};
+type Routes = typeof registry.routes;
+type RouteBody<Name extends keyof Routes> = Routes[Name]["types"]["body"];
 
-export type BookingStatus = "confirmed" | "needs_approval" | "in_progress" | "completed";
+export type User = Data.User;
+export type Customer = Data.Customer;
+export type CustomerDetails = Data.CustomerDetails;
+export type Booking = Data.Booking;
+export type BookingSummary = Data.BookingSummary;
 
-export type Booking = {
-  id: number;
-  customerId: number;
-  customer: Customer;
-  service: string;
-  staff: string;
-  scheduledAt: string;
-  durationMinutes: number;
-  status: BookingStatus;
-  serviceAddress: string;
-  createdAt: string;
-  updatedAt: string | null;
-};
-
-export type CustomerInput = Pick<Customer, "name" | "email" | "phone" | "address" | "notes">;
-
-export type BookingInput = Pick<
-  Booking,
-  | "customerId"
-  | "service"
-  | "staff"
-  | "scheduledAt"
-  | "durationMinutes"
-  | "status"
-  | "serviceAddress"
->;
+export type CustomerInput = RouteBody<"customers.store">;
+export type BookingInput = RouteBody<"bookings.store">;
+export type BookingStatus = BookingInput["status"];
 
 export class ApiError extends Error {
   constructor(
@@ -58,65 +25,88 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api/v1${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      Accept: "application/json",
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
+const client = createTuyau({
+  registry,
+  baseUrl: "/",
+  credentials: "include",
+  headers: {
+    Accept: "application/json",
+  },
+});
 
-  if (response.status === 204) return undefined as T;
+function responseMessage(details: unknown) {
+  if (typeof details !== "object" || details === null) return undefined;
 
-  const body = await response.json().catch(() => null);
-  if (!response.ok) {
-    const message =
-      body?.message ??
-      body?.errors?.[0]?.message ??
-      `Request failed with status ${response.status}`;
-    throw new ApiError(response.status, message, body);
+  const body = details as Record<string, unknown>;
+  if (typeof body.message === "string") return body.message;
+
+  const firstError = Array.isArray(body.errors) ? body.errors[0] : undefined;
+  if (typeof firstError !== "object" || firstError === null) return undefined;
+
+  const message = (firstError as Record<string, unknown>).message;
+  return typeof message === "string" ? message : undefined;
+}
+
+async function execute<T>(request: PromiseLike<T>): Promise<T> {
+  try {
+    return await request;
+  } catch (error) {
+    if (error instanceof TuyauError && error.status !== undefined) {
+      throw new ApiError(
+        error.status,
+        responseMessage(error.response) ?? `Request failed with status ${error.status}`,
+        error.response
+      );
+    }
+    throw error;
   }
+}
 
-  return (body?.data ?? body) as T;
+function data<T>(response: { data: T }) {
+  return response.data;
 }
 
 export const api = {
-  login(email: string, password: string) {
-    return request<User>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
+  async login(email: string, password: string) {
+    return data(await execute(client.api.auth.sessions.store({ body: { email, password } })));
   },
-  profile() {
-    return request<User>("/profile");
+  async profile() {
+    return data(await execute(client.api.profile.show({})));
   },
-  logout() {
-    return request<void>("/session", { method: "DELETE" });
+  async logout() {
+    await execute(client.api.sessions.destroy({}));
   },
   customers: {
-    index: () => request<Customer[]>("/customers"),
-    show: (id: number) => request<Customer & { bookings: Booking[] }>(`/customers/${id}`),
-    store: (input: CustomerInput) =>
-      request<Customer>("/customers", { method: "POST", body: JSON.stringify(input) }),
-    update: (id: number, input: Partial<CustomerInput>) =>
-      request<Customer>(`/customers/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(input),
-      }),
-    destroy: (id: number) => request<void>(`/customers/${id}`, { method: "DELETE" }),
+    async index() {
+      return data(await execute(client.api.customers.index({})));
+    },
+    async show(id: number) {
+      return data(await execute(client.api.customers.show({ params: { id } })));
+    },
+    async store(input: CustomerInput) {
+      return data(await execute(client.api.customers.store({ body: input })));
+    },
+    async update(id: number, input: Partial<CustomerInput>) {
+      return data(
+        await execute(client.api.customers.update({ params: { id }, body: input }))
+      );
+    },
+    async destroy(id: number) {
+      await execute(client.api.customers.destroy({ params: { id } }));
+    },
   },
   bookings: {
-    index: () => request<Booking[]>("/bookings"),
-    store: (input: BookingInput) =>
-      request<Booking>("/bookings", { method: "POST", body: JSON.stringify(input) }),
-    update: (id: number, input: Partial<BookingInput>) =>
-      request<Booking>(`/bookings/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(input),
-      }),
-    destroy: (id: number) => request<void>(`/bookings/${id}`, { method: "DELETE" }),
+    async index() {
+      return data(await execute(client.api.bookings.index({})));
+    },
+    async store(input: BookingInput) {
+      return data(await execute(client.api.bookings.store({ body: input })));
+    },
+    async update(id: number, input: Partial<BookingInput>) {
+      return data(await execute(client.api.bookings.update({ params: { id }, body: input })));
+    },
+    async destroy(id: number) {
+      await execute(client.api.bookings.destroy({ params: { id } }));
+    },
   },
 };

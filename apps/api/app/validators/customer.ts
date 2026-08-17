@@ -1,4 +1,5 @@
 import vine from "@vinejs/vine";
+import type { Infer, InferInput } from "@vinejs/vine/types";
 
 const name = () => vine.string().trim().minLength(2).maxLength(120);
 const email = () => vine.string().trim().email().maxLength(254);
@@ -21,3 +22,8 @@ export const updateCustomerValidator = vine.create({
   address: address().optional(),
   notes: notes().optional(),
 });
+
+export type CreateCustomerRequest = InferInput<typeof createCustomerValidator>;
+export type CreateCustomerPayload = Infer<typeof createCustomerValidator>;
+export type UpdateCustomerRequest = InferInput<typeof updateCustomerValidator>;
+export type UpdateCustomerPayload = Infer<typeof updateCustomerValidator>;

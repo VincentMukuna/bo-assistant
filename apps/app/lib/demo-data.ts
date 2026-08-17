@@ -20,7 +20,7 @@ export type Message = {
   time: string;
 };
 
-export type Booking = {
+export type InboxBookingViewModel = {
   id: string;
   customerId: string;
   customer: string;
@@ -34,7 +34,7 @@ export type Booking = {
   address: string;
 };
 
-export type Customer = {
+export type InboxCustomerViewModel = {
   id: string;
   name: string;
   initials: string;
@@ -207,7 +207,7 @@ export const initialMessages: Record<string, Message[]> = {
   ],
 };
 
-export const customers: Customer[] = [
+export const customers: InboxCustomerViewModel[] = [
   {
     id: "c1",
     name: "Alice Morgan",
@@ -260,7 +260,7 @@ export const customers: Customer[] = [
   },
 ];
 
-export const initialBookings: Booking[] = [
+export const initialBookings: InboxBookingViewModel[] = [
   {
     id: "b1",
     customerId: "c2",
