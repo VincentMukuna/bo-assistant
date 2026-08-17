@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Mono, Instrument_Sans } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/components/auth/auth-provider";
 import { QueryProvider } from "@/components/query-provider";
 import "./globals.css";
 
@@ -29,9 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <QueryProvider>
-          <AuthProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </AuthProvider>
+          <TooltipProvider>{children}</TooltipProvider>
         </QueryProvider>
       </body>
     </html>

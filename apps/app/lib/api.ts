@@ -25,14 +25,11 @@ export class ApiError extends Error {
   }
 }
 
-const client = createTuyau({
-  registry,
-  baseUrl: "/",
-  credentials: "include",
-  headers: {
-    Accept: "application/json",
-  },
-});
+type CreateApiOptions = {
+  baseUrl?: string;
+  cache?: RequestCache;
+  headers?: HeadersInit;
+};
 
 function responseMessage(details: unknown) {
   if (typeof details !== "object" || details === null) return undefined;
@@ -66,47 +63,60 @@ function data<T>(response: { data: T }) {
   return response.data;
 }
 
-export const api = {
-  async login(email: string, password: string) {
-    return data(await execute(client.api.auth.sessions.store({ body: { email, password } })));
-  },
-  async profile() {
-    return data(await execute(client.api.profile.show({})));
-  },
-  async logout() {
-    await execute(client.api.sessions.destroy({}));
-  },
-  customers: {
-    async index() {
-      return data(await execute(client.api.customers.index({})));
+export function createApi({ baseUrl = "/", cache, headers }: CreateApiOptions = {}) {
+  const requestHeaders = new Headers(headers);
+  requestHeaders.set("Accept", "application/json");
+
+  const client = createTuyau({
+    registry,
+    baseUrl,
+    cache,
+    credentials: "include",
+    headers: requestHeaders,
+  });
+
+  return {
+    async login(email: string, password: string) {
+      return data(await execute(client.api.auth.sessions.store({ body: { email, password } })));
     },
-    async show(id: number) {
-      return data(await execute(client.api.customers.show({ params: { id } })));
+    async profile() {
+      return data(await execute(client.api.profile.show({})));
     },
-    async store(input: CustomerInput) {
-      return data(await execute(client.api.customers.store({ body: input })));
+    async logout() {
+      await execute(client.api.sessions.destroy({}));
     },
-    async update(id: number, input: Partial<CustomerInput>) {
-      return data(
-        await execute(client.api.customers.update({ params: { id }, body: input }))
-      );
+    customers: {
+      async index() {
+        return data(await execute(client.api.customers.index({})));
+      },
+      async show(id: number) {
+        return data(await execute(client.api.customers.show({ params: { id } })));
+      },
+      async store(input: CustomerInput) {
+        return data(await execute(client.api.customers.store({ body: input })));
+      },
+      async update(id: number, input: Partial<CustomerInput>) {
+        return data(await execute(client.api.customers.update({ params: { id }, body: input })));
+      },
+      async destroy(id: number) {
+        await execute(client.api.customers.destroy({ params: { id } }));
+      },
     },
-    async destroy(id: number) {
-      await execute(client.api.customers.destroy({ params: { id } }));
+    bookings: {
+      async index() {
+        return data(await execute(client.api.bookings.index({})));
+      },
+      async store(input: BookingInput) {
+        return data(await execute(client.api.bookings.store({ body: input })));
+      },
+      async update(id: number, input: Partial<BookingInput>) {
+        return data(await execute(client.api.bookings.update({ params: { id }, body: input })));
+      },
+      async destroy(id: number) {
+        await execute(client.api.bookings.destroy({ params: { id } }));
+      },
     },
-  },
-  bookings: {
-    async index() {
-      return data(await execute(client.api.bookings.index({})));
-    },
-    async store(input: BookingInput) {
-      return data(await execute(client.api.bookings.store({ body: input })));
-    },
-    async update(id: number, input: Partial<BookingInput>) {
-      return data(await execute(client.api.bookings.update({ params: { id }, body: input })));
-    },
-    async destroy(id: number) {
-      await execute(client.api.bookings.destroy({ params: { id } }));
-    },
-  },
-};
+  };
+}
+
+export const api = createApi();

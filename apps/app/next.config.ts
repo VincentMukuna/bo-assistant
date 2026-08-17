@@ -1,13 +1,13 @@
 import type { NextConfig } from "next";
 
+import { getBackendUrl } from "./lib/backend-url";
+
 const nextConfig: NextConfig = {
   async rewrites() {
-    const backendUrl = process.env.ADONIS_URL ?? "http://localhost:3333";
-
     return [
       {
         source: "/api/:path*",
-        destination: `${backendUrl}/api/:path*`,
+        destination: `${getBackendUrl()}/api/:path*`,
       },
     ];
   },
