@@ -55,7 +55,7 @@ test.group("CRM API", (group) => {
       });
 
     customerResponse.assertStatus(201);
-    const customerId = (customerResponse.body() as unknown as { id: number }).id;
+    const customerId = (customerResponse.body() as { data: { id: number } }).data.id;
     await db.assertHas("customers", { id: customerId, email: "alice@example.com" });
 
     const bookingResponse = await client
@@ -73,7 +73,14 @@ test.group("CRM API", (group) => {
       });
 
     bookingResponse.assertStatus(201);
-    const bookingId = (bookingResponse.body() as unknown as { id: number }).id;
+    bookingResponse.assertBodyContains({
+      data: {
+        customer: { id: customerId, email: "alice@example.com" },
+        scheduledAt: "2026-08-18T14:30:00.000+00:00",
+        status: "needs_approval",
+      },
+    });
+    const bookingId = (bookingResponse.body() as { data: { id: number } }).data.id;
     await db.assertHas("bookings", { id: bookingId, customer_id: customerId });
 
     const update = await client
@@ -83,7 +90,7 @@ test.group("CRM API", (group) => {
       .json({ status: "completed" });
 
     update.assertStatus(200);
-    update.assertBodyContains({ id: bookingId, status: "completed" });
+    update.assertBodyContains({ data: { id: bookingId, status: "completed" } });
     await db.assertHas("bookings", { id: bookingId, status: "completed" });
 
     const deletion = await client

@@ -1,6 +1,6 @@
+import { bookingStatuses } from "#contracts/booking";
 import vine from "@vinejs/vine";
-
-export const bookingStatuses = ["confirmed", "needs_approval", "in_progress", "completed"] as const;
+import type { Infer, InferInput } from "@vinejs/vine/types";
 
 const customerId = () => vine.number().positive().withoutDecimals();
 const service = () => vine.string().trim().minLength(2).maxLength(120);
@@ -29,3 +29,8 @@ export const updateBookingValidator = vine.create({
   status: status().optional(),
   serviceAddress: serviceAddress().optional(),
 });
+
+export type CreateBookingRequest = InferInput<typeof createBookingValidator>;
+export type CreateBookingPayload = Infer<typeof createBookingValidator>;
+export type UpdateBookingRequest = InferInput<typeof updateBookingValidator>;
+export type UpdateBookingPayload = Infer<typeof updateBookingValidator>;

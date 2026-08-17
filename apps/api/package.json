@@ -23,6 +23,7 @@
   },
   "imports": {
     "#controllers/*": "./app/controllers/*.js",
+    "#contracts/*": "./app/contracts/*.js",
     "#actions/*": "./app/actions/*.js",
     "#exceptions/*": "./app/exceptions/*.js",
     "#models/*": "./app/models/*.js",

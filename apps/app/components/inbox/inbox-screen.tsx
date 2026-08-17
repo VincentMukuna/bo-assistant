@@ -51,9 +51,9 @@ import {
   initialBookings,
   initialMessages,
   type ApprovalState,
-  type Booking,
   type Conversation,
-  type Customer,
+  type InboxBookingViewModel,
+  type InboxCustomerViewModel,
   type Message,
 } from "@/lib/demo-data";
 import { cn } from "@/lib/utils";
@@ -432,8 +432,8 @@ function CustomerContext({
   approvalState,
   onViewCustomer,
 }: {
-  customer: Customer;
-  booking?: Booking;
+  customer: InboxCustomerViewModel;
+  booking?: InboxBookingViewModel;
   approvalState: ApprovalState;
   onViewCustomer: () => void;
 }) {

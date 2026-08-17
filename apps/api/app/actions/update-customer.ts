@@ -1,10 +1,7 @@
 import type Customer from "#models/customer";
-import type { CreateCustomerInput } from "#actions/create-customer";
+import type { UpdateCustomerPayload } from "#validators/customer";
 
-export default async function updateCustomer(
-  customer: Customer,
-  input: Partial<CreateCustomerInput>
-) {
+export default async function updateCustomer(customer: Customer, input: UpdateCustomerPayload) {
   customer.merge(input);
   await customer.save();
   return customer;
