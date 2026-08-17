@@ -42,18 +42,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   conversations,
   customers,
@@ -79,14 +70,16 @@ function ConversationList({
   onSearch: (value: string) => void;
 }) {
   const filtered = conversations.filter((conversation) =>
-    `${conversation.name} ${conversation.preview} ${conversation.label}`.toLowerCase().includes(search.toLowerCase()),
+    `${conversation.name} ${conversation.preview} ${conversation.label}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
   );
 
   return (
     <div className="flex h-full min-h-0 flex-col border-r border-zinc-200 bg-white">
       <div className="flex items-center gap-2 px-4 py-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             value={search}
             onChange={(event) => onSearch(event.target.value)}
@@ -112,7 +105,7 @@ function ConversationList({
               onClick={() => onSelect(conversation.id)}
               className={cn(
                 "mb-0.5 flex w-full gap-3 rounded-xl px-3 py-3.5 text-left transition-colors hover:bg-zinc-50",
-                selected === conversation.id && "bg-zinc-100 hover:bg-zinc-100",
+                selected === conversation.id && "bg-zinc-100 hover:bg-zinc-100"
               )}
             >
               <div className="relative mt-0.5">
@@ -122,15 +115,21 @@ function ConversationList({
                   </AvatarFallback>
                 </Avatar>
                 {conversation.unread ? (
-                  <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-white bg-zinc-950" />
+                  <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white bg-zinc-950" />
                 ) : null}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className={cn("truncate text-sm", conversation.unread && "font-semibold")}>{conversation.name}</span>
-                  <span className="ml-auto shrink-0 text-[11px] text-zinc-600">{conversation.time}</span>
+                  <span className={cn("truncate text-sm", conversation.unread && "font-semibold")}>
+                    {conversation.name}
+                  </span>
+                  <span className="ml-auto shrink-0 text-[11px] text-zinc-600">
+                    {conversation.time}
+                  </span>
                 </div>
-                <p className="mt-1 truncate text-xs leading-5 text-zinc-600">{conversation.preview}</p>
+                <p className="mt-1 truncate text-xs leading-5 text-zinc-600">
+                  {conversation.preview}
+                </p>
                 <div className="mt-2 flex items-center gap-2 text-[11px] text-zinc-600">
                   <span>{conversation.channel}</span>
                   <span className="size-0.5 rounded-full bg-zinc-400" />
@@ -140,7 +139,9 @@ function ConversationList({
             </button>
           ))}
           {filtered.length === 0 ? (
-            <div className="px-4 py-12 text-center text-sm text-muted-foreground">No conversations found.</div>
+            <div className="text-muted-foreground px-4 py-12 text-center text-sm">
+              No conversations found.
+            </div>
           ) : null}
         </div>
       </ScrollArea>
@@ -175,14 +176,18 @@ function ApprovalCard({
 }) {
   if (state !== "pending") {
     const copy = {
-      approved: "Approved and confirmed for Tuesday at 2:30 PM.",
-      edited: "Proposal updated. Review the new time before sending.",
+      "approved": "Approved and confirmed for Tuesday at 2:30 PM.",
+      "edited": "Proposal updated. Review the new time before sending.",
       "taken-over": "You’re now handling this conversation.",
     }[state];
     return (
       <div className="my-5 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
         <div className="flex items-center gap-2 text-sm font-medium">
-          {state === "taken-over" ? <UserRound className="size-4" /> : <CheckCircle2 className="size-4" />}
+          {state === "taken-over" ? (
+            <UserRound className="size-4" />
+          ) : (
+            <CheckCircle2 className="size-4" />
+          )}
           {copy}
         </div>
       </div>
@@ -203,10 +208,12 @@ function ApprovalCard({
           <CalendarDays className="mt-0.5 size-4 text-zinc-600" />
           <div>
             <div className="text-sm font-medium">Tuesday, Aug 18 · 2:30 PM</div>
-            <div className="mt-1 text-xs text-muted-foreground">Jamie + Rosa · Deep home clean · 3 hours</div>
+            <div className="text-muted-foreground mt-1 text-xs">
+              Jamie + Rosa · Deep home clean · 3 hours
+            </div>
           </div>
         </div>
-        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+        <p className="text-muted-foreground mt-3 text-xs leading-5">
           This changes an existing booking, so the assistant is waiting for your approval.
         </p>
       </div>
@@ -250,7 +257,7 @@ function ConversationPanel({
 
   useEffect(() => {
     const viewport = conversationScrollRef.current?.querySelector<HTMLElement>(
-      '[data-slot="scroll-area-viewport"]',
+      '[data-slot="scroll-area-viewport"]'
     );
     const frame = requestAnimationFrame(() => {
       if (viewport) viewport.scrollTop = viewport.scrollHeight;
@@ -267,15 +274,23 @@ function ConversationPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white">
       <header className="flex h-[73px] shrink-0 items-center gap-3 border-b border-zinc-200 px-4 sm:px-5">
-        <Button variant="ghost" size="icon" className="md:hidden" onClick={onOpenList} aria-label="Open conversation list">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={onOpenList}
+          aria-label="Open conversation list"
+        >
           <ArrowLeft />
         </Button>
         <Avatar className="size-9">
-          <AvatarFallback className="bg-zinc-100 text-xs font-medium text-zinc-700">{conversation.initials}</AvatarFallback>
+          <AvatarFallback className="bg-zinc-100 text-xs font-medium text-zinc-700">
+            {conversation.initials}
+          </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold">{conversation.name}</h1>
-          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
             <span>{conversation.channel}</span>
             <span className="size-0.5 rounded-full bg-zinc-400" />
             <span>Typically replies in 5 min</span>
@@ -284,13 +299,17 @@ function ConversationPanel({
         <div className="ml-auto flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={`Call ${conversation.name}`}><Phone /></Button>
+              <Button variant="ghost" size="icon" aria-label={`Call ${conversation.name}`}>
+                <Phone />
+              </Button>
             </TooltipTrigger>
             <TooltipContent>Call customer</TooltipContent>
           </Tooltip>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Conversation options"><Ellipsis /></Button>
+              <Button variant="ghost" size="icon" aria-label="Conversation options">
+                <Ellipsis />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem>Mark as unread</DropdownMenuItem>
@@ -302,35 +321,63 @@ function ConversationPanel({
       </header>
       <ScrollArea ref={conversationScrollRef} className="min-h-0 flex-1">
         <div className="mx-auto w-full max-w-[720px] px-4 py-7 sm:px-7">
-          <div className="mb-7 flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+          <div className="mb-7 flex items-center gap-3 text-[11px] font-medium tracking-[0.08em] text-zinc-500 uppercase">
             <Separator className="flex-1" /> Today <Separator className="flex-1" />
           </div>
           {messages.map((message) => {
-            if (message.kind === "assistant") return <AssistantEvent key={message.id} message={message} />;
+            if (message.kind === "assistant")
+              return <AssistantEvent key={message.id} message={message} />;
             const staff = message.kind === "staff";
             return (
-              <div key={message.id} className={cn("mb-4 flex", staff ? "justify-end" : "justify-start")}>
+              <div
+                key={message.id}
+                className={cn("mb-4 flex", staff ? "justify-end" : "justify-start")}
+              >
                 <div className={cn("max-w-[82%]", staff && "text-right")}>
                   <div
                     className={cn(
                       "inline-block rounded-2xl px-4 py-2.5 text-left text-sm leading-6",
-                      staff ? "rounded-br-md bg-zinc-950 text-white" : "rounded-bl-md bg-zinc-100 text-zinc-900",
+                      staff
+                        ? "rounded-br-md bg-zinc-950 text-white"
+                        : "rounded-bl-md bg-zinc-100 text-zinc-900"
                     )}
                   >
                     {message.text}
                   </div>
-                  <div className="mt-1 px-1 text-[11px] text-zinc-500">{staff ? "You" : conversation.name.split(" ")[0]} · {message.time}</div>
+                  <div className="mt-1 px-1 text-[11px] text-zinc-500">
+                    {staff ? "You" : conversation.name.split(" ")[0]} · {message.time}
+                  </div>
                 </div>
               </div>
             );
           })}
           {isAlice ? (
-            <ApprovalCard state={approvalState} onApprove={onApprove} onEdit={onEdit} onTakeOver={onTakeOver} />
+            <ApprovalCard
+              state={approvalState}
+              onApprove={onApprove}
+              onEdit={onEdit}
+              onTakeOver={onTakeOver}
+            />
           ) : conversation.id === "marcus" ? (
             <div className="my-5 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium"><FileText className="size-4" /> Suggested reply</div>
-              <p className="text-sm leading-6 text-zinc-600">The $65 call-out fee covers diagnosis and is credited toward the repair if you go ahead with the work.</p>
-              <Button size="sm" className="mt-3" onClick={() => onSend("The $65 call-out fee covers diagnosis and is credited toward the repair if you go ahead with the work.")}>Send reply</Button>
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                <FileText className="size-4" /> Suggested reply
+              </div>
+              <p className="text-sm leading-6 text-zinc-600">
+                The $65 call-out fee covers diagnosis and is credited toward the repair if you go
+                ahead with the work.
+              </p>
+              <Button
+                size="sm"
+                className="mt-3"
+                onClick={() =>
+                  onSend(
+                    "The $65 call-out fee covers diagnosis and is credited toward the repair if you go ahead with the work."
+                  )
+                }
+              >
+                Send reply
+              </Button>
             </div>
           ) : null}
         </div>
@@ -339,7 +386,14 @@ function ConversationPanel({
         <div className="mx-auto flex max-w-[720px] items-end gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-sm focus-within:ring-2 focus-within:ring-zinc-200">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0 text-zinc-500" aria-label="Attach file"><Paperclip /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-zinc-500"
+                aria-label="Attach file"
+              >
+                <Paperclip />
+              </Button>
             </TooltipTrigger>
             <TooltipContent>Attach file</TooltipContent>
           </Tooltip>
@@ -355,9 +409,18 @@ function ConversationPanel({
             placeholder={`Reply to ${conversation.name.split(" ")[0]}…`}
             className="max-h-28 min-h-9 resize-none border-0 bg-transparent px-1 py-2 shadow-none focus-visible:ring-0"
           />
-          <Button size="icon" onClick={submitMessage} disabled={!draft.trim()} aria-label="Send message"><Send /></Button>
+          <Button
+            size="icon"
+            onClick={submitMessage}
+            disabled={!draft.trim()}
+            aria-label="Send message"
+          >
+            <Send />
+          </Button>
         </div>
-        <p className="mx-auto mt-2 max-w-[720px] text-center text-[11px] text-zinc-500">Enter to send · Shift + Enter for a new line</p>
+        <p className="mx-auto mt-2 max-w-[720px] text-center text-[11px] text-zinc-500">
+          Enter to send · Shift + Enter for a new line
+        </p>
       </div>
     </div>
   );
@@ -380,21 +443,34 @@ function CustomerContext({
         <div className="p-5">
           <div className="flex items-center gap-3">
             <Avatar className="size-11">
-              <AvatarFallback className="bg-white text-sm font-medium ring-1 ring-zinc-200">{customer.initials}</AvatarFallback>
+              <AvatarFallback className="bg-white text-sm font-medium ring-1 ring-zinc-200">
+                {customer.initials}
+              </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{customer.name}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">{customer.since}</div>
+              <div className="text-muted-foreground mt-0.5 text-xs">{customer.since}</div>
             </div>
           </div>
-          <Button variant="outline" className="mt-4 w-full bg-white" onClick={onViewCustomer}>View customer</Button>
+          <Button variant="outline" className="mt-4 w-full bg-white" onClick={onViewCustomer}>
+            View customer
+          </Button>
 
           <Separator className="my-6" />
           <h2 className="text-sm font-semibold">Contact</h2>
           <div className="mt-3 space-y-3 text-xs text-zinc-600">
-            <div className="flex gap-3"><Phone className="size-4 shrink-0 text-zinc-400" /><span>{customer.phone}</span></div>
-            <div className="flex gap-3"><MessageSquare className="size-4 shrink-0 text-zinc-400" /><span className="break-all">{customer.email}</span></div>
-            <div className="flex gap-3"><Wrench className="size-4 shrink-0 text-zinc-400" /><span>{customer.address}</span></div>
+            <div className="flex gap-3">
+              <Phone className="size-4 shrink-0 text-zinc-400" />
+              <span>{customer.phone}</span>
+            </div>
+            <div className="flex gap-3">
+              <MessageSquare className="size-4 shrink-0 text-zinc-400" />
+              <span className="break-all">{customer.email}</span>
+            </div>
+            <div className="flex gap-3">
+              <Wrench className="size-4 shrink-0 text-zinc-400" />
+              <span>{customer.address}</span>
+            </div>
           </div>
 
           <Separator className="my-6" />
@@ -402,17 +478,26 @@ function CustomerContext({
           {booking ? (
             <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-4">
               <div className="flex items-start justify-between gap-2">
-                <div className="text-sm font-medium leading-5">{booking.service}</div>
+                <div className="text-sm leading-5 font-medium">{booking.service}</div>
                 <StatusBadge status={approvalState === "approved" ? "Confirmed" : booking.status} />
               </div>
               <div className="mt-3 space-y-2 text-xs text-zinc-600">
-                <div className="flex items-center gap-2"><CalendarDays className="size-3.5 text-zinc-400" />{booking.day}, {booking.date}</div>
-                <div className="flex items-center gap-2"><Clock3 className="size-3.5 text-zinc-400" />{booking.time} · {booking.duration}</div>
-                <div className="flex items-center gap-2"><UserRound className="size-3.5 text-zinc-400" />{booking.staff}</div>
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="size-3.5 text-zinc-400" />
+                  {booking.day}, {booking.date}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock3 className="size-3.5 text-zinc-400" />
+                  {booking.time} · {booking.duration}
+                </div>
+                <div className="flex items-center gap-2">
+                  <UserRound className="size-3.5 text-zinc-400" />
+                  {booking.staff}
+                </div>
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-xs text-muted-foreground">No upcoming bookings.</p>
+            <p className="text-muted-foreground mt-3 text-xs">No upcoming bookings.</p>
           )}
 
           <Separator className="my-6" />
@@ -421,14 +506,24 @@ function CustomerContext({
             {[
               ["Found the booking", "Deep clean · Aug 20"],
               ["Checked availability", "Jamie + Rosa · Aug 18"],
-              [approvalState === "approved" ? "Change completed" : "Waiting for approval", approvalState === "approved" ? "Customer will be notified" : "Reschedule booking"],
+              [
+                approvalState === "approved" ? "Change completed" : "Waiting for approval",
+                approvalState === "approved" ? "Customer will be notified" : "Reschedule booking",
+              ],
             ].map(([title, detail], index) => (
               <div key={title} className="relative flex gap-3">
-                {index < 2 ? <span className="absolute left-[5px] top-3 h-8 w-px bg-zinc-200" /> : null}
-                <div className={cn("mt-1 size-3 shrink-0 rounded-full border border-zinc-400 bg-white", index < 2 && "border-zinc-950 bg-zinc-950")} />
+                {index < 2 ? (
+                  <span className="absolute top-3 left-[5px] h-8 w-px bg-zinc-200" />
+                ) : null}
+                <div
+                  className={cn(
+                    "mt-1 size-3 shrink-0 rounded-full border border-zinc-400 bg-white",
+                    index < 2 && "border-zinc-950 bg-zinc-950"
+                  )}
+                />
                 <div>
                   <div className="text-xs font-medium">{title}</div>
-                  <div className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{detail}</div>
+                  <div className="text-muted-foreground mt-0.5 text-[11px] leading-4">{detail}</div>
                 </div>
               </div>
             ))}
@@ -464,12 +559,19 @@ function InboxLayout({
   const [mobileListOpen, setMobileListOpen] = useState(false);
   const conversation = conversations.find((item) => item.id === selectedId) ?? conversations[0];
   const customer = customers.find((item) => item.id === conversation.customerId) ?? customers[0];
-  const booking = initialBookings.find((item) => item.customerId === customer.id && item.status !== "Completed");
+  const booking = initialBookings.find(
+    (item) => item.customerId === customer.id && item.status !== "Completed"
+  );
 
   return (
     <div className="grid h-full min-h-0 grid-cols-1 md:grid-cols-[350px_minmax(0,1fr)] 2xl:grid-cols-[350px_minmax(520px,1fr)_300px]">
       <div className="hidden min-h-0 md:block">
-        <ConversationList selected={selectedId} onSelect={onSelect} search={search} onSearch={setSearch} />
+        <ConversationList
+          selected={selectedId}
+          onSelect={onSelect}
+          search={search}
+          onSearch={setSearch}
+        />
       </div>
       <ConversationPanel
         conversation={conversation}
@@ -481,10 +583,17 @@ function InboxLayout({
         onSend={onSend}
         onOpenList={() => setMobileListOpen(true)}
       />
-      <CustomerContext customer={customer} booking={booking} approvalState={approvalState} onViewCustomer={() => onViewCustomer(customer.id)} />
+      <CustomerContext
+        customer={customer}
+        booking={booking}
+        approvalState={approvalState}
+        onViewCustomer={() => onViewCustomer(customer.id)}
+      />
       <Sheet open={mobileListOpen} onOpenChange={setMobileListOpen}>
         <SheetContent side="left" className="w-[340px] max-w-[90vw] p-0">
-          <SheetHeader className="sr-only"><SheetTitle>Conversations</SheetTitle></SheetHeader>
+          <SheetHeader className="sr-only">
+            <SheetTitle>Conversations</SheetTitle>
+          </SheetHeader>
           <ConversationList
             selected={selectedId}
             onSelect={(id) => {
@@ -499,14 +608,40 @@ function InboxLayout({
     </div>
   );
 }
-function EditProposalDialog({ open, onOpenChange, onSave }: { open: boolean; onOpenChange: (open: boolean) => void; onSave: (time: string) => void }) {
+function EditProposalDialog({
+  open,
+  onOpenChange,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (time: string) => void;
+}) {
   const [time, setTime] = useState("3:30 PM");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[440px]">
-        <DialogHeader><DialogTitle>Edit proposed time</DialogTitle><DialogDescription>Change the time before approving the reschedule.</DialogDescription></DialogHeader>
-        <label className="grid gap-2 py-3 text-sm font-medium">Tuesday, August 18<Input value={time} onChange={(event) => setTime(event.target.value)} /></label>
-        <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button onClick={() => { onSave(time); onOpenChange(false); }}>Save change</Button></DialogFooter>
+        <DialogHeader>
+          <DialogTitle>Edit proposed time</DialogTitle>
+          <DialogDescription>Change the time before approving the reschedule.</DialogDescription>
+        </DialogHeader>
+        <label className="grid gap-2 py-3 text-sm font-medium">
+          Tuesday, August 18
+          <Input value={time} onChange={(event) => setTime(event.target.value)} />
+        </label>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              onSave(time);
+              onOpenChange(false);
+            }}
+          >
+            Save change
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -531,7 +666,7 @@ export function InboxScreen({ selectedId }: { selectedId: string }) {
   function approveReschedule() {
     setApprovalState("approved");
     appendAliceMessage(
-      "Booking updated and confirmation sent to Alice. Tuesday at 2:30 PM is now confirmed.",
+      "Booking updated and confirmation sent to Alice. Tuesday at 2:30 PM is now confirmed."
     );
   }
 
@@ -542,9 +677,7 @@ export function InboxScreen({ selectedId }: { selectedId: string }) {
 
   function saveEditedProposal(time: string) {
     setApprovalState("edited");
-    appendAliceMessage(
-      `Proposal changed to Tuesday at ${time}. It is ready for your review.`,
-    );
+    appendAliceMessage(`Proposal changed to Tuesday at ${time}. It is ready for your review.`);
   }
 
   function sendMessage(text: string) {

@@ -20,7 +20,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { weekDays } from "@/lib/demo-data";
-import { ApiError, type Booking, type BookingInput, type BookingStatus, type Customer } from "@/lib/api";
+import {
+  ApiError,
+  type Booking,
+  type BookingInput,
+  type BookingStatus,
+  type Customer,
+} from "@/lib/api";
 
 const dateByDay: Record<string, string> = {
   Mon: "2026-08-17",
@@ -62,7 +68,9 @@ export function NewBookingDialog({
   onSave: (input: BookingInput) => Promise<void>;
 }) {
   const defaults = bookingDefaults(booking);
-  const [customerId, setCustomerId] = useState(String(customer?.id ?? booking?.customerId ?? customers[0]?.id ?? ""));
+  const [customerId, setCustomerId] = useState(
+    String(customer?.id ?? booking?.customerId ?? customers[0]?.id ?? "")
+  );
   const [service, setService] = useState(booking?.service ?? "Standard home clean");
   const [day, setDay] = useState(defaults.day);
   const [time, setTime] = useState(defaults.time);
@@ -103,35 +111,119 @@ export function NewBookingDialog({
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>{booking ? "Edit booking" : "New booking"}</DialogTitle>
-            <DialogDescription>{booking ? "Update this appointment." : "Add an appointment to this week’s schedule."}</DialogDescription>
+            <DialogDescription>
+              {booking ? "Update this appointment." : "Add an appointment to this week’s schedule."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <label className="grid gap-2 text-sm font-medium">Customer
-              <Select value={customerId} onValueChange={setCustomerId} disabled={Boolean(customer)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{customers.map((item) => <SelectItem value={String(item.id)} key={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
+            <label className="grid gap-2 text-sm font-medium">
+              Customer
+              <Select value={customerId} onValueChange={setCustomerId} disabled={Boolean(customer)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map((item) => (
+                    <SelectItem value={String(item.id)} key={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
-            <label className="grid gap-2 text-sm font-medium">Service
-              <Select value={service} onValueChange={setService}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Standard home clean">Standard home clean</SelectItem><SelectItem value="Deep home clean">Deep home clean</SelectItem><SelectItem value="Minor repair">Minor repair</SelectItem><SelectItem value="Plumbing visit">Plumbing visit</SelectItem></SelectContent></Select>
+            <label className="grid gap-2 text-sm font-medium">
+              Service
+              <Select value={service} onValueChange={setService}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Standard home clean">Standard home clean</SelectItem>
+                  <SelectItem value="Deep home clean">Deep home clean</SelectItem>
+                  <SelectItem value="Minor repair">Minor repair</SelectItem>
+                  <SelectItem value="Plumbing visit">Plumbing visit</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
             <div className="grid grid-cols-2 gap-4">
-              <label className="grid gap-2 text-sm font-medium">Day
-                <Select value={day} onValueChange={setDay}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{weekDays.map((item) => <SelectItem value={item.day} key={item.day}>{item.day}, Aug {item.date}</SelectItem>)}</SelectContent></Select>
+              <label className="grid gap-2 text-sm font-medium">
+                Day
+                <Select value={day} onValueChange={setDay}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {weekDays.map((item) => (
+                      <SelectItem value={item.day} key={item.day}>
+                        {item.day}, Aug {item.date}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
-              <label className="grid gap-2 text-sm font-medium">Time<Input value={time} onChange={(event) => setTime(event.target.value)} required /></label>
+              <label className="grid gap-2 text-sm font-medium">
+                Time
+                <Input value={time} onChange={(event) => setTime(event.target.value)} required />
+              </label>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <label className="grid gap-2 text-sm font-medium">Assigned staff
-                <Select value={staff} onValueChange={setStaff}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Jamie">Jamie</SelectItem><SelectItem value="Noah">Noah</SelectItem><SelectItem value="Eli">Eli</SelectItem><SelectItem value="Jamie + Rosa">Jamie + Rosa</SelectItem></SelectContent></Select>
+              <label className="grid gap-2 text-sm font-medium">
+                Assigned staff
+                <Select value={staff} onValueChange={setStaff}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Jamie">Jamie</SelectItem>
+                    <SelectItem value="Noah">Noah</SelectItem>
+                    <SelectItem value="Eli">Eli</SelectItem>
+                    <SelectItem value="Jamie + Rosa">Jamie + Rosa</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
-              <label className="grid gap-2 text-sm font-medium">Duration
-                <Select value={durationMinutes} onValueChange={setDurationMinutes}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="60">1 hour</SelectItem><SelectItem value="90">1.5 hours</SelectItem><SelectItem value="120">2 hours</SelectItem><SelectItem value="180">3 hours</SelectItem></SelectContent></Select>
+              <label className="grid gap-2 text-sm font-medium">
+                Duration
+                <Select value={durationMinutes} onValueChange={setDurationMinutes}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="60">1 hour</SelectItem>
+                    <SelectItem value="90">1.5 hours</SelectItem>
+                    <SelectItem value="120">2 hours</SelectItem>
+                    <SelectItem value="180">3 hours</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
             </div>
-            <label className="grid gap-2 text-sm font-medium">Status
-              <Select value={status} onValueChange={(value) => setStatus(value as BookingStatus)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="confirmed">Confirmed</SelectItem><SelectItem value="needs_approval">Needs approval</SelectItem><SelectItem value="in_progress">In progress</SelectItem><SelectItem value="completed">Completed</SelectItem></SelectContent></Select>
+            <label className="grid gap-2 text-sm font-medium">
+              Status
+              <Select value={status} onValueChange={(value) => setStatus(value as BookingStatus)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="needs_approval">Needs approval</SelectItem>
+                  <SelectItem value="in_progress">In progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
-            {error ? <p className="text-sm text-red-600" role="alert">{error}</p> : null}
+            {error ? (
+              <p className="text-sm text-red-600" role="alert">
+                {error}
+              </p>
+            ) : null}
           </div>
-          <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" disabled={saving || !customers.length}>{saving ? "Saving…" : "Save booking"}</Button></DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving || !customers.length}>
+              {saving ? "Saving…" : "Save booking"}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

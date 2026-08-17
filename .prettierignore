@@ -1,0 +1,5 @@
+**/.adonisjs
+**/.next
+**/build
+**/node_modules
+apps/api/database/schema.ts

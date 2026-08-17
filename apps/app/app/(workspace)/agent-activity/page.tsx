@@ -12,9 +12,10 @@ type ActivityPageProps = {
 export default async function ActivityPage({ searchParams }: ActivityPageProps) {
   const query = await searchParams;
   const allowed: ActivityFilter[] = ["all", "approval", "completed"];
-  const filter = typeof query.filter === "string" && allowed.includes(query.filter as ActivityFilter)
-    ? (query.filter as ActivityFilter)
-    : "all";
+  const filter =
+    typeof query.filter === "string" && allowed.includes(query.filter as ActivityFilter)
+      ? (query.filter as ActivityFilter)
+      : "all";
 
   return <AgentActivityScreen filter={filter} />;
 }

@@ -1,14 +1,14 @@
-import vine from '@vinejs/vine'
+import vine from "@vinejs/vine";
 
-export const bookingStatuses = ['confirmed', 'needs_approval', 'in_progress', 'completed'] as const
+export const bookingStatuses = ["confirmed", "needs_approval", "in_progress", "completed"] as const;
 
-const customerId = () => vine.number().positive().withoutDecimals()
-const service = () => vine.string().trim().minLength(2).maxLength(120)
-const staff = () => vine.string().trim().minLength(2).maxLength(120)
-const scheduledAt = () => vine.date({ formats: ['iso8601'] })
-const durationMinutes = () => vine.number().positive().withoutDecimals().max(1440)
-const status = () => vine.enum(bookingStatuses)
-const serviceAddress = () => vine.string().trim().minLength(3).maxLength(255)
+const customerId = () => vine.number().positive().withoutDecimals();
+const service = () => vine.string().trim().minLength(2).maxLength(120);
+const staff = () => vine.string().trim().minLength(2).maxLength(120);
+const scheduledAt = () => vine.date({ formats: ["iso8601"] });
+const durationMinutes = () => vine.number().positive().withoutDecimals().max(1440);
+const status = () => vine.enum(bookingStatuses);
+const serviceAddress = () => vine.string().trim().minLength(3).maxLength(255);
 
 export const createBookingValidator = vine.create({
   customerId: customerId(),
@@ -18,7 +18,7 @@ export const createBookingValidator = vine.create({
   durationMinutes: durationMinutes(),
   status: status(),
   serviceAddress: serviceAddress(),
-})
+});
 
 export const updateBookingValidator = vine.create({
   customerId: customerId().optional(),
@@ -28,4 +28,4 @@ export const updateBookingValidator = vine.create({
   durationMinutes: durationMinutes().optional(),
   status: status().optional(),
   serviceAddress: serviceAddress().optional(),
-})
+});

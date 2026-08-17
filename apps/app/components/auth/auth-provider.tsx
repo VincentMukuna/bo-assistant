@@ -37,7 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    api.profile()
+    api
+      .profile()
       .then((profile) => {
         if (active) setUser(profile);
       })
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(
     () => ({ user, loading, refresh, logout }),
-    [user, loading, refresh, logout],
+    [user, loading, refresh, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

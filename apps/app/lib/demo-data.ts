@@ -395,4 +395,3 @@ export const weekDays = [
   { day: "Thu", date: "20", label: "" },
   { day: "Fri", date: "21", label: "" },
 ];
-

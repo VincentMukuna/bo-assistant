@@ -4,24 +4,11 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import {
-  Activity,
-  CalendarDays,
-  Inbox,
-  LogOut,
-  Menu,
-  Users,
-} from "lucide-react";
+import { Activity, CalendarDays, Inbox, LogOut, Menu, Users } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 
@@ -48,7 +35,7 @@ function AppMark({ compact = false }: { compact?: boolean }) {
       {compact ? null : (
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold tracking-[-0.01em]">Oak &amp; Pine</div>
-          <div className="truncate text-xs text-muted-foreground">Home services</div>
+          <div className="text-muted-foreground truncate text-xs">Home services</div>
         </div>
       )}
     </div>
@@ -78,7 +65,7 @@ function Navigation({ pathname, onNavigate }: { pathname: string; onNavigate?: (
               onClick={onNavigate}
               className={cn(
                 "flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950",
-                selected && "bg-zinc-100 text-zinc-950",
+                selected && "bg-zinc-100 text-zinc-950"
               )}
               aria-current={selected ? "page" : undefined}
             >
@@ -98,15 +85,21 @@ function Navigation({ pathname, onNavigate }: { pathname: string; onNavigate?: (
           <span className="size-2 rounded-full bg-zinc-950" />
           Open until 6:00 PM
         </div>
-        <button type="button" onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-zinc-100">
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-zinc-100"
+        >
           <Avatar className="size-8">
-            <AvatarFallback className="bg-zinc-200 text-xs font-medium text-zinc-700">{user?.initials ?? "KL"}</AvatarFallback>
+            <AvatarFallback className="bg-zinc-200 text-xs font-medium text-zinc-700">
+              {user?.initials ?? "KL"}
+            </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium">{user?.fullName ?? user?.email}</div>
-            <div className="truncate text-xs text-muted-foreground">Owner</div>
+            <div className="text-muted-foreground truncate text-xs">Owner</div>
           </div>
-          <LogOut className="size-4 text-muted-foreground" />
+          <LogOut className="text-muted-foreground size-4" />
         </button>
       </div>
     </>
@@ -134,17 +127,25 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="flex h-14 shrink-0 items-center border-b border-zinc-200 bg-white px-4 lg:hidden">
           <Sheet open={navOpen} onOpenChange={setNavOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open navigation"><Menu /></Button>
+              <Button variant="ghost" size="icon" aria-label="Open navigation">
+                <Menu />
+              </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex w-[280px] flex-col bg-zinc-50 p-0">
-              <SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle></SheetHeader>
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation</SheetTitle>
+              </SheetHeader>
               <Navigation pathname={pathname} onNavigate={() => setNavOpen(false)} />
             </SheetContent>
           </Sheet>
-          <div className="ml-2"><AppMark compact /></div>
+          <div className="ml-2">
+            <AppMark compact />
+          </div>
           <div className="ml-3 text-sm font-semibold">{currentTitle(pathname)}</div>
           <Avatar className="ml-auto size-8">
-            <AvatarFallback className="bg-zinc-100 text-xs text-zinc-700">{user?.initials ?? "KL"}</AvatarFallback>
+            <AvatarFallback className="bg-zinc-100 text-xs text-zinc-700">
+              {user?.initials ?? "KL"}
+            </AvatarFallback>
           </Avatar>
         </header>
         <main className="min-h-0 flex-1">{children}</main>

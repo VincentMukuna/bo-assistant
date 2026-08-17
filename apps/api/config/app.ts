@@ -1,13 +1,13 @@
-import env from '#start/env'
-import app from '@adonisjs/core/services/app'
-import { defineConfig } from '@adonisjs/core/http'
+import env from "#start/env";
+import app from "@adonisjs/core/services/app";
+import { defineConfig } from "@adonisjs/core/http";
 
 /**
  * The app URL can be used in various places where you want to create absolute
  * URLs to your application. For example, when sending emails, images should
  * use absolute URLs.
  */
-export const appUrl = env.get('APP_URL')
+export const appUrl = env.get("APP_URL");
 
 /**
  * The configuration settings used by the HTTP server
@@ -54,17 +54,17 @@ export const http = defineConfig({
      * Restrict the cookie to a specific domain.
      * Keep empty to use the current host.
      */
-    domain: '',
+    domain: "",
 
     /**
      * Restrict the cookie to a URL path. '/' means all routes.
      */
-    path: '/',
+    path: "/",
 
     /**
      * Default lifetime for cookies managed by the HTTP layer.
      */
-    maxAge: '2h',
+    maxAge: "2h",
 
     /**
      * Prevent JavaScript access to the cookie in the browser.
@@ -79,6 +79,6 @@ export const http = defineConfig({
     /**
      * Cross-site policy for cookie sending.
      */
-    sameSite: 'lax',
+    sameSite: "lax",
   },
-})
+});

@@ -19,11 +19,7 @@ export type Customer = {
   updatedAt: string | null;
 };
 
-export type BookingStatus =
-  | "confirmed"
-  | "needs_approval"
-  | "in_progress"
-  | "completed";
+export type BookingStatus = "confirmed" | "needs_approval" | "in_progress" | "completed";
 
 export type Booking = {
   id: number;
@@ -39,10 +35,7 @@ export type Booking = {
   updatedAt: string | null;
 };
 
-export type CustomerInput = Pick<
-  Customer,
-  "name" | "email" | "phone" | "address" | "notes"
->;
+export type CustomerInput = Pick<Customer, "name" | "email" | "phone" | "address" | "notes">;
 
 export type BookingInput = Pick<
   Booking,
@@ -59,7 +52,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
-    public details?: unknown,
+    public details?: unknown
   ) {
     super(message);
   }

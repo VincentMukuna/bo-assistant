@@ -41,7 +41,7 @@ export function CustomerDialog({
           address: customer.address,
           notes: customer.notes,
         }
-      : emptyCustomer,
+      : emptyCustomer
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -70,19 +70,65 @@ export function CustomerDialog({
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>{customer ? "Edit customer" : "New customer"}</DialogTitle>
-            <DialogDescription>{customer ? "Update this customer’s CRM record." : "Add a customer to the CRM."}</DialogDescription>
+            <DialogDescription>
+              {customer ? "Update this customer’s CRM record." : "Add a customer to the CRM."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-5 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-medium sm:col-span-2">Name<Input value={form.name} onChange={(event) => set("name", event.target.value)} required /></label>
-            <label className="grid gap-2 text-sm font-medium">Email<Input type="email" value={form.email} onChange={(event) => set("email", event.target.value)} required /></label>
-            <label className="grid gap-2 text-sm font-medium">Phone<Input value={form.phone} onChange={(event) => set("phone", event.target.value)} required /></label>
-            <label className="grid gap-2 text-sm font-medium sm:col-span-2">Service address<Input value={form.address} onChange={(event) => set("address", event.target.value)} required /></label>
-            <label className="grid gap-2 text-sm font-medium sm:col-span-2">Notes<Textarea value={form.notes} onChange={(event) => set("notes", event.target.value)} rows={4} /></label>
-            {error ? <p className="text-sm text-red-600 sm:col-span-2" role="alert">{error}</p> : null}
+            <label className="grid gap-2 text-sm font-medium sm:col-span-2">
+              Name
+              <Input
+                value={form.name}
+                onChange={(event) => set("name", event.target.value)}
+                required
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Email
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(event) => set("email", event.target.value)}
+                required
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Phone
+              <Input
+                value={form.phone}
+                onChange={(event) => set("phone", event.target.value)}
+                required
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium sm:col-span-2">
+              Service address
+              <Input
+                value={form.address}
+                onChange={(event) => set("address", event.target.value)}
+                required
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium sm:col-span-2">
+              Notes
+              <Textarea
+                value={form.notes}
+                onChange={(event) => set("notes", event.target.value)}
+                rows={4}
+              />
+            </label>
+            {error ? (
+              <p className="text-sm text-red-600 sm:col-span-2" role="alert">
+                {error}
+              </p>
+            ) : null}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save customer"}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : "Save customer"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
