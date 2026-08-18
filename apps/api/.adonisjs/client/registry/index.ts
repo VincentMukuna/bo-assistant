@@ -138,6 +138,48 @@ const routes = {
     tokens: [{"old":"/api/v1/bookings/:id","type":0,"val":"api","end":""},{"old":"/api/v1/bookings/:id","type":0,"val":"v1","end":""},{"old":"/api/v1/bookings/:id","type":0,"val":"bookings","end":""},{"old":"/api/v1/bookings/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['bookings.destroy']['types'],
   },
+  'inbox_conversations.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/inbox/conversations',
+    tokens: [{"old":"/api/v1/inbox/conversations","type":0,"val":"api","end":""},{"old":"/api/v1/inbox/conversations","type":0,"val":"v1","end":""},{"old":"/api/v1/inbox/conversations","type":0,"val":"inbox","end":""},{"old":"/api/v1/inbox/conversations","type":0,"val":"conversations","end":""}],
+    types: placeholder as Registry['inbox_conversations.index']['types'],
+  },
+  'inbox_conversations.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/inbox/conversations/:id',
+    tokens: [{"old":"/api/v1/inbox/conversations/:id","type":0,"val":"api","end":""},{"old":"/api/v1/inbox/conversations/:id","type":0,"val":"v1","end":""},{"old":"/api/v1/inbox/conversations/:id","type":0,"val":"inbox","end":""},{"old":"/api/v1/inbox/conversations/:id","type":0,"val":"conversations","end":""},{"old":"/api/v1/inbox/conversations/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['inbox_conversations.show']['types'],
+  },
+  'conversation_ownerships.update': {
+    methods: ["PUT"],
+    pattern: '/api/v1/inbox/conversations/:id/ownership',
+    tokens: [{"old":"/api/v1/inbox/conversations/:id/ownership","type":0,"val":"api","end":""},{"old":"/api/v1/inbox/conversations/:id/ownership","type":0,"val":"v1","end":""},{"old":"/api/v1/inbox/conversations/:id/ownership","type":0,"val":"inbox","end":""},{"old":"/api/v1/inbox/conversations/:id/ownership","type":0,"val":"conversations","end":""},{"old":"/api/v1/inbox/conversations/:id/ownership","type":1,"val":"id","end":""},{"old":"/api/v1/inbox/conversations/:id/ownership","type":0,"val":"ownership","end":""}],
+    types: placeholder as Registry['conversation_ownerships.update']['types'],
+  },
+  'owner_conversation_messages.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/inbox/conversations/:id/messages',
+    tokens: [{"old":"/api/v1/inbox/conversations/:id/messages","type":0,"val":"api","end":""},{"old":"/api/v1/inbox/conversations/:id/messages","type":0,"val":"v1","end":""},{"old":"/api/v1/inbox/conversations/:id/messages","type":0,"val":"inbox","end":""},{"old":"/api/v1/inbox/conversations/:id/messages","type":0,"val":"conversations","end":""},{"old":"/api/v1/inbox/conversations/:id/messages","type":1,"val":"id","end":""},{"old":"/api/v1/inbox/conversations/:id/messages","type":0,"val":"messages","end":""}],
+    types: placeholder as Registry['owner_conversation_messages.store']['types'],
+  },
+  'attention_decisions.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions',
+    tokens: [{"old":"/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions","type":0,"val":"api","end":""},{"old":"/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions","type":0,"val":"v1","end":""},{"old":"/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions","type":0,"val":"inbox","end":""},{"old":"/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions","type":0,"val":"conversations","end":""},{"old":"/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions","type":1,"val":"conversationId","end":""},{"old":"/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions","type":0,"val":"attention","end":""},{"old":"/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions","type":1,"val":"attentionId","end":""},{"old":"/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions","type":0,"val":"decisions","end":""}],
+    types: placeholder as Registry['attention_decisions.store']['types'],
+  },
+  'inbox_events.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/inbox/events',
+    tokens: [{"old":"/api/v1/inbox/events","type":0,"val":"api","end":""},{"old":"/api/v1/inbox/events","type":0,"val":"v1","end":""},{"old":"/api/v1/inbox/events","type":0,"val":"inbox","end":""},{"old":"/api/v1/inbox/events","type":0,"val":"events","end":""}],
+    types: placeholder as Registry['inbox_events.index']['types'],
+  },
+  'agent_activities.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/agent-activities',
+    tokens: [{"old":"/api/v1/agent-activities","type":0,"val":"api","end":""},{"old":"/api/v1/agent-activities","type":0,"val":"v1","end":""},{"old":"/api/v1/agent-activities","type":0,"val":"agent-activities","end":""}],
+    types: placeholder as Registry['agent_activities.index']['types'],
+  },
 } as const satisfies Record<string, AdonisEndpoint>
 
 export { routes }

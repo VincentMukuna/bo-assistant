@@ -19,6 +19,7 @@ export type AgentMessage = {
   sender: "customer" | "business";
   body: string;
   createdAt: string | null;
+  author: "agent" | "owner" | null;
 };
 
 export type PendingRescheduleCall = {
@@ -65,6 +66,10 @@ function presentMessage(value: unknown): AgentMessage | null {
   if (message.role !== "user" && message.role !== "assistant") return null;
 
   const content = message.content;
+  const metadata =
+    message.metadata && typeof message.metadata === "object"
+      ? (message.metadata as Record<string, unknown>)
+      : null;
   const contentRecord =
     content && typeof content === "object" ? (content as Record<string, unknown>) : null;
   const body = textFromParts(message.parts ?? contentRecord?.parts ?? content).trim();
@@ -80,6 +85,8 @@ function presentMessage(value: unknown): AgentMessage | null {
         : typeof message.created_at === "string"
           ? message.created_at
           : null,
+    author:
+      message.role === "assistant" ? (metadata?.author === "owner" ? "owner" : "agent") : null,
   };
 }
 
@@ -228,6 +235,25 @@ export class BusinessSupportAgentClient {
     return source
       .map(presentMessage)
       .filter((message): message is AgentMessage => Boolean(message));
+  }
+
+  async appendOwnerMessage(customer: Customer, threadId: string, message: string) {
+    await this.request(`/memory/save-messages?agentId=${encodeURIComponent(AGENT_ID)}`, {
+      method: "POST",
+      body: JSON.stringify({
+        messages: [
+          {
+            id: crypto.randomUUID(),
+            threadId,
+            resourceId: resourceId(customer.id),
+            role: "assistant",
+            content: message,
+            createdAt: new Date().toISOString(),
+            metadata: { author: "owner" },
+          },
+        ],
+      }),
+    });
   }
 
   async listPendingReschedules(customer: Customer, threadId: string) {

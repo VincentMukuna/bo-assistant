@@ -1,5 +1,8 @@
 import SupportConversation from "#models/support_conversation";
+import syncRescheduleAttention from "#actions/sync-reschedule-attention";
+import InboxAnnotation from "#models/inbox_annotation";
 import { businessSupportAgent, type AgentStream } from "#services/business_support_agent";
+import { inboxEventStream } from "#services/inbox_event_stream";
 import type Customer from "#models/customer";
 import type { HttpContext } from "@adonisjs/core/http";
 import { DateTime } from "luxon";
@@ -106,7 +109,8 @@ export function trackConversationStream(
   agentStream: AgentStream,
   conversationId: string,
   tasks: Promise<unknown>[],
-  logger: HttpContext["logger"]
+  logger: HttpContext["logger"],
+  afterCompletion?: () => Promise<unknown>
 ): AgentStream {
   const [clientBody, observerBody] = agentStream.body.tee();
   const previewTask = textFromAgentStream(observerBody).then(async (text) => {
@@ -117,7 +121,7 @@ export function trackConversationStream(
     });
   });
 
-  const completion = Promise.allSettled([previewTask, ...tasks]).then((results) => {
+  const completion = Promise.allSettled([previewTask, ...tasks]).then(async (results) => {
     for (const result of results) {
       if (result.status === "rejected") {
         logger.warn(
@@ -126,6 +130,7 @@ export function trackConversationStream(
         );
       }
     }
+    await afterCompletion?.();
   });
 
   return {
@@ -159,5 +164,26 @@ export default async function sendConversationMessage(input: {
     ? [generateAndStoreTitle(input.customer, input.conversation.id, input.message, input.logger)]
     : [];
 
-  return trackConversationStream(agentStream, input.conversation.id, tasks, input.logger);
+  return trackConversationStream(
+    agentStream,
+    input.conversation.id,
+    tasks,
+    input.logger,
+    async () => {
+      await input.conversation.refresh();
+      await syncRescheduleAttention(input.conversation);
+      if (input.conversation.nextStepOwner !== "owner") {
+        await InboxAnnotation.create({
+          id: crypto.randomUUID(),
+          conversationId: input.conversation.id,
+          kind: "milestone",
+          summary: "Agent handled the latest customer request",
+          detail: "No owner decision is currently required.",
+        });
+        input.conversation.nextStepOwner = "customer";
+        await input.conversation.save();
+        inboxEventStream.publish(input.conversation.id);
+      }
+    }
+  );
 }

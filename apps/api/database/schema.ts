@@ -76,8 +76,87 @@ export class CustomerSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class DemoApprovalSchema extends BaseModel {
+  static $columns = ['bookingId', 'customerId', 'expectedStartTime', 'id', 'issuedAt', 'proposedStartTime', 'publicId', 'resolvedAt', 'runId', 'status', 'threadId', 'toolCallId', 'toolName'] as const
+  $columns = DemoApprovalSchema.$columns
+  @column()
+  declare bookingId: number
+  @column()
+  declare customerId: number
+  @column()
+  declare expectedStartTime: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare issuedAt: string
+  @column()
+  declare proposedStartTime: string
+  @column()
+  declare publicId: string
+  @column()
+  declare resolvedAt: string | null
+  @column()
+  declare runId: string
+  @column()
+  declare status: string
+  @column()
+  declare threadId: string
+  @column()
+  declare toolCallId: string
+  @column()
+  declare toolName: string
+}
+
+export class InboxAnnotationSchema extends BaseModel {
+  static $columns = ['conversationId', 'createdAt', 'detail', 'id', 'kind', 'summary'] as const
+  $columns = InboxAnnotationSchema.$columns
+  @column()
+  declare conversationId: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare detail: string | null
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare kind: string
+  @column()
+  declare summary: string
+}
+
+export class InboxAttentionItemSchema extends BaseModel {
+  static $columns = ['actionType', 'cause', 'contextJson', 'conversationId', 'createdAt', 'decidedAt', 'decidedByUserId', 'externalKey', 'id', 'outcomeSummary', 'status', 'summary', 'updatedAt'] as const
+  $columns = InboxAttentionItemSchema.$columns
+  @column()
+  declare actionType: string
+  @column()
+  declare cause: string
+  @column()
+  declare contextJson: string
+  @column()
+  declare conversationId: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare decidedAt: DateTime | null
+  @column()
+  declare decidedByUserId: number | null
+  @column()
+  declare externalKey: string
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare outcomeSummary: string | null
+  @column()
+  declare status: string
+  @column()
+  declare summary: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
 export class SupportConversationSchema extends BaseModel {
-  static $columns = ['createdAt', 'customerId', 'firstMessageAt', 'id', 'lastMessagePreview', 'status', 'title', 'updatedAt'] as const
+  static $columns = ['createdAt', 'customerId', 'firstMessageAt', 'handlingMode', 'id', 'lastMessagePreview', 'nextStepOwner', 'outcomeStatus', 'outcomeSummary', 'status', 'title', 'updatedAt'] as const
   $columns = SupportConversationSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -85,10 +164,18 @@ export class SupportConversationSchema extends BaseModel {
   declare customerId: number
   @column.dateTime()
   declare firstMessageAt: DateTime | null
+  @column()
+  declare handlingMode: string
   @column({ isPrimary: true })
   declare id: string
   @column()
   declare lastMessagePreview: string | null
+  @column()
+  declare nextStepOwner: string
+  @column()
+  declare outcomeStatus: string
+  @column()
+  declare outcomeSummary: string | null
   @column()
   declare status: string
   @column()

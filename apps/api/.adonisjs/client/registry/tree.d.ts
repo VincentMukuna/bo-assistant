@@ -50,4 +50,23 @@ export interface ApiDefinition {
     update: typeof routes['bookings.update']
     destroy: typeof routes['bookings.destroy']
   }
+  inboxConversations: {
+    index: typeof routes['inbox_conversations.index']
+    show: typeof routes['inbox_conversations.show']
+  }
+  conversationOwnerships: {
+    update: typeof routes['conversation_ownerships.update']
+  }
+  ownerConversationMessages: {
+    store: typeof routes['owner_conversation_messages.store']
+  }
+  attentionDecisions: {
+    store: typeof routes['attention_decisions.store']
+  }
+  inboxEvents: {
+    index: typeof routes['inbox_events.index']
+  }
+  agentActivities: {
+    index: typeof routes['agent_activities.index']
+  }
 }

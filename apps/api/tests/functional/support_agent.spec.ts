@@ -1,7 +1,9 @@
 import Booking from "#models/booking";
 import BookingRescheduleGrant from "#models/booking_reschedule_grant";
 import Customer from "#models/customer";
+import InboxAttentionItem from "#models/inbox_attention_item";
 import SupportConversation from "#models/support_conversation";
+import User from "#models/user";
 import { readBookingCapability } from "#services/booking_capability";
 import testUtils from "@adonisjs/core/services/test_utils";
 import { test } from "@japa/runner";
@@ -388,12 +390,17 @@ test.group("Customer support agent", (group) => {
     }
   });
 
-  test("persists exact write authority only after a scoped approval", async ({
+  test("persists exact write authority only after owner authorization and customer consent", async ({
     assert,
     client,
   }) => {
     const customer = await createCustomer("alice-approval@example.com");
     const conversation = await createConversation(customer);
+    const owner = await User.create({
+      fullName: "Kim Lewis",
+      email: "owner-approval@example.com",
+      password: "password123",
+    });
     const booking = await Booking.create({
       customerId: customer.id,
       service: "Deep home clean",
@@ -404,10 +411,9 @@ test.group("Customer support agent", (group) => {
       serviceAddress: customer.address,
     });
     const originalFetch = globalThis.fetch;
-    let calls = 0;
+    let resumeCalls = 0;
     globalThis.fetch = async (input, init) => {
-      calls += 1;
-      if (calls === 1) {
+      if (String(input).includes("/suspended-runs")) {
         return Response.json({
           runs: [
             {
@@ -429,6 +435,7 @@ test.group("Customer support agent", (group) => {
         });
       }
 
+      resumeCalls += 1;
       assert.include(String(input), "/resume-stream");
       const body = JSON.parse(String(init?.body)) as {
         runId: string;
@@ -453,17 +460,36 @@ test.group("Customer support agent", (group) => {
       assert.equal(grant.runId, "run-123");
       assert.equal(grant.expectedStartTime.toUTC().toISO(), "2026-08-22T17:00:00.000Z");
       assert.equal(grant.proposedStartTime.toUTC().toISO(), "2026-08-25T17:00:00.000Z");
+      booking.scheduledAt = DateTime.fromISO("2026-08-25T17:00:00Z");
+      await booking.save();
       return agentStream([{ type: "text-delta", payload: { text: "Done." } }]);
     };
 
     try {
       const tamperedDecision = { decision: "approve" as const, runId: "attacker-selected-run" };
+      const beforeOwnerApproval = await client
+        .post(`/api/v1/support/conversations/${conversation.id}/approval-decisions`)
+        .withSession({ customerId: customer.id })
+        .json(tamperedDecision);
+      beforeOwnerApproval.assertStatus(409);
+      assert.equal(resumeCalls, 0);
+      assert.isNull(await BookingRescheduleGrant.find("tool-123"));
+
+      const attention = await InboxAttentionItem.findByOrFail("externalKey", "tool-123");
+      const ownerDecision = await client
+        .post(`/api/v1/inbox/conversations/${conversation.id}/attention/${attention.id}/decisions`)
+        .withGuard("web")
+        .loginAs(owner)
+        .json({ decision: "approve" });
+      ownerDecision.assertStatus(200);
+
       const response = await client
         .post(`/api/v1/support/conversations/${conversation.id}/approval-decisions`)
         .withSession({ customerId: customer.id })
         .json(tamperedDecision);
       response.assertStatus(200);
       assert.include(response.text(), "Done.");
+      assert.equal(resumeCalls, 1);
       await conversation.refresh();
       assert.equal(conversation.lastMessagePreview, "Done.");
     } finally {

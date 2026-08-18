@@ -12,6 +12,11 @@ export default class ConversationMessagesController {
       .where("customerId", customer.id)
       .first();
     if (!conversation) return response.notFound({ error: "Conversation not found." });
+    if (conversation.handlingMode === "owner") {
+      return response.conflict({
+        error: "The business owner is handling this conversation and will reply shortly.",
+      });
+    }
 
     try {
       const pending = await businessSupportAgent.listPendingReschedules(customer, conversation.id);

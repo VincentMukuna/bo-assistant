@@ -4,15 +4,21 @@
  */
 
 export const controllers = {
+  AgentActivities: () => import('#controllers/agent_activities_controller'),
   AgentBookingReschedules: () => import('#controllers/agent_booking_reschedules_controller'),
   AgentBookingSearches: () => import('#controllers/agent_booking_searches_controller'),
   ApprovalDecisions: () => import('#controllers/approval_decisions_controller'),
   ApprovalRequests: () => import('#controllers/approval_requests_controller'),
+  AttentionDecisions: () => import('#controllers/attention_decisions_controller'),
   Bookings: () => import('#controllers/bookings_controller'),
   ConversationMessages: () => import('#controllers/conversation_messages_controller'),
+  ConversationOwnerships: () => import('#controllers/conversation_ownerships_controller'),
   Customers: () => import('#controllers/customers_controller'),
   DemoSessions: () => import('#controllers/demo_sessions_controller'),
+  InboxEvents: () => import('#controllers/inbox_events_controller'),
+  OwnerConversationMessages: () => import('#controllers/owner_conversation_messages_controller'),
   Profile: () => import('#controllers/profile_controller'),
   Sessions: () => import('#controllers/sessions_controller'),
   SupportConversations: () => import('#controllers/support_conversations_controller'),
+  WorkspaceConversations: () => import('#controllers/workspace_conversations_controller'),
 }

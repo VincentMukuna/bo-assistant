@@ -271,4 +271,88 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/bookings_controller').default['destroy']>>>
     }
   }
+  'inbox_conversations.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/inbox/conversations'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workspace_conversations_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workspace_conversations_controller').default['index']>>>
+    }
+  }
+  'inbox_conversations.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/inbox/conversations/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workspace_conversations_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workspace_conversations_controller').default['show']>>>
+    }
+  }
+  'conversation_ownerships.update': {
+    methods: ["PUT"]
+    pattern: '/api/v1/inbox/conversations/:id/ownership'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/inbox').updateConversationOwnershipValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/inbox').updateConversationOwnershipValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/conversation_ownerships_controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/conversation_ownerships_controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'owner_conversation_messages.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/inbox/conversations/:id/messages'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/inbox').createOwnerMessageValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/inbox').createOwnerMessageValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/owner_conversation_messages_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/owner_conversation_messages_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'attention_decisions.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/inbox/conversations/:conversationId/attention/:attentionId/decisions'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/inbox').createAttentionDecisionValidator)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { conversationId: ParamValue; attentionId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/inbox').createAttentionDecisionValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/attention_decisions_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/attention_decisions_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'inbox_events.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/inbox/events'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/inbox_events_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/inbox_events_controller').default['index']>>>
+    }
+  }
+  'agent_activities.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/agent-activities'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_activities_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_activities_controller').default['index']>>>
+    }
+  }
 }

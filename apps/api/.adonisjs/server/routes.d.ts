@@ -26,6 +26,13 @@ export type ScannedRoutes = {
     'bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'bookings.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'bookings.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'inbox_conversations.index': { paramsTuple?: []; params?: {} }
+    'inbox_conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'conversation_ownerships.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'owner_conversation_messages.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'attention_decisions.store': { paramsTuple: [ParamValue,ParamValue]; params: {'conversationId': ParamValue,'attentionId': ParamValue} }
+    'inbox_events.index': { paramsTuple?: []; params?: {} }
+    'agent_activities.index': { paramsTuple?: []; params?: {} }
   }
   GET: {
     'conversations.index': { paramsTuple?: []; params?: {} }
@@ -36,6 +43,10 @@ export type ScannedRoutes = {
     'customers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'bookings.index': { paramsTuple?: []; params?: {} }
     'bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'inbox_conversations.index': { paramsTuple?: []; params?: {} }
+    'inbox_conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'inbox_events.index': { paramsTuple?: []; params?: {} }
+    'agent_activities.index': { paramsTuple?: []; params?: {} }
   }
   HEAD: {
     'conversations.index': { paramsTuple?: []; params?: {} }
@@ -46,6 +57,10 @@ export type ScannedRoutes = {
     'customers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'bookings.index': { paramsTuple?: []; params?: {} }
     'bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'inbox_conversations.index': { paramsTuple?: []; params?: {} }
+    'inbox_conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'inbox_events.index': { paramsTuple?: []; params?: {} }
+    'agent_activities.index': { paramsTuple?: []; params?: {} }
   }
   POST: {
     'demo_sessions.store': { paramsTuple?: []; params?: {} }
@@ -57,6 +72,8 @@ export type ScannedRoutes = {
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'customers.store': { paramsTuple?: []; params?: {} }
     'bookings.store': { paramsTuple?: []; params?: {} }
+    'owner_conversation_messages.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'attention_decisions.store': { paramsTuple: [ParamValue,ParamValue]; params: {'conversationId': ParamValue,'attentionId': ParamValue} }
   }
   DELETE: {
     'sessions.destroy': { paramsTuple?: []; params?: {} }
@@ -66,6 +83,7 @@ export type ScannedRoutes = {
   PUT: {
     'customers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'bookings.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'conversation_ownerships.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   PATCH: {
     'customers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

@@ -3,6 +3,7 @@ import SupportConversation from "#models/support_conversation";
 import { businessSupportAgent } from "#services/business_support_agent";
 import type { HttpContext } from "@adonisjs/core/http";
 import { DateTime } from "luxon";
+import syncRescheduleAttention from "#actions/sync-reschedule-attention";
 
 export default class ApprovalRequestsController {
   async show({ customer, params, response, logger }: HttpContext) {
@@ -19,6 +20,7 @@ export default class ApprovalRequestsController {
       }
       const call = pending[0];
       if (!call) return { approvalRequest: null };
+      await syncRescheduleAttention(conversation);
 
       const expected = DateTime.fromISO(call.expectedStartTime, { setZone: true });
       const proposed = DateTime.fromISO(call.proposedStartTime, { setZone: true });

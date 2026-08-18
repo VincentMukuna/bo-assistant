@@ -22,6 +22,15 @@ const AgentBookingSearchesController = () =>
   import("#controllers/agent_booking_searches_controller");
 const AgentBookingReschedulesController = () =>
   import("#controllers/agent_booking_reschedules_controller");
+const WorkspaceConversationsController = () =>
+  import("#controllers/workspace_conversations_controller");
+const ConversationOwnershipsController = () =>
+  import("#controllers/conversation_ownerships_controller");
+const OwnerConversationMessagesController = () =>
+  import("#controllers/owner_conversation_messages_controller");
+const AttentionDecisionsController = () => import("#controllers/attention_decisions_controller");
+const InboxEventsController = () => import("#controllers/inbox_events_controller");
+const AgentActivitiesController = () => import("#controllers/agent_activities_controller");
 
 router.get("/", () => {
   return { hello: "world" };
@@ -68,6 +77,23 @@ router
         router.delete("session", [controllers.Sessions, "destroy"]);
         router.resource("customers", controllers.Customers).apiOnly();
         router.resource("bookings", controllers.Bookings).apiOnly();
+        router
+          .resource("inbox/conversations", WorkspaceConversationsController)
+          .only(["index", "show"]);
+        router.put("inbox/conversations/:id/ownership", [
+          ConversationOwnershipsController,
+          "update",
+        ]);
+        router.post("inbox/conversations/:id/messages", [
+          OwnerConversationMessagesController,
+          "store",
+        ]);
+        router.post("inbox/conversations/:conversationId/attention/:attentionId/decisions", [
+          AttentionDecisionsController,
+          "store",
+        ]);
+        router.get("inbox/events", [InboxEventsController, "index"]);
+        router.get("agent-activities", [AgentActivitiesController, "index"]);
       })
       .use(middleware.auth({ guards: ["web"] }));
   })
