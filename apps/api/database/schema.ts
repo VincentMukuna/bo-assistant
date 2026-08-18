@@ -54,14 +54,18 @@ export class CustomerSchema extends BaseModel {
 }
 
 export class SupportConversationSchema extends BaseModel {
-  static $columns = ['createdAt', 'customerId', 'id', 'status', 'title', 'updatedAt'] as const
+  static $columns = ['createdAt', 'customerId', 'firstMessageAt', 'id', 'lastMessagePreview', 'status', 'title', 'updatedAt'] as const
   $columns = SupportConversationSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
   declare customerId: number
+  @column.dateTime()
+  declare firstMessageAt: DateTime | null
   @column({ isPrimary: true })
   declare id: string
+  @column()
+  declare lastMessagePreview: string | null
   @column()
   declare status: string
   @column()

@@ -1,3 +1,4 @@
+import { trackConversationStream } from "#actions/send-conversation-message";
 import Booking from "#models/booking";
 import SupportConversation from "#models/support_conversation";
 import {
@@ -65,10 +66,11 @@ export default class ApprovalDecisionsController {
       });
       conversation.updatedAt = DateTime.now();
       await conversation.save();
-      response.header("content-type", agentStream.contentType);
+      const trackedStream = trackConversationStream(agentStream, conversation.id, [], logger);
+      response.header("content-type", trackedStream.contentType);
       response.header("cache-control", "no-cache, no-transform");
       response.header("x-accel-buffering", "no");
-      return response.stream(agentStream.body);
+      return response.stream(trackedStream.body);
     } catch (error) {
       logger.error({ err: error, conversationId: conversation.id }, "Unable to decide approval");
       return response.badGateway({ error: "The decision could not be processed right now." });

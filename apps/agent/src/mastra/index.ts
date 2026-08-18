@@ -8,6 +8,7 @@ import { DuckDBStore } from "@mastra/duckdb";
 import { PinoLogger } from "@mastra/loggers";
 import { MastraStorageExporter, Observability } from "@mastra/observability";
 import { businessSupportAgent } from "./agents/business-support-agent";
+import { conversationTitleAgent } from "./agents/conversation-title-agent";
 import { postgresStore } from "./storage";
 
 const initialDirectory = process.env.INIT_CWD ?? process.cwd();
@@ -27,15 +28,29 @@ const observabilityStore = new DuckDBStore({
   threads: 2,
 });
 
+function redactBookingCapabilities(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactBookingCapabilities);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      key === "bookingCapability" ? "[REDACTED]" : redactBookingCapabilities(entry),
+    ])
+  );
+}
+
 const bookingCapabilityRedactor: SpanOutputProcessor = {
   name: "booking-capability-redactor",
   process(span?: AnySpan) {
-    if (span?.requestContext && "bookingCapability" in span.requestContext) {
-      span.requestContext = {
-        ...span.requestContext,
-        bookingCapability: "[REDACTED]",
-      };
-    }
+    if (!span) return span;
+
+    span.requestContext = redactBookingCapabilities(
+      span.requestContext
+    ) as typeof span.requestContext;
+    span.input = redactBookingCapabilities(span.input) as typeof span.input;
+    span.output = redactBookingCapabilities(span.output) as typeof span.output;
+    span.attributes = redactBookingCapabilities(span.attributes) as typeof span.attributes;
 
     return span;
   },
@@ -43,7 +58,7 @@ const bookingCapabilityRedactor: SpanOutputProcessor = {
 };
 
 export const mastra = new Mastra({
-  agents: { businessSupportAgent },
+  agents: { businessSupportAgent, conversationTitleAgent },
   environment: "development",
   logger: new PinoLogger({
     name: "business-support-agent",

@@ -3,6 +3,7 @@ import { jsonSchema, parseJsonEventStream } from "ai";
 export type ConversationSummary = {
   id: string;
   title: string;
+  lastMessagePreview: string | null;
   status: "open" | "closed";
   updatedAt: string;
 };

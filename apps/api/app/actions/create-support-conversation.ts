@@ -4,7 +4,7 @@ import type Customer from "#models/customer";
 
 export default async function createSupportConversation(customer: Customer) {
   const id = crypto.randomUUID();
-  const title = "Business support";
+  const title = "New conversation";
   await businessSupportAgent.createThread(customer, id, title);
 
   try {

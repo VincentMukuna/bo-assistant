@@ -210,8 +210,11 @@ function ThreadList({
                 <Check size={11} />
               )}
             </span>
-            <span>
+            <span className="chat-thread-copy">
               <strong>{thread.title}</strong>
+              {thread.lastMessagePreview ? (
+                <span className="chat-thread-preview">{thread.lastMessagePreview}</span>
+              ) : null}
               <small>{formatUpdatedAt(thread.updatedAt)}</small>
             </span>
           </button>
@@ -258,7 +261,7 @@ function ConversationView({
           <ArrowLeft size={17} />
         </button>
         <div>
-          <h3>{conversation?.title ?? "Business support"}</h3>
+          <h3>{conversation?.title ?? "New conversation"}</h3>
         </div>
       </div>
       <div className="chat-messages">

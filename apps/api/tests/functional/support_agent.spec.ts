@@ -30,7 +30,7 @@ async function createConversation(customer: Customer) {
   return SupportConversation.create({
     id: crypto.randomUUID(),
     customerId: customer.id,
-    title: "Business support",
+    title: "New conversation",
     status: "open",
   });
 }
@@ -58,27 +58,45 @@ test.group("Customer support agent", (group) => {
     response.assertStatus(403);
   });
 
-  test("accepts one new message and gives Mastra only read authority", async ({
+  test("summarizes the first message once and gives Mastra only read authority", async ({
     assert,
     client,
   }) => {
     const customer = await createCustomer("alice-chat@example.com");
     const conversation = await createConversation(customer);
     const originalFetch = globalThis.fetch;
+    let titleRequests = 0;
 
     globalThis.fetch = async (input, init) => {
-      if (String(input).includes("/suspended-runs?")) return Response.json({ runs: [] });
-      assert.equal(String(input), "http://localhost:4111/api/agents/business-support-agent/stream");
+      const url = new URL(String(input));
       assert.equal(
         new Headers(init?.headers).get("authorization"),
         "Bearer development-internal-token"
       );
+
+      if (url.pathname.endsWith("/suspended-runs")) return Response.json({ runs: [] });
+      if (url.pathname === "/api/agents/conversation-title-agent/generate") {
+        titleRequests += 1;
+        assert.deepEqual(JSON.parse(String(init?.body)), {
+          messages: [{ role: "user", content: "Move my booking." }],
+        });
+        return Response.json({ text: 'Title: "Move a booking."' });
+      }
+      if (url.pathname === `/api/memory/threads/${conversation.id}`) {
+        assert.equal(init?.method, "PUT");
+        assert.deepEqual(JSON.parse(String(init?.body)), {
+          resourceId: `customer:${customer.id}`,
+          title: "Move a booking",
+        });
+        return Response.json({});
+      }
+
+      assert.equal(url.pathname, "/api/agents/business-support-agent/stream");
       const body = JSON.parse(String(init?.body)) as {
-        messages: unknown[];
+        messages: Array<{ content: string }>;
         memory: { thread: string; resource: string };
         requestContext: { bookingCapability: string };
       };
-      assert.deepEqual(body.messages, [{ role: "user", content: "Move my booking." }]);
       assert.deepEqual(body.memory, {
         thread: conversation.id,
         resource: `customer:${customer.id}`,
@@ -86,7 +104,17 @@ test.group("Customer support agent", (group) => {
       const capability = readBookingCapability(`Bearer ${body.requestContext.bookingCapability}`);
       assert.equal(capability?.kind, "booking-read");
       assert.deepEqual(capability?.scopes, ["find_bookings"]);
-      return agentStream([{ type: "text-delta", payload: { text: "Which booking?" } }]);
+      return agentStream([
+        {
+          type: "text-delta",
+          payload: {
+            text:
+              body.messages[0].content === "Move my booking."
+                ? "**Which booking?**"
+                : "I can help with another request.",
+          },
+        },
+      ]);
     };
 
     try {
@@ -101,6 +129,20 @@ test.group("Customer support agent", (group) => {
 
       response.assertStatus(200);
       assert.include(response.text(), "Which booking?");
+
+      await conversation.refresh();
+      assert.equal(conversation.title, "Move a booking");
+      assert.equal(conversation.lastMessagePreview, "Which booking?");
+      assert.isNotNull(conversation.firstMessageAt);
+
+      const secondResponse = await client
+        .post(`/api/v1/support/conversations/${conversation.id}/messages`)
+        .withSession({ customerId: customer.id })
+        .json({ message: "I have another question." });
+      secondResponse.assertStatus(200);
+      await conversation.refresh();
+      assert.equal(conversation.lastMessagePreview, "I can help with another request.");
+      assert.equal(titleRequests, 1);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -124,7 +166,7 @@ test.group("Customer support agent", (group) => {
       };
       assert.match(body.threadId, /^[0-9a-f-]{36}$/);
       assert.equal(body.resourceId, `customer:${customer.id}`);
-      assert.equal(body.title, "Business support");
+      assert.equal(body.title, "New conversation");
       return Response.json({
         id: body.threadId,
         resourceId: body.resourceId,
@@ -142,6 +184,61 @@ test.group("Customer support agent", (group) => {
       response.assertStatus(201);
       const id = (response.body() as { conversation: { id: string } }).conversation.id;
       await db.assertHas("support_conversations", { id, customer_id: customer.id });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("lists the persisted title and last message preview", async ({ client }) => {
+    const customer = await createCustomer("alice-conversation-list@example.com");
+    await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: customer.id,
+      title: "Move a booking",
+      lastMessagePreview: "Which booking would you like to move?",
+      status: "open",
+    });
+
+    const response = await client
+      .get("/api/v1/support/conversations")
+      .withSession({ customerId: customer.id });
+
+    response.assertStatus(200);
+    response.assertBodyContains({
+      conversations: [
+        {
+          title: "Move a booking",
+          lastMessagePreview: "Which booking would you like to move?",
+        },
+      ],
+    });
+  });
+
+  test("keeps chat delivery available when title generation fails", async ({ assert, client }) => {
+    const customer = await createCustomer("alice-title-failure@example.com");
+    const conversation = await createConversation(customer);
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/suspended-runs")) return Response.json({ runs: [] });
+      if (url.pathname === "/api/agents/conversation-title-agent/generate") {
+        return new Response("title model unavailable", { status: 503 });
+      }
+      return agentStream([{ type: "text-delta", payload: { text: "I can still help." } }]);
+    };
+
+    try {
+      const response = await client
+        .post(`/api/v1/support/conversations/${conversation.id}/messages`)
+        .withSession({ customerId: customer.id })
+        .json({ message: "Help with my booking." });
+
+      response.assertStatus(200);
+      assert.include(response.text(), "I can still help.");
+      await conversation.refresh();
+      assert.equal(conversation.title, "New conversation");
+      assert.equal(conversation.lastMessagePreview, "I can still help.");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -360,6 +457,8 @@ test.group("Customer support agent", (group) => {
         .json(tamperedDecision);
       response.assertStatus(200);
       assert.include(response.text(), "Done.");
+      await conversation.refresh();
+      assert.equal(conversation.lastMessagePreview, "Done.");
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -1,8 +1,8 @@
+import sendConversationMessage from "#actions/send-conversation-message";
 import SupportConversation from "#models/support_conversation";
 import { businessSupportAgent } from "#services/business_support_agent";
 import { createConversationMessageValidator } from "#validators/support";
 import type { HttpContext } from "@adonisjs/core/http";
-import { DateTime } from "luxon";
 
 export default class ConversationMessagesController {
   async store({ customer, params, request, response, logger }: HttpContext) {
@@ -20,13 +20,12 @@ export default class ConversationMessagesController {
           error: "Decide the pending booking change before sending another message.",
         });
       }
-      const agentStream = await businessSupportAgent.streamMessage(
+      const agentStream = await sendConversationMessage({
         customer,
-        conversation.id,
-        message
-      );
-      conversation.updatedAt = DateTime.now();
-      await conversation.save();
+        conversation,
+        message,
+        logger,
+      });
       response.header("content-type", agentStream.contentType);
       response.header("cache-control", "no-cache, no-transform");
       response.header("x-accel-buffering", "no");

@@ -5,7 +5,9 @@ import app from "@adonisjs/core/services/app";
 import { DateTime } from "luxon";
 
 const AGENT_ID = "business-support-agent";
+const TITLE_AGENT_ID = "conversation-title-agent";
 const CUSTOMER_TIMEZONE = "America/Los_Angeles";
+const TITLE_TIMEOUT_MS = 3_000;
 
 export type AgentStream = {
   body: ReadableStream<Uint8Array>;
@@ -81,6 +83,21 @@ function presentMessage(value: unknown): AgentMessage | null {
   };
 }
 
+function presentTitle(value: unknown) {
+  if (typeof value !== "string") return null;
+  const title = value
+    .trim()
+    .split(/\r?\n/, 1)[0]
+    .replace(/^title\s*:\s*/i, "")
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/[.!?]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80)
+    .trimEnd();
+  return title || null;
+}
+
 export class BusinessSupportAgentClient {
   private get baseUrl() {
     return env.get("MASTRA_URL", "http://localhost:4111").replace(/\/$/, "");
@@ -111,11 +128,11 @@ export class BusinessSupportAgentClient {
     };
   }
 
-  private async request(path: string, init: RequestInit = {}) {
+  private async request(path: string, init: RequestInit = {}, timeoutMs = 45_000) {
     const response = await fetch(`${this.baseUrl}/api${path}`, {
       ...init,
       headers: { ...this.headers(), ...init.headers },
-      signal: AbortSignal.timeout(45_000),
+      signal: init.signal ?? AbortSignal.timeout(timeoutMs),
     });
 
     if (!response.ok) {
@@ -148,6 +165,19 @@ export class BusinessSupportAgentClient {
     });
   }
 
+  async generateConversationTitle(message: string) {
+    const response = await this.request(
+      `/agents/${TITLE_AGENT_ID}/generate`,
+      {
+        method: "POST",
+        body: JSON.stringify({ messages: [{ role: "user", content: message }] }),
+      },
+      TITLE_TIMEOUT_MS
+    );
+    const result = (await response.json()) as { text?: unknown };
+    return presentTitle(result.text);
+  }
+
   async createThread(customer: Customer, threadId: string, title: string) {
     await this.request(`/memory/threads?agentId=${encodeURIComponent(AGENT_ID)}`, {
       method: "POST",
@@ -166,6 +196,17 @@ export class BusinessSupportAgentClient {
     });
     await this.request(`/memory/threads/${encodeURIComponent(threadId)}?${query}`, {
       method: "DELETE",
+    });
+  }
+
+  async updateThreadTitle(customer: Customer, threadId: string, title: string) {
+    const query = new URLSearchParams({ agentId: AGENT_ID });
+    await this.request(`/memory/threads/${encodeURIComponent(threadId)}?${query}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        resourceId: resourceId(customer.id),
+        title,
+      }),
     });
   }
 

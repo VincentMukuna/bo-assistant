@@ -13,6 +13,7 @@ export default class SupportConversationsController {
       conversations: conversations.map((conversation) => ({
         id: conversation.id,
         title: conversation.title,
+        lastMessagePreview: conversation.lastMessagePreview,
         status: conversation.status,
         updatedAt: conversation.updatedAt?.toISO() ?? conversation.createdAt.toISO(),
       })),
@@ -35,6 +36,7 @@ export default class SupportConversationsController {
       conversation: {
         id: conversation.id,
         title: conversation.title,
+        lastMessagePreview: conversation.lastMessagePreview,
         status: conversation.status,
         updatedAt: conversation.createdAt.toISO(),
       },
@@ -54,6 +56,7 @@ export default class SupportConversationsController {
         conversation: {
           id: conversation.id,
           title: conversation.title,
+          lastMessagePreview: conversation.lastMessagePreview,
           status: conversation.status,
           updatedAt: conversation.updatedAt?.toISO() ?? conversation.createdAt.toISO(),
           messages,

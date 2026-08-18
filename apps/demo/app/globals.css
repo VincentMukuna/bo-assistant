@@ -404,8 +404,9 @@ button { color: inherit; }
 .chat-thread-status { width: 20px; height: 20px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; }
 .chat-thread-status--open { background: #dfeab6; color: #566d13; }
 .chat-thread-status--closed { background: #e3e7e1; color: #58655d; }
-.chat-thread > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.chat-thread-copy { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: 4px; }
 .chat-thread strong { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-thread-preview { color: #47554d; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-thread small { color: #68756e; font-size: 9px; }
 .chat-reset { margin: auto 18px 18px; padding: 13px 0 0; border: 0; border-top: 1px solid #e1e5de; background: transparent; color: #5f6d65; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 8px; font-weight: 700; cursor: pointer; }
 
