@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cross-Cutting Changes"
+  short_description: "Coordinate changes across architectural boundaries"
+  default_prompt: "Use $handle-cross-cutting-changes to implement this cross-layer change with one owner per concern."
