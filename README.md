@@ -7,7 +7,9 @@ Turborepo monorepo containing:
 - `apps/agent` — Independent Mastra business-support agent service
 - `apps/demo` — Customer-facing service business demo site
 
-Customers and bookings are persisted with Lucid; Inbox and Agent Activity remain demo-backed for the next agentic phase.
+Customers and bookings are persisted with Lucid. The Oak & Pine demo site connects to the Mastra
+agent for public support questions and customer-scoped appointment rescheduling; Inbox and Agent
+Activity remain demo-backed.
 
 ## Local setup
 
@@ -31,9 +33,25 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with:
 
 `npm run dev` starts the CRM frontend on port 3000, the customer demo on port 3100, the API server on port 3333, and Mastra Studio on port 4111. All four reload as you edit their source. Set `ADONIS_URL` when the backend is hosted elsewhere.
 
+## Appointment assistant demo
+
+Open [http://localhost:3100](http://localhost:3100), choose **Start a conversation**, and submit the
+prefilled rescheduling request. The demo silently acts as the isolated Alice Morgan seed customer.
+Adonis issues a short-lived encrypted booking capability for each turn, so neither the browser nor
+the model selects a customer ID.
+
+The request path is:
+
+```text
+Oak & Pine chatbot → demo server route → Adonis API → Mastra agent → Adonis booking tools
+```
+
+Set `OPENAI_API_KEY` in `apps/agent/.env`. `MASTRA_URL` and `API_URL` default to their local ports;
+their examples show how to override them for separate deployments.
+
 ## Agent development
 
-The agent runs alongside the app and API through the root Turbo development command, but does not connect to them yet.
+The agent runs alongside the app and API through the root Turbo development command.
 
 ```bash
 npm run dev

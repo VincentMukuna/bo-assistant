@@ -7,6 +7,42 @@ import type { InferInput, SimpleError } from '@vinejs/vine/types'
 export type ParamValue = string | number | bigint | boolean
 
 export interface Registry {
+  'demo_chat': {
+    methods: ["POST"]
+    pattern: '/api/v1/demo/chat'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/demo_chat_controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/demo_chat_controller').default['handle']>>>
+    }
+  }
+  'agent_bookings.find': {
+    methods: ["POST"]
+    pattern: '/api/v1/agent/bookings/find'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_bookings_controller').default['find']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_bookings_controller').default['find']>>>
+    }
+  }
+  'agent_bookings.reschedule': {
+    methods: ["POST"]
+    pattern: '/api/v1/agent/bookings/reschedule'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_bookings_controller').default['reschedule']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_bookings_controller').default['reschedule']>>>
+    }
+  }
   'auth.sessions.store': {
     methods: ["POST"]
     pattern: '/api/v1/auth/login'

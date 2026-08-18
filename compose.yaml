@@ -1,4 +1,20 @@
 services:
+  mastra-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mastra
+      POSTGRES_USER: mastra
+      POSTGRES_PASSWORD: mastra
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - mastra-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mastra -d mastra"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   agent:
     build:
       context: .
@@ -8,10 +24,16 @@ services:
     environment:
       NODE_ENV: development
       PORT: 4111
+      API_URL: http://host.docker.internal:3333
+      MASTRA_DATABASE_URL: postgresql://mastra:mastra@mastra-db:5432/mastra
+    depends_on:
+      mastra-db:
+        condition: service_healthy
     ports:
       - "${AGENT_PORT:-4111}:4111"
     volumes:
       - ./apps/agent/src:/workspace/apps/agent/src
+      - ./apps/agent/.data:/workspace/apps/agent/.data
     healthcheck:
       test:
         [
@@ -24,3 +46,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+
+volumes:
+  mastra-db-data:

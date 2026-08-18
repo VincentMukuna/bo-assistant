@@ -67,16 +67,23 @@ export default class extends BaseSeeder {
 
     const [alice, marcus, sophie, daniel, maya] = customers;
     const bookings = [
-      [marcus, "Tap repair", "Noah", "2026-08-17T09:00:00", 90, "in_progress"],
-      [sophie, "Drywall repair", "Eli", "2026-08-18T10:00:00", 120, "confirmed"],
-      [alice, "Deep home clean", "Jamie + Rosa", "2026-08-18T14:30:00", 180, "needs_approval"],
-      [maya, "Home clean + oven", "Jamie", "2026-08-19T08:30:00", 180, "confirmed"],
-      [daniel, "Door hinge repair", "Eli", "2026-08-20T13:00:00", 60, "confirmed"],
-      [alice, "Window track repair", "Noah", "2026-08-21T11:30:00", 90, "confirmed"],
+      [marcus, "Tap repair", "Noah", "2026-08-17T09:00:00-07:00", 90, "in_progress"],
+      [sophie, "Drywall repair", "Eli", "2026-08-18T10:00:00-07:00", 120, "confirmed"],
+      [
+        alice,
+        "Deep home clean",
+        "Jamie + Rosa",
+        "2026-08-18T14:30:00-07:00",
+        180,
+        "needs_approval",
+      ],
+      [maya, "Home clean + oven", "Jamie", "2026-08-19T08:30:00-07:00", 180, "confirmed"],
+      [daniel, "Door hinge repair", "Eli", "2026-08-20T13:00:00-07:00", 60, "confirmed"],
+      [alice, "Window track repair", "Noah", "2026-08-21T11:30:00-07:00", 90, "confirmed"],
     ] as const;
 
     for (const [customer, service, staff, scheduledAt, durationMinutes, status] of bookings) {
-      await Booking.firstOrCreate(
+      await Booking.updateOrCreate(
         { customerId: customer.id, service },
         {
           customerId: customer.id,

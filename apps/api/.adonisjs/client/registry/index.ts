@@ -6,6 +6,24 @@ import type { ApiDefinition } from './tree.d.ts'
 const placeholder: any = {}
 
 const routes = {
+  'demo_chat': {
+    methods: ["POST"],
+    pattern: '/api/v1/demo/chat',
+    tokens: [{"old":"/api/v1/demo/chat","type":0,"val":"api","end":""},{"old":"/api/v1/demo/chat","type":0,"val":"v1","end":""},{"old":"/api/v1/demo/chat","type":0,"val":"demo","end":""},{"old":"/api/v1/demo/chat","type":0,"val":"chat","end":""}],
+    types: placeholder as Registry['demo_chat']['types'],
+  },
+  'agent_bookings.find': {
+    methods: ["POST"],
+    pattern: '/api/v1/agent/bookings/find',
+    tokens: [{"old":"/api/v1/agent/bookings/find","type":0,"val":"api","end":""},{"old":"/api/v1/agent/bookings/find","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/bookings/find","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/bookings/find","type":0,"val":"bookings","end":""},{"old":"/api/v1/agent/bookings/find","type":0,"val":"find","end":""}],
+    types: placeholder as Registry['agent_bookings.find']['types'],
+  },
+  'agent_bookings.reschedule': {
+    methods: ["POST"],
+    pattern: '/api/v1/agent/bookings/reschedule',
+    tokens: [{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"api","end":""},{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"bookings","end":""},{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"reschedule","end":""}],
+    types: placeholder as Registry['agent_bookings.reschedule']['types'],
+  },
   'auth.sessions.store': {
     methods: ["POST"],
     pattern: '/api/v1/auth/login',

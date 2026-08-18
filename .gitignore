@@ -25,6 +25,7 @@
 /build
 **/build/
 **/.mastra/
+/apps/agent/.data/
 
 # turborepo
 .turbo

@@ -10,7 +10,7 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "npm run agent:db:start && turbo dev",
     "dev:app": "turbo dev --filter=app",
     "dev:api": "turbo dev --filter=api",
     "dev:agent": "turbo dev --filter=agent",
@@ -22,6 +22,8 @@
     "test": "turbo test",
     "test:api": "turbo test --filter=api",
     "agent:start": "docker compose up -d --build agent",
+    "agent:db:start": "docker compose up -d --wait mastra-db",
+    "agent:db:stop": "docker compose stop mastra-db",
     "agent:logs": "docker compose logs --follow --tail=100 agent",
     "agent:status": "docker compose ps agent",
     "agent:stop": "docker compose down",

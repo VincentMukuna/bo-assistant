@@ -228,8 +228,8 @@ export default function Home() {
           </div>
           <div className="support-copy">
             <p>
-              This customer area is a local demo environment. Create, continue, close, and clear support
-              conversations as Alice Morgan—no API or live team is connected yet.
+              This demo securely recognizes Alice Morgan behind the scenes. Ask a public question or
+              reschedule one of her seeded appointments with the Oak & Pine assistant.
             </p>
             <SupportStudio />
           </div>

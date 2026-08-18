@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   Archive,
   ArrowLeft,
@@ -37,7 +38,7 @@ type ChatView = "conversation" | "threads" | "new";
 const initialThreads: SupportThread[] = [
   {
     id: "reschedule-clean",
-    title: "Move Thursday’s deep clean",
+    title: "Move Tuesday’s deep clean",
     category: "Booking change",
     updatedAt: "4 min ago",
     status: "Open",
@@ -45,7 +46,7 @@ const initialThreads: SupportThread[] = [
       {
         id: "alice-1",
         sender: "customer",
-        body: "Hi, I need to move my deep clean this Thursday. Do you have anything early next week?",
+        body: "Hi, I need to move my deep clean this Tuesday. Do you have anything early next week?",
         time: "9:42 AM",
       },
       {
@@ -89,6 +90,13 @@ function currentTime() {
   return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date());
 }
 
+let localIdSequence = 0;
+
+function createLocalId() {
+  localIdSequence += 1;
+  return `local-${Date.now().toString(36)}-${localIdSequence.toString(36)}`;
+}
+
 export function SupportStudio() {
   const [threads, setThreads] = useState<SupportThread[]>(initialThreads);
   const [activeThreadId, setActiveThreadId] = useState(initialThreads[0].id);
@@ -96,6 +104,7 @@ export function SupportStudio() {
   const [isOpen, setIsOpen] = useState(false);
   const [reply, setReply] = useState("");
   const [notice, setNotice] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const activeThread = useMemo(
     () => threads.find((thread) => thread.id === activeThreadId) ?? threads[0],
@@ -145,13 +154,55 @@ export function SupportStudio() {
     announce("Demo restored");
   }
 
-  function sendReply(event: FormEvent<HTMLFormElement>) {
+  async function askAssistant(threadId: string, messages: Message[]) {
+    setIsSending(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          messages: messages.map((message) => ({
+            role: message.sender === "customer" ? "user" : "assistant",
+            content: message.body,
+          })),
+        }),
+      });
+
+      const result = (await response.json()) as { message?: unknown };
+      if (!response.ok || typeof result.message !== "string") {
+        throw new Error("Assistant unavailable");
+      }
+
+      const assistantMessage: Message = {
+        id: createLocalId(),
+        sender: "business",
+        body: result.message,
+        time: currentTime(),
+      };
+
+      setThreads((current) =>
+        current.map((thread) =>
+          thread.id === threadId
+            ? { ...thread, messages: [...thread.messages, assistantMessage], updatedAt: "Just now" }
+            : thread,
+        ),
+      );
+      announce("Oak & Pine replied");
+    } catch {
+      announce("Assistant unavailable — try again");
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  async function sendReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = reply.trim();
-    if (!body || !activeThread) return;
+    if (!body || !activeThread || isSending) return;
 
     const message: Message = {
-      id: crypto.randomUUID(),
+      id: createLocalId(),
       sender: "customer",
       body,
       time: currentTime(),
@@ -165,10 +216,10 @@ export function SupportStudio() {
       ),
     );
     setReply("");
-    announce("Message sent locally");
+    await askAssistant(activeThread.id, [...activeThread.messages, message]);
   }
 
-  function createThread(event: FormEvent<HTMLFormElement>) {
+  async function createThread(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const title = String(form.get("title") ?? "").trim();
@@ -176,20 +227,20 @@ export function SupportStudio() {
     const category = String(form.get("category") ?? "General question");
     if (!title || !body) return;
 
-    const id = crypto.randomUUID();
+    const id = createLocalId();
     const nextThread: SupportThread = {
       id,
       title,
       category,
       updatedAt: "Just now",
       status: "Open",
-      messages: [{ id: crypto.randomUUID(), sender: "customer", body, time: currentTime() }],
+      messages: [{ id: createLocalId(), sender: "customer", body, time: currentTime() }],
     };
 
     setThreads((current) => [nextThread, ...current]);
     setActiveThreadId(id);
     setView("conversation");
-    announce("New request created");
+    await askAssistant(id, nextThread.messages);
   }
 
   return (
@@ -251,6 +302,7 @@ export function SupportStudio() {
               onBack={() => setView("threads")}
               onClear={clearMessages}
               onToggleStatus={toggleStatus}
+              isSending={isSending}
             />
           ) : null}
 
@@ -326,6 +378,7 @@ function Conversation({
   onBack,
   onClear,
   onToggleStatus,
+  isSending,
 }: {
   thread: SupportThread;
   reply: string;
@@ -334,6 +387,7 @@ function Conversation({
   onBack: () => void;
   onClear: () => void;
   onToggleStatus: () => void;
+  isSending: boolean;
 }) {
   return (
     <div className="chat-view chat-conversation-view">
@@ -351,12 +405,17 @@ function Conversation({
           thread.messages.map((message) => (
             <div className={`chat-message chat-message--${message.sender}`} key={message.id}>
               {message.sender === "business" ? <span>O&P</span> : null}
-              <div><p>{message.body}</p><small>{message.time}</small></div>
+              <div><div className="chat-message-body"><ReactMarkdown>{message.body}</ReactMarkdown></div><small>{message.time}</small></div>
             </div>
           ))
         ) : (
           <div className="chat-empty"><Trash2 size={20} /><strong>Messages cleared</strong><span>Send a message to begin again.</span></div>
         )}
+        {isSending ? (
+          <div className="chat-message chat-message--business chat-message--typing" aria-label="Oak and Pine is typing">
+            <span>O&amp;P</span><div><div className="chat-message-body chat-message-body--typing"><i /><i /><i /></div></div>
+          </div>
+        ) : null}
       </div>
       <form className="chat-reply" onSubmit={onSend}>
         <label className="sr-only" htmlFor="chat-reply-input">Write a message</label>
@@ -366,8 +425,9 @@ function Conversation({
           placeholder={thread.status === "Closed" ? "Reply to reopen…" : "Write a message…"}
           value={reply}
           onChange={(event) => onReplyChange(event.target.value)}
+          disabled={isSending}
         />
-        <button type="submit" disabled={!reply.trim()} aria-label="Send message"><Send size={17} /></button>
+        <button type="submit" disabled={!reply.trim() || isSending} aria-label="Send message"><Send size={17} /></button>
       </form>
     </div>
   );
@@ -389,8 +449,8 @@ function NewRequestForm({
       <form className="chat-request-form" onSubmit={onSubmit}>
         <div className="chat-customer"><span>AM</span><div><small>Requesting as</small><strong>Alice Morgan</strong></div></div>
         <label><span>Topic</span><select name="category" defaultValue="Booking change"><option>Booking change</option><option>New service</option><option>Repair request</option><option>Billing question</option><option>General question</option></select></label>
-        <label><span>Request title</span><input name="title" required placeholder="A short summary" /></label>
-        <label><span>Message</span><textarea name="message" required rows={4} placeholder="Share the details…" /></label>
+        <label><span>Request title</span><input name="title" required defaultValue="Reschedule my booking" placeholder="A short summary" /></label>
+        <label><span>Message</span><textarea name="message" required rows={4} defaultValue="I need to reschedule my next appointment." placeholder="Share the details…" /></label>
         <p><Clock3 size={14} /> Typical reply time is under 10 minutes.</p>
         <button type="submit">Create request <Send size={14} /></button>
       </form>
