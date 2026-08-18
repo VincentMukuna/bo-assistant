@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import {
   Archive,
@@ -156,6 +156,9 @@ export function SupportStudio() {
 
   async function askAssistant(threadId: string, messages: Message[]) {
     setIsSending(true);
+    const assistantMessageId = createLocalId();
+    const assistantMessageTime = currentTime();
+    let assistantText = "";
 
     try {
       const response = await fetch("/api/chat", {
@@ -169,28 +172,66 @@ export function SupportStudio() {
         }),
       });
 
-      const result = (await response.json()) as { message?: unknown };
-      if (!response.ok || typeof result.message !== "string") {
+      if (!response.ok || !response.body) {
         throw new Error("Assistant unavailable");
       }
 
-      const assistantMessage: Message = {
-        id: createLocalId(),
-        sender: "business",
-        body: result.message,
-        time: currentTime(),
-      };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      setThreads((current) =>
-        current.map((thread) =>
-          thread.id === threadId
-            ? { ...thread, messages: [...thread.messages, assistantMessage], updatedAt: "Just now" }
-            : thread,
-        ),
-      );
+      function appendAssistantText(text: string) {
+        if (!text) return;
+
+        const isFirstChunk = assistantText.length === 0;
+        assistantText += text;
+        setThreads((current) =>
+          current.map((thread) => {
+            if (thread.id !== threadId) return thread;
+
+            if (isFirstChunk) {
+              return {
+                ...thread,
+                messages: [
+                  ...thread.messages,
+                  {
+                    id: assistantMessageId,
+                    sender: "business",
+                    body: assistantText,
+                    time: assistantMessageTime,
+                  },
+                ],
+                updatedAt: "Just now",
+              };
+            }
+
+            return {
+              ...thread,
+              messages: thread.messages.map((message) =>
+                message.id === assistantMessageId ? { ...message, body: assistantText } : message,
+              ),
+            };
+          }),
+        );
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        appendAssistantText(decoder.decode(value, { stream: true }));
+      }
+      appendAssistantText(decoder.decode());
+
+      if (!assistantText.trim()) {
+        throw new Error("Assistant returned an empty response");
+      }
+
       announce("Oak & Pine replied");
     } catch {
-      announce("Assistant unavailable — try again");
+      announce(
+        assistantText
+          ? "Response interrupted — please try again"
+          : "Assistant unavailable — try again",
+      );
     } finally {
       setIsSending(false);
     }
@@ -389,6 +430,14 @@ function Conversation({
   onToggleStatus: () => void;
   isSending: boolean;
 }) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastMessage = thread.messages[thread.messages.length - 1];
+  const isWaitingForAssistant = isSending && lastMessage?.sender !== "business";
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: "end" });
+  }, [isSending, thread.messages]);
+
   return (
     <div className="chat-view chat-conversation-view">
       <div className="chat-conversation-heading">
@@ -411,11 +460,12 @@ function Conversation({
         ) : (
           <div className="chat-empty"><Trash2 size={20} /><strong>Messages cleared</strong><span>Send a message to begin again.</span></div>
         )}
-        {isSending ? (
+        {isWaitingForAssistant ? (
           <div className="chat-message chat-message--business chat-message--typing" aria-label="Oak and Pine is typing">
             <span>O&amp;P</span><div><div className="chat-message-body chat-message-body--typing"><i /><i /><i /></div></div>
           </div>
         ) : null}
+        <div ref={messagesEndRef} aria-hidden="true" />
       </div>
       <form className="chat-reply" onSubmit={onSend}>
         <label className="sr-only" htmlFor="chat-reply-input">Write a message</label>

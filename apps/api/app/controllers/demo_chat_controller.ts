@@ -48,9 +48,12 @@ export default class DemoChatController {
     const mastraUrl = env.get("MASTRA_URL", "http://localhost:4111").replace(/\/$/, "");
 
     try {
-      const agentResponse = await fetch(`${mastraUrl}/api/agents/business-support-agent/generate`, {
+      const agentResponse = await fetch(`${mastraUrl}/api/agents/business-support-agent/stream`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "accept": "text/event-stream",
+          "content-type": "application/json",
+        },
         body: JSON.stringify({
           messages,
           maxSteps: 6,
@@ -69,13 +72,18 @@ export default class DemoChatController {
         return response.badGateway({ error: "The assistant is unavailable right now." });
       }
 
-      const result = (await agentResponse.json()) as { text?: unknown };
-      if (typeof result.text !== "string" || !result.text.trim()) {
-        logger.error("Mastra returned a demo chat response without text");
+      if (!agentResponse.body) {
+        logger.error("Mastra returned a demo chat response without a stream");
         return response.badGateway({ error: "The assistant returned an empty response." });
       }
 
-      return { message: result.text.trim() };
+      response.header(
+        "content-type",
+        agentResponse.headers.get("content-type") ?? "text/event-stream; charset=utf-8"
+      );
+      response.header("cache-control", "no-cache, no-transform");
+      response.header("x-accel-buffering", "no");
+      response.stream(agentResponse.body);
     } catch (error) {
       logger.error({ err: error }, "Unable to reach Mastra for demo chat");
       return response.badGateway({ error: "The assistant is unavailable right now." });
