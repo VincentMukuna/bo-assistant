@@ -1,8 +1,11 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { formatFriendlyDate } from "../presentation/format-date";
 
-const bookingCapabilitySchema = z.object({
+const bookingContextSchema = z.object({
   bookingCapability: z.string().min(1),
+  currentDate: z.string().min(1),
+  timezone: z.string().min(1),
 });
 
 const bookingSchema = z.object({
@@ -13,6 +16,12 @@ const bookingSchema = z.object({
   duration_minutes: z.number().int().positive(),
   status: z.string(),
 });
+
+const presentedBookingSchema = bookingSchema.extend({
+  start_time_display: z.string(),
+});
+
+type Booking = z.infer<typeof bookingSchema>;
 
 function apiUrl() {
   return (process.env.API_URL ?? "http://localhost:3333").replace(/\/$/, "");
@@ -46,42 +55,66 @@ async function callBookingApi<T>(
   return result as T;
 }
 
+function presentBooking(booking: Booking, currentDate: string, timezone: string) {
+  return {
+    ...booking,
+    start_time_display: formatFriendlyDate(booking.start_time, {
+      currentDate,
+      timezone,
+    }),
+  };
+}
+
 export const findBookingsForCustomer = createTool({
   id: "find_bookings_for_customer",
   description:
-    "Find the authenticated customer's appointments in an ISO timestamp range. Use this before choosing a booking to reschedule.",
+    "Find the authenticated customer's appointments in an ISO timestamp range. Each result includes start_time_display, a customer-friendly date that must be used verbatim in replies. Use this before choosing a booking to reschedule.",
   inputSchema: z.object({
     from: z.string().describe("Inclusive ISO timestamp with timezone offset"),
     to: z.string().describe("Exclusive ISO timestamp with timezone offset"),
   }),
-  outputSchema: z.object({ bookings: z.array(bookingSchema) }),
-  requestContextSchema: bookingCapabilitySchema,
+  outputSchema: z.object({ bookings: z.array(presentedBookingSchema) }),
+  requestContextSchema: bookingContextSchema,
   execute: async (input, { requestContext }) => {
-    return callBookingApi<{ bookings: z.infer<typeof bookingSchema>[] }>(
+    const result = await callBookingApi<{ bookings: Booking[] }>(
       "/api/v1/agent/bookings/find",
       input,
       requestContext.all.bookingCapability
     );
+
+    return {
+      bookings: result.bookings.map((booking) =>
+        presentBooking(booking, requestContext.all.currentDate, requestContext.all.timezone)
+      ),
+    };
   },
 });
 
 export const rescheduleBooking = createTool({
   id: "reschedule_booking",
   description:
-    "Reschedule one authenticated-customer booking after the customer has clearly confirmed the exact new date and time.",
+    "Reschedule one authenticated-customer booking after the customer has clearly confirmed the exact new date and time. The result includes start_time_display, a customer-friendly date that must be used verbatim in replies.",
   inputSchema: z.object({
     booking_id: z.number().int().positive(),
     new_start_time: z
       .string()
       .describe("The confirmed new appointment time as an ISO timestamp with timezone offset"),
   }),
-  outputSchema: z.object({ booking: bookingSchema }),
-  requestContextSchema: bookingCapabilitySchema,
+  outputSchema: z.object({ booking: presentedBookingSchema }),
+  requestContextSchema: bookingContextSchema,
   execute: async (input, { requestContext }) => {
-    return callBookingApi<{ booking: z.infer<typeof bookingSchema> }>(
+    const result = await callBookingApi<{ booking: Booking }>(
       "/api/v1/agent/bookings/reschedule",
       input,
       requestContext.all.bookingCapability
     );
+
+    return {
+      booking: presentBooking(
+        result.booking,
+        requestContext.all.currentDate,
+        requestContext.all.timezone
+      ),
+    };
   },
 });

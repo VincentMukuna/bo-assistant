@@ -10,6 +10,7 @@
     "dev": "NODE_ENV=development mastra dev",
     "build": "mastra build",
     "start": "mastra start",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
