@@ -10,9 +10,10 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "turbo dev --filter=app --filter=api",
+    "dev": "turbo dev",
     "dev:app": "turbo dev --filter=app",
     "dev:api": "turbo dev --filter=api",
+    "dev:agent": "turbo dev --filter=agent",
     "build": "turbo build",
     "lint": "turbo lint",
     "format": "prettier --write .",
@@ -20,7 +21,6 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:api": "turbo test --filter=api",
-    "agent:dev": "docker compose up --build agent",
     "agent:start": "docker compose up -d --build agent",
     "agent:logs": "docker compose logs --follow --tail=100 agent",
     "agent:status": "docker compose ps agent",
