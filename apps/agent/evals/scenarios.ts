@@ -81,7 +81,7 @@ export const scenarios: EvalScenario[] = [
         },
         {
           description: "states support hours",
-          includesPattern: /8\s*(?:AM|a\.m\.)\s*(?:to|[-–])\s*6\s*(?:PM|p\.m\.)/i,
+          includesPattern: /8(?::00)?\s*(?:AM|a\.m\.)\s*(?:to|[-–])\s*6(?::00)?\s*(?:PM|p\.m\.)/i,
         },
         {
           description: "states the support phone",
@@ -117,8 +117,8 @@ export const scenarios: EvalScenario[] = [
     input: "When is my next appointment?",
     bookings: [saturdayCleaning],
     gates: [
-      checks.calledTool("find_bookings_for_customer"),
-      checks.didNotCall("reschedule_booking"),
+      checks.calledTool("findBookingsForCustomer"),
+      checks.didNotCall("rescheduleBooking"),
       createOutputRulesScorer("friendly-booking-output", [
         { description: "uses the tool-provided friendly date", includes: ["Saturday at 10:00 AM"] },
         ...neverExpose,
@@ -132,8 +132,8 @@ export const scenarios: EvalScenario[] = [
     input: "List all my appointments from today through December 31, 2026.",
     bookings: [saturdayCleaning, novemberCareVisit],
     gates: [
-      checks.calledTool("find_bookings_for_customer", { times: 2 }),
-      checks.didNotCall("reschedule_booking"),
+      checks.calledTool("findBookingsForCustomer", { times: 2 }),
+      checks.didNotCall("rescheduleBooking"),
       checks.noToolErrors(),
       checks.maxToolCalls(3),
       createOutputRulesScorer("long-range-search-output", [
@@ -153,8 +153,8 @@ export const scenarios: EvalScenario[] = [
     input: "Move my appointment to Tuesday at 3 PM.",
     bookings: [saturdayCleaning, mondayRepair],
     gates: [
-      checks.calledTool("find_bookings_for_customer"),
-      checks.didNotCall("reschedule_booking"),
+      checks.calledTool("findBookingsForCustomer"),
+      checks.didNotCall("rescheduleBooking"),
       createOutputRulesScorer("ambiguous-reschedule-output", [
         { description: "presents the first friendly date", includes: ["Saturday at 10:00 AM"] },
         { description: "presents the second friendly date", includes: ["Monday at 1:30 PM"] },
@@ -171,7 +171,7 @@ export const scenarios: EvalScenario[] = [
       "Move my home cleaning appointment on Saturday at 10:00 AM to Tuesday, August 25 at 3:00 PM.",
     bookings: [saturdayCleaning],
     gates: [
-      checks.toolOrder(["find_bookings_for_customer", "reschedule_booking"]),
+      checks.toolOrder(["findBookingsForCustomer", "rescheduleBooking"]),
       checks.maxToolCalls(2),
       createOutputRulesScorer("pending-reschedule-output", [
         {

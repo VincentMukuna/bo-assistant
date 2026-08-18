@@ -1,6 +1,7 @@
 import { runEvals, type RunEvalsResult } from "@mastra/core/evals";
 import type { Agent } from "@mastra/core/agent";
 import { RequestContext } from "@mastra/core/request-context";
+import { extractToolCalls } from "@mastra/evals/scorers/utils";
 import { loadEnvFile } from "node:process";
 import { businessSupportAgent } from "../src/mastra/agents/business-support-agent";
 import { scenarios, type BookingFixture, type EvalScenario } from "./scenarios";
@@ -15,6 +16,7 @@ type ScenarioObservation = {
   durationMs: number;
   output?: string;
   totalTokens?: number;
+  tools: string[];
   reasons: string[];
 };
 
@@ -98,6 +100,7 @@ function printScenarioResult(
   console.log(
     `      ${observation.durationMs} ms${observation.totalTokens === undefined ? "" : ` · ${observation.totalTokens} tokens`}`
   );
+  if (observation.tools.length > 0) console.log(`      tools: ${observation.tools.join(" → ")}`);
   console.log(`      scores: ${JSON.stringify(result.scores)}`);
   if (failedChecks.length > 0) console.log(`      failed: ${failedChecks.join(", ")}`);
   for (const threshold of result.thresholdResults ?? []) {
@@ -105,7 +108,9 @@ function printScenarioResult(
       `      ${threshold.id}: ${threshold.averageScore.toFixed(2)} (signal threshold ${JSON.stringify(threshold.threshold)})`
     );
   }
-  for (const reason of observation.reasons) console.log(`      reason: ${reason}`);
+  for (const reason of observation.reasons) {
+    console.log(`      reason: ${reason.replace(/\s+/g, " ").slice(0, 500)}`);
+  }
   if (result.verdict === "failed" && observation.output) {
     const output = observation.output.replaceAll("eval-secret-capability", "[REDACTED]");
     console.log(`      output: ${output.slice(0, 500)}`);
@@ -136,7 +141,7 @@ async function main() {
     for (const scenario of scenarios) {
       activeBookings = scenario.bookings;
       const startedAt = performance.now();
-      const observation: ScenarioObservation = { durationMs: 0, reasons: [] };
+      const observation: ScenarioObservation = { durationMs: 0, tools: [], reasons: [] };
       const result = await runEvals({
         target: evalTarget,
         data: [{ input: scenario.input, requestContext: requestContext() }],
@@ -147,6 +152,7 @@ async function main() {
         onItemComplete: ({ targetResult, scorerResults }) => {
           observation.output = targetResult.text;
           observation.totalTokens = targetResult.usage?.totalTokens;
+          observation.tools = extractToolCalls(targetResult.scoringData?.output ?? []).tools;
           observation.reasons = Object.values(scorerResults)
             .filter(
               (value): value is { reason: string } =>
