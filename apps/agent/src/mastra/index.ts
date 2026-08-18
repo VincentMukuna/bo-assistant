@@ -2,12 +2,13 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { Mastra } from "@mastra/core/mastra";
 import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability";
+import { SimpleAuth } from "@mastra/core/server";
 import { MastraCompositeStore } from "@mastra/core/storage";
 import { DuckDBStore } from "@mastra/duckdb";
 import { PinoLogger } from "@mastra/loggers";
 import { MastraStorageExporter, Observability } from "@mastra/observability";
-import { PostgresStore } from "@mastra/pg";
 import { businessSupportAgent } from "./agents/business-support-agent";
+import { postgresStore } from "./storage";
 
 const initialDirectory = process.env.INIT_CWD ?? process.cwd();
 const agentDirectory = initialDirectory.endsWith(`${sep}apps${sep}agent`)
@@ -18,12 +19,6 @@ const observabilityDatabasePath =
   resolve(agentDirectory, ".data/observability.duckdb");
 
 mkdirSync(dirname(observabilityDatabasePath), { recursive: true });
-
-const postgresStore = new PostgresStore({
-  id: "agent-postgres",
-  connectionString:
-    process.env.MASTRA_DATABASE_URL ?? "postgresql://mastra:mastra@127.0.0.1:5433/mastra",
-});
 
 const observabilityStore = new DuckDBStore({
   id: "agent-observability",
@@ -77,5 +72,18 @@ export const mastra = new Mastra({
   }),
   server: {
     host: "0.0.0.0",
+    auth: new SimpleAuth({
+      tokens: {
+        [internalToken()]: { id: "adonis-api", role: "internal" },
+      },
+    }),
   },
 });
+
+function internalToken() {
+  const token = process.env.MASTRA_INTERNAL_TOKEN;
+  if (!token && process.env.NODE_ENV === "production") {
+    throw new Error("MASTRA_INTERNAL_TOKEN is required in production");
+  }
+  return token ?? "development-internal-token";
+}

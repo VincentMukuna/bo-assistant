@@ -22,6 +22,8 @@ export default await Env.create(new URL("../", import.meta.url), {
   APP_KEY: Env.schema.secret(),
   APP_URL: Env.schema.string({ format: "url", tld: false }),
   MASTRA_URL: Env.schema.string.optional({ format: "url", tld: false }),
+  MASTRA_INTERNAL_TOKEN: Env.schema.string.optional(),
+  CUSTOMER_APP_ORIGIN: Env.schema.string.optional({ format: "url", tld: false }),
 
   // Session
   SESSION_DRIVER: Env.schema.enum(["cookie", "memory", "database"] as const),

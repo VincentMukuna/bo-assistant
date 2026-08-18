@@ -46,4 +46,7 @@ router.use([
  */
 export const middleware = router.named({
   auth: () => import("#middleware/auth_middleware"),
+  customerAuth: () => import("#middleware/customer_auth_middleware"),
+  customerOrigin: () => import("#middleware/customer_origin_middleware"),
+  bookingCapability: () => import("#middleware/booking_capability_middleware"),
 });

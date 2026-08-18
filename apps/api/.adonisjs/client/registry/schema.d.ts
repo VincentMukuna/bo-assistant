@@ -7,52 +7,112 @@ import type { InferInput, SimpleError } from '@vinejs/vine/types'
 export type ParamValue = string | number | bigint | boolean
 
 export interface Registry {
-  'demo_chats.store': {
+  'demo_sessions.store': {
     methods: ["POST"]
-    pattern: '/api/v1/demo/chats'
-    types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/demo_agent').createDemoChatValidator)>>
-      paramsTuple: []
-      params: {}
-      query: ExtractQuery<InferInput<(typeof import('#validators/demo_agent').createDemoChatValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/demo_chats_controller').default['store']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/demo_chats_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
-    }
-  }
-  'demo_approvals.store': {
-    methods: ["POST"]
-    pattern: '/api/v1/demo/approvals'
-    types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/demo_agent').createDemoApprovalValidator)>>
-      paramsTuple: []
-      params: {}
-      query: ExtractQuery<InferInput<(typeof import('#validators/demo_agent').createDemoApprovalValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/demo_approvals_controller').default['store']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/demo_approvals_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
-    }
-  }
-  'agent_bookings.find': {
-    methods: ["POST"]
-    pattern: '/api/v1/agent/bookings/find'
+    pattern: '/api/v1/demo/session'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_bookings_controller').default['find']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_bookings_controller').default['find']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/demo_sessions_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/demo_sessions_controller').default['store']>>>
     }
   }
-  'agent_bookings.reschedule': {
-    methods: ["POST"]
-    pattern: '/api/v1/agent/bookings/reschedule'
+  'conversations.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/support/conversations'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_bookings_controller').default['reschedule']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_bookings_controller').default['reschedule']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/support_conversations_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/support_conversations_controller').default['index']>>>
+    }
+  }
+  'conversations.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/support/conversations'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/support_conversations_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/support_conversations_controller').default['store']>>>
+    }
+  }
+  'conversations.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/support/conversations/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/support_conversations_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/support_conversations_controller').default['show']>>>
+    }
+  }
+  'conversation_messages.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/support/conversations/:id/messages'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/support').createConversationMessageValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/support').createConversationMessageValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/conversation_messages_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/conversation_messages_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'approval_requests.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/support/conversations/:id/approval-request'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/approval_requests_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/approval_requests_controller').default['show']>>>
+    }
+  }
+  'approval_decisions.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/support/conversations/:id/approval-decisions'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/support').createApprovalDecisionValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/support').createApprovalDecisionValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/approval_decisions_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/approval_decisions_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_booking_searches.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/agent/booking-searches'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_booking_searches_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_booking_searches_controller').default['store']>>>
+    }
+  }
+  'agent_booking_reschedules.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/agent/booking-reschedules'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_booking_reschedules_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_booking_reschedules_controller').default['store']>>>
     }
   }
   'auth.sessions.store': {

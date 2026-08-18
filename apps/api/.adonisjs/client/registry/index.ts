@@ -6,29 +6,59 @@ import type { ApiDefinition } from './tree.d.ts'
 const placeholder: any = {}
 
 const routes = {
-  'demo_chats.store': {
+  'demo_sessions.store': {
     methods: ["POST"],
-    pattern: '/api/v1/demo/chats',
-    tokens: [{"old":"/api/v1/demo/chats","type":0,"val":"api","end":""},{"old":"/api/v1/demo/chats","type":0,"val":"v1","end":""},{"old":"/api/v1/demo/chats","type":0,"val":"demo","end":""},{"old":"/api/v1/demo/chats","type":0,"val":"chats","end":""}],
-    types: placeholder as Registry['demo_chats.store']['types'],
+    pattern: '/api/v1/demo/session',
+    tokens: [{"old":"/api/v1/demo/session","type":0,"val":"api","end":""},{"old":"/api/v1/demo/session","type":0,"val":"v1","end":""},{"old":"/api/v1/demo/session","type":0,"val":"demo","end":""},{"old":"/api/v1/demo/session","type":0,"val":"session","end":""}],
+    types: placeholder as Registry['demo_sessions.store']['types'],
   },
-  'demo_approvals.store': {
-    methods: ["POST"],
-    pattern: '/api/v1/demo/approvals',
-    tokens: [{"old":"/api/v1/demo/approvals","type":0,"val":"api","end":""},{"old":"/api/v1/demo/approvals","type":0,"val":"v1","end":""},{"old":"/api/v1/demo/approvals","type":0,"val":"demo","end":""},{"old":"/api/v1/demo/approvals","type":0,"val":"approvals","end":""}],
-    types: placeholder as Registry['demo_approvals.store']['types'],
+  'conversations.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/support/conversations',
+    tokens: [{"old":"/api/v1/support/conversations","type":0,"val":"api","end":""},{"old":"/api/v1/support/conversations","type":0,"val":"v1","end":""},{"old":"/api/v1/support/conversations","type":0,"val":"support","end":""},{"old":"/api/v1/support/conversations","type":0,"val":"conversations","end":""}],
+    types: placeholder as Registry['conversations.index']['types'],
   },
-  'agent_bookings.find': {
+  'conversations.store': {
     methods: ["POST"],
-    pattern: '/api/v1/agent/bookings/find',
-    tokens: [{"old":"/api/v1/agent/bookings/find","type":0,"val":"api","end":""},{"old":"/api/v1/agent/bookings/find","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/bookings/find","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/bookings/find","type":0,"val":"bookings","end":""},{"old":"/api/v1/agent/bookings/find","type":0,"val":"find","end":""}],
-    types: placeholder as Registry['agent_bookings.find']['types'],
+    pattern: '/api/v1/support/conversations',
+    tokens: [{"old":"/api/v1/support/conversations","type":0,"val":"api","end":""},{"old":"/api/v1/support/conversations","type":0,"val":"v1","end":""},{"old":"/api/v1/support/conversations","type":0,"val":"support","end":""},{"old":"/api/v1/support/conversations","type":0,"val":"conversations","end":""}],
+    types: placeholder as Registry['conversations.store']['types'],
   },
-  'agent_bookings.reschedule': {
+  'conversations.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/support/conversations/:id',
+    tokens: [{"old":"/api/v1/support/conversations/:id","type":0,"val":"api","end":""},{"old":"/api/v1/support/conversations/:id","type":0,"val":"v1","end":""},{"old":"/api/v1/support/conversations/:id","type":0,"val":"support","end":""},{"old":"/api/v1/support/conversations/:id","type":0,"val":"conversations","end":""},{"old":"/api/v1/support/conversations/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['conversations.show']['types'],
+  },
+  'conversation_messages.store': {
     methods: ["POST"],
-    pattern: '/api/v1/agent/bookings/reschedule',
-    tokens: [{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"api","end":""},{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"bookings","end":""},{"old":"/api/v1/agent/bookings/reschedule","type":0,"val":"reschedule","end":""}],
-    types: placeholder as Registry['agent_bookings.reschedule']['types'],
+    pattern: '/api/v1/support/conversations/:id/messages',
+    tokens: [{"old":"/api/v1/support/conversations/:id/messages","type":0,"val":"api","end":""},{"old":"/api/v1/support/conversations/:id/messages","type":0,"val":"v1","end":""},{"old":"/api/v1/support/conversations/:id/messages","type":0,"val":"support","end":""},{"old":"/api/v1/support/conversations/:id/messages","type":0,"val":"conversations","end":""},{"old":"/api/v1/support/conversations/:id/messages","type":1,"val":"id","end":""},{"old":"/api/v1/support/conversations/:id/messages","type":0,"val":"messages","end":""}],
+    types: placeholder as Registry['conversation_messages.store']['types'],
+  },
+  'approval_requests.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/support/conversations/:id/approval-request',
+    tokens: [{"old":"/api/v1/support/conversations/:id/approval-request","type":0,"val":"api","end":""},{"old":"/api/v1/support/conversations/:id/approval-request","type":0,"val":"v1","end":""},{"old":"/api/v1/support/conversations/:id/approval-request","type":0,"val":"support","end":""},{"old":"/api/v1/support/conversations/:id/approval-request","type":0,"val":"conversations","end":""},{"old":"/api/v1/support/conversations/:id/approval-request","type":1,"val":"id","end":""},{"old":"/api/v1/support/conversations/:id/approval-request","type":0,"val":"approval-request","end":""}],
+    types: placeholder as Registry['approval_requests.show']['types'],
+  },
+  'approval_decisions.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/support/conversations/:id/approval-decisions',
+    tokens: [{"old":"/api/v1/support/conversations/:id/approval-decisions","type":0,"val":"api","end":""},{"old":"/api/v1/support/conversations/:id/approval-decisions","type":0,"val":"v1","end":""},{"old":"/api/v1/support/conversations/:id/approval-decisions","type":0,"val":"support","end":""},{"old":"/api/v1/support/conversations/:id/approval-decisions","type":0,"val":"conversations","end":""},{"old":"/api/v1/support/conversations/:id/approval-decisions","type":1,"val":"id","end":""},{"old":"/api/v1/support/conversations/:id/approval-decisions","type":0,"val":"approval-decisions","end":""}],
+    types: placeholder as Registry['approval_decisions.store']['types'],
+  },
+  'agent_booking_searches.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/agent/booking-searches',
+    tokens: [{"old":"/api/v1/agent/booking-searches","type":0,"val":"api","end":""},{"old":"/api/v1/agent/booking-searches","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/booking-searches","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/booking-searches","type":0,"val":"booking-searches","end":""}],
+    types: placeholder as Registry['agent_booking_searches.store']['types'],
+  },
+  'agent_booking_reschedules.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/agent/booking-reschedules',
+    tokens: [{"old":"/api/v1/agent/booking-reschedules","type":0,"val":"api","end":""},{"old":"/api/v1/agent/booking-reschedules","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/booking-reschedules","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/booking-reschedules","type":0,"val":"booking-reschedules","end":""}],
+    types: placeholder as Registry['agent_booking_reschedules.store']['types'],
   },
   'auth.sessions.store': {
     methods: ["POST"],

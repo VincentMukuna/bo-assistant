@@ -4,10 +4,15 @@ type ParamValue = string | number | bigint | boolean
 
 export type ScannedRoutes = {
   ALL: {
-    'demo_chats.store': { paramsTuple?: []; params?: {} }
-    'demo_approvals.store': { paramsTuple?: []; params?: {} }
-    'agent_bookings.find': { paramsTuple?: []; params?: {} }
-    'agent_bookings.reschedule': { paramsTuple?: []; params?: {} }
+    'demo_sessions.store': { paramsTuple?: []; params?: {} }
+    'conversations.index': { paramsTuple?: []; params?: {} }
+    'conversations.store': { paramsTuple?: []; params?: {} }
+    'conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'conversation_messages.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'approval_requests.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'approval_decisions.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'agent_booking_searches.store': { paramsTuple?: []; params?: {} }
+    'agent_booking_reschedules.store': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'sessions.destroy': { paramsTuple?: []; params?: {} }
@@ -23,6 +28,9 @@ export type ScannedRoutes = {
     'bookings.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   GET: {
+    'conversations.index': { paramsTuple?: []; params?: {} }
+    'conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'approval_requests.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'customers.index': { paramsTuple?: []; params?: {} }
     'customers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -30,6 +38,9 @@ export type ScannedRoutes = {
     'bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   HEAD: {
+    'conversations.index': { paramsTuple?: []; params?: {} }
+    'conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'approval_requests.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'customers.index': { paramsTuple?: []; params?: {} }
     'customers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -37,10 +48,12 @@ export type ScannedRoutes = {
     'bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   POST: {
-    'demo_chats.store': { paramsTuple?: []; params?: {} }
-    'demo_approvals.store': { paramsTuple?: []; params?: {} }
-    'agent_bookings.find': { paramsTuple?: []; params?: {} }
-    'agent_bookings.reschedule': { paramsTuple?: []; params?: {} }
+    'demo_sessions.store': { paramsTuple?: []; params?: {} }
+    'conversations.store': { paramsTuple?: []; params?: {} }
+    'conversation_messages.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'approval_decisions.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'agent_booking_searches.store': { paramsTuple?: []; params?: {} }
+    'agent_booking_reschedules.store': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'customers.store': { paramsTuple?: []; params?: {} }
     'bookings.store': { paramsTuple?: []; params?: {} }

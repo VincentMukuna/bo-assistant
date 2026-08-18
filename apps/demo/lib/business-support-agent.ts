@@ -1,132 +1,140 @@
 import { jsonSchema, parseJsonEventStream } from "ai";
 
-export type BusinessSupportMessage = {
-  role: "user" | "assistant";
-  content: string;
+export type ConversationSummary = {
+  id: string;
+  title: string;
+  status: "open" | "closed";
+  updatedAt: string;
 };
 
-export type PendingApproval = {
+export type SupportMessage = {
   id: string;
-  runId: string;
-  toolCallId: string;
-  toolName: "reschedule_booking";
+  sender: "customer" | "business";
+  body: string;
+  createdAt: string | null;
+};
+
+export type SupportConversation = ConversationSummary & {
+  messages: SupportMessage[];
+};
+
+export type ApprovalRequest = {
+  id: string;
+  type: "booking_reschedule";
   service: string;
   staff: string;
   currentStartTime: string;
   proposedStartTime: string;
-  status: "pending" | "confirming" | "declining";
-  error?: string;
+  status: "pending" | "stale";
+  canApprove: boolean;
 };
 
 type StreamChunk = {
   type?: unknown;
-  runId?: unknown;
   payload?: unknown;
 };
-
-type StreamHandlers = {
-  onText: (text: string) => void;
-  onApproval: (approval: PendingApproval) => void;
-};
-
-export function parsePendingApproval(value: unknown): PendingApproval | null {
-  if (!value || typeof value !== "object") return null;
-  const approval = value as Record<string, unknown>;
-  const strings = ["id", "runId", "toolCallId", "service", "staff"] as const;
-  if (
-    approval.toolName !== "reschedule_booking" ||
-    !strings.every((key) => typeof approval[key] === "string") ||
-    typeof approval.currentStartTime !== "string" ||
-    Number.isNaN(Date.parse(approval.currentStartTime)) ||
-    typeof approval.proposedStartTime !== "string" ||
-    Number.isNaN(Date.parse(approval.proposedStartTime))
-  ) {
-    return null;
-  }
-
-  return {
-    id: approval.id as string,
-    runId: approval.runId as string,
-    toolCallId: approval.toolCallId as string,
-    toolName: "reschedule_booking",
-    service: approval.service as string,
-    staff: approval.staff as string,
-    currentStartTime: approval.currentStartTime,
-    proposedStartTime: approval.proposedStartTime,
-    status: "pending",
-  };
-}
-
-function approvalFromChunk(chunk: StreamChunk) {
-  if (chunk.type !== "tool-call-approval" || typeof chunk.runId !== "string") return null;
-  if (!chunk.payload || typeof chunk.payload !== "object") return null;
-
-  const payload = chunk.payload as Record<string, unknown>;
-  const input = payload.args;
-  const isReschedule =
-    payload.toolName === "rescheduleBooking" || payload.toolName === "reschedule_booking";
-  if (
-    typeof payload.toolCallId !== "string" ||
-    !isReschedule ||
-    !input ||
-    typeof input !== "object"
-  ) {
-    return null;
-  }
-
-  const args = input as Record<string, unknown>;
-  return parsePendingApproval({
-    id: `${chunk.runId}:${payload.toolCallId}`,
-    runId: chunk.runId,
-    toolCallId: payload.toolCallId,
-    toolName: "reschedule_booking",
-    service: args.service,
-    staff: args.staff,
-    currentStartTime: args.current_start_time,
-    proposedStartTime: args.new_start_time,
-  });
-}
 
 async function errorMessage(response: Response, fallback: string) {
   const result = (await response.json().catch(() => null)) as { error?: unknown } | null;
   return result && typeof result.error === "string" ? result.error : fallback;
 }
 
-async function post(path: string, body: Record<string, unknown>, fallback: string) {
+async function request(path: string, init: RequestInit, fallback: string) {
   const response = await fetch(path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    ...init,
+    headers: { "content-type": "application/json", ...init.headers },
   });
-
   if (!response.ok) throw new Error(await errorMessage(response, fallback));
   return response;
 }
 
-export function createBusinessSupportChat(messages: BusinessSupportMessage[]) {
-  return post("/api/v1/demo/chats", { messages }, "Assistant unavailable");
+async function json<T>(path: string, init: RequestInit = {}, fallback = "Request failed") {
+  const response = await request(path, init, fallback);
+  return (await response.json()) as T;
 }
 
-export function createApprovalDecision(
-  approval: PendingApproval,
+export function bootstrapCustomerSession() {
+  return json<{ customer: { name: string } }>(
+    "/api/v1/demo/session",
+    { method: "POST", body: "{}" },
+    "Could not start the demo session."
+  );
+}
+
+export async function listConversations() {
+  const result = await json<{ conversations: ConversationSummary[] }>(
+    "/api/v1/support/conversations",
+    {},
+    "Could not load conversations."
+  );
+  return result.conversations;
+}
+
+export async function createConversation() {
+  const result = await json<{ conversation: ConversationSummary }>(
+    "/api/v1/support/conversations",
+    { method: "POST", body: "{}" },
+    "Could not create a conversation."
+  );
+  return result.conversation;
+}
+
+export async function readConversation(id: string) {
+  const result = await json<{ conversation: SupportConversation }>(
+    `/api/v1/support/conversations/${encodeURIComponent(id)}`,
+    {},
+    "Could not load the conversation."
+  );
+  return result.conversation;
+}
+
+export async function readApprovalRequest(conversationId: string) {
+  const result = await json<{ approvalRequest: ApprovalRequest | null }>(
+    `/api/v1/support/conversations/${encodeURIComponent(conversationId)}/approval-request`,
+    {},
+    "Could not load the approval request."
+  );
+  return result.approvalRequest;
+}
+
+export function sendConversationMessage(conversationId: string, message: string) {
+  return request(
+    `/api/v1/support/conversations/${encodeURIComponent(conversationId)}/messages`,
+    { method: "POST", body: JSON.stringify({ message }) },
+    "The assistant is unavailable."
+  );
+}
+
+export function sendCustomerReply(
+  conversationId: string,
+  message: string,
+  hasPendingApproval: boolean
+) {
+  return hasPendingApproval
+    ? decideApproval(conversationId, "decline", message)
+    : sendConversationMessage(conversationId, message);
+}
+
+export function decideApproval(
+  conversationId: string,
   decision: "approve" | "decline",
   reason?: string
 ) {
-  return post(
-    "/api/v1/demo/approvals",
+  return request(
+    `/api/v1/support/conversations/${encodeURIComponent(conversationId)}/approval-decisions`,
     {
-      runId: approval.runId,
-      toolCallId: approval.toolCallId,
-      decision,
-      ...(decision === "decline" && reason ? { reason } : {}),
+      method: "POST",
+      body: JSON.stringify({ decision, ...(decision === "decline" && reason ? { reason } : {}) }),
     },
     "The decision could not be processed."
   );
 }
 
-export async function readBusinessSupportStream(response: Response, handlers: StreamHandlers) {
+export async function readBusinessSupportStream(
+  response: Response,
+  onText: (text: string) => void
+) {
   if (!response.body) throw new Error("The assistant returned an empty response.");
-
   const reader = parseJsonEventStream({
     stream: response.body,
     schema: jsonSchema<StreamChunk>({}),
@@ -137,7 +145,6 @@ export async function readBusinessSupportStream(response: Response, handlers: St
       const { done, value: event } = await reader.read();
       if (done) break;
       if (!event.success) throw new Error("The assistant returned an invalid stream.");
-
       const chunk = event.value;
       if (
         chunk.type === "text-delta" &&
@@ -146,11 +153,8 @@ export async function readBusinessSupportStream(response: Response, handlers: St
         "text" in chunk.payload &&
         typeof chunk.payload.text === "string"
       ) {
-        handlers.onText(chunk.payload.text);
+        onText(chunk.payload.text);
       }
-
-      const approval = approvalFromChunk(chunk);
-      if (approval) handlers.onApproval(approval);
       if (chunk.type === "error" || chunk.type === "abort") {
         throw new Error("The assistant response was interrupted.");
       }

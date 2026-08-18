@@ -1,6 +1,8 @@
 import { HttpContext } from "@adonisjs/core/http";
 import { BaseSerializer } from "@adonisjs/core/transformers";
 import { type SimplePaginatorMetaKeys } from "@adonisjs/lucid/types/querybuilder";
+import type Customer from "#models/customer";
+import type { BookingCapability } from "#services/booking_capability";
 
 /**
  * Custom serializer for API responses that ensures consistent JSON structure
@@ -65,5 +67,7 @@ HttpContext.instanceProperty("serialize", serialize);
 declare module "@adonisjs/core/http" {
   export interface HttpContext {
     serialize: typeof serialize;
+    customer: Customer;
+    bookingCapability: BookingCapability;
   }
 }

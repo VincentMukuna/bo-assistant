@@ -77,7 +77,7 @@ export const findBookingsForCustomer = createTool({
   requestContextSchema: bookingContextSchema,
   execute: async (input, { requestContext }) => {
     const result = await callBookingApi<{ bookings: Booking[] }>(
-      "/api/v1/agent/bookings/find",
+      "/api/v1/agent/booking-searches",
       input,
       requestContext.all.bookingCapability
     );
@@ -97,9 +97,7 @@ export const rescheduleBooking = createTool({
   requireApproval: true,
   inputSchema: z.object({
     booking_id: z.number().int().positive(),
-    service: z.string().describe("The service name from the selected booking"),
-    staff: z.string().describe("The staff name from the selected booking"),
-    current_start_time: z
+    expected_start_time: z
       .string()
       .describe("The selected booking's current ISO start time with timezone offset"),
     new_start_time: z
@@ -111,7 +109,7 @@ export const rescheduleBooking = createTool({
   execute: async (input, { requestContext }) => {
     const { booking_id, new_start_time } = input;
     const result = await callBookingApi<{ booking: Booking }>(
-      "/api/v1/agent/bookings/reschedule",
+      "/api/v1/agent/booking-reschedules",
       { booking_id, new_start_time },
       requestContext.all.bookingCapability
     );

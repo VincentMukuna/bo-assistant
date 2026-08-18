@@ -11,20 +11,45 @@ import { middleware } from "#start/kernel";
 import router from "@adonisjs/core/services/router";
 import { controllers } from "#generated/controllers";
 
-const DemoChatsController = () => import("#controllers/demo_chats_controller");
-const DemoApprovalsController = () => import("#controllers/demo_approvals_controller");
-const AgentBookingsController = () => import("#controllers/agent_bookings_controller");
+const DemoSessionsController = () => import("#controllers/demo_sessions_controller");
+const SupportConversationsController = () =>
+  import("#controllers/support_conversations_controller");
+const ConversationMessagesController = () =>
+  import("#controllers/conversation_messages_controller");
+const ApprovalRequestsController = () => import("#controllers/approval_requests_controller");
+const ApprovalDecisionsController = () => import("#controllers/approval_decisions_controller");
+const AgentBookingSearchesController = () =>
+  import("#controllers/agent_booking_searches_controller");
+const AgentBookingReschedulesController = () =>
+  import("#controllers/agent_booking_reschedules_controller");
 
 router.get("/", () => {
   return { hello: "world" };
 });
 
-router.post("/api/v1/demo/chats", [DemoChatsController, "store"]);
-router.post("/api/v1/demo/approvals", [DemoApprovalsController, "store"]);
+router
+  .post("/api/v1/demo/session", [DemoSessionsController, "store"])
+  .use(middleware.customerOrigin());
 router
   .group(() => {
-    router.post("bookings/find", [AgentBookingsController, "find"]);
-    router.post("bookings/reschedule", [AgentBookingsController, "reschedule"]);
+    router
+      .resource("conversations", SupportConversationsController)
+      .only(["index", "store", "show"]);
+    router.post("conversations/:id/messages", [ConversationMessagesController, "store"]);
+    router.get("conversations/:id/approval-request", [ApprovalRequestsController, "show"]);
+    router.post("conversations/:id/approval-decisions", [ApprovalDecisionsController, "store"]);
+  })
+  .prefix("/api/v1/support")
+  .use(middleware.customerOrigin())
+  .use(middleware.customerAuth());
+router
+  .group(() => {
+    router
+      .post("booking-searches", [AgentBookingSearchesController, "store"])
+      .use(middleware.bookingCapability({ scope: "find_bookings" }));
+    router
+      .post("booking-reschedules", [AgentBookingReschedulesController, "store"])
+      .use(middleware.bookingCapability({ scope: "reschedule_booking" }));
   })
   .prefix("/api/v1/agent");
 

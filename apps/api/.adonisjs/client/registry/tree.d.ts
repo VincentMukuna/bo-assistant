@@ -2,15 +2,28 @@
 import type { routes } from './index.ts'
 
 export interface ApiDefinition {
-  demoChats: {
-    store: typeof routes['demo_chats.store']
+  demoSessions: {
+    store: typeof routes['demo_sessions.store']
   }
-  demoApprovals: {
-    store: typeof routes['demo_approvals.store']
+  conversations: {
+    index: typeof routes['conversations.index']
+    store: typeof routes['conversations.store']
+    show: typeof routes['conversations.show']
   }
-  agentBookings: {
-    find: typeof routes['agent_bookings.find']
-    reschedule: typeof routes['agent_bookings.reschedule']
+  conversationMessages: {
+    store: typeof routes['conversation_messages.store']
+  }
+  approvalRequests: {
+    show: typeof routes['approval_requests.show']
+  }
+  approvalDecisions: {
+    store: typeof routes['approval_decisions.store']
+  }
+  agentBookingSearches: {
+    store: typeof routes['agent_booking_searches.store']
+  }
+  agentBookingReschedules: {
+    store: typeof routes['agent_booking_reschedules.store']
   }
   auth: {
     sessions: {

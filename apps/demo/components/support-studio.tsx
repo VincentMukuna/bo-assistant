@@ -1,9 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import {
-  Archive,
   ArrowLeft,
   CalendarClock,
   Check,
@@ -12,84 +11,17 @@ import {
   List,
   MessageCircle,
   Plus,
-  RotateCcw,
   Send,
-  Trash2,
   X,
 } from "lucide-react";
-import {
-  createApprovalDecision,
-  createBusinessSupportChat,
-  readBusinessSupportStream,
-  type PendingApproval,
+import type {
+  ApprovalRequest,
+  ConversationSummary,
+  SupportConversation,
 } from "@/lib/business-support-agent";
-import {
-  clearSupportState,
-  loadSupportState,
-  saveSupportState,
-  type Message,
-  type SupportThread,
-} from "@/lib/support-state";
+import { useSupportConversations, type DecisionState } from "@/lib/use-support-conversations";
 
 type ChatView = "conversation" | "threads" | "new";
-
-const initialThreads: SupportThread[] = [
-  {
-    id: "reschedule-clean",
-    title: "Move Tuesday’s deep clean",
-    category: "Booking change",
-    updatedAt: "4 min ago",
-    status: "Open",
-    messages: [
-      {
-        id: "alice-1",
-        sender: "customer",
-        body: "Hi, I need to move my deep clean this Tuesday. Do you have anything early next week?",
-        time: "9:42 AM",
-      },
-      {
-        id: "oak-1",
-        sender: "business",
-        body: "Absolutely. We can keep your usual cleaning team and offer Monday morning or Tuesday afternoon. Which would you prefer?",
-        time: "9:44 AM",
-      },
-      {
-        id: "alice-2",
-        sender: "customer",
-        body: "Tuesday afternoon would be perfect.",
-        time: "9:48 AM",
-      },
-    ],
-  },
-  {
-    id: "window-track",
-    title: "Window track repair",
-    category: "Repair request",
-    updatedAt: "2 days ago",
-    status: "Closed",
-    messages: [
-      {
-        id: "alice-3",
-        sender: "customer",
-        body: "The living room window has started sticking again. Could Noah take a look this week?",
-        time: "Mon, 11:12 AM",
-      },
-      {
-        id: "oak-2",
-        sender: "business",
-        body: "You’re booked with Noah for Friday at 11:30 AM. We’ve added the note about the living room window.",
-        time: "Mon, 11:18 AM",
-      },
-    ],
-  },
-];
-
-function currentTime() {
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(
-    new Date()
-  );
-}
-
 function formatBookingTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Los_Angeles",
@@ -101,291 +33,46 @@ function formatBookingTime(value: string) {
   }).format(new Date(value));
 }
 
-let localIdSequence = 0;
-
-function createLocalId() {
-  localIdSequence += 1;
-  return `local-${Date.now().toString(36)}-${localIdSequence.toString(36)}`;
+function formatUpdatedAt(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf())
+    ? "Recently"
+    : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
 }
 
 export function SupportStudio() {
-  const [threads, setThreads] = useState<SupportThread[]>(initialThreads);
-  const [activeThreadId, setActiveThreadId] = useState(initialThreads[0].id);
+  const support = useSupportConversations();
   const [view, setView] = useState<ChatView>("conversation");
   const [isOpen, setIsOpen] = useState(false);
   const [reply, setReply] = useState("");
-  const [notice, setNotice] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [hasHydrated, setHasHydrated] = useState(false);
-  const noticeTimeoutRef = useRef<number | null>(null);
 
-  const activeThread = useMemo(
-    () => threads.find((thread) => thread.id === activeThreadId) ?? threads[0],
-    [activeThreadId, threads]
-  );
-
-  useEffect(() => {
-    const stored = loadSupportState();
-    if (stored) {
-      // The server renders the closed launcher; restore client-only demo state after hydration.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setThreads(stored.threads);
-      setActiveThreadId(stored.activeThreadId);
-    }
-    setHasHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hasHydrated) return;
-    saveSupportState({ activeThreadId, threads });
-  }, [activeThreadId, hasHydrated, threads]);
-
-  function announce(message: string) {
-    setNotice(message);
-    if (noticeTimeoutRef.current) window.clearTimeout(noticeTimeoutRef.current);
-    noticeTimeoutRef.current = window.setTimeout(() => setNotice(""), 2400);
-  }
-
-  function openChat(nextView: ChatView = "conversation") {
-    setView(nextView);
-    setIsOpen(true);
-  }
-
-  function selectThread(id: string) {
-    setActiveThreadId(id);
-    setReply("");
-    setView("conversation");
-  }
-
-  function clearMessages() {
-    if (!activeThread) return;
-    setThreads((current) =>
-      current.map((thread) =>
-        thread.id === activeThread.id ? { ...thread, messages: [] } : thread
-      )
-    );
-    announce("Messages cleared");
-  }
-
-  function toggleStatus() {
-    if (!activeThread) return;
-    const nextStatus = activeThread.status === "Open" ? "Closed" : "Open";
-    setThreads((current) =>
-      current.map((thread) =>
-        thread.id === activeThread.id
-          ? { ...thread, status: nextStatus, updatedAt: "Just now" }
-          : thread
-      )
-    );
-    announce(nextStatus === "Closed" ? "Request closed" : "Request reopened");
-  }
-
-  function resetDemo() {
-    clearSupportState();
-    setThreads(initialThreads);
-    setActiveThreadId(initialThreads[0].id);
-    setReply("");
-    setView("conversation");
-    announce("Demo restored");
-  }
-
-  async function consumeAssistantResponse(response: Response, threadId: string) {
-    const assistantMessageId = createLocalId();
-    const assistantMessageTime = currentTime();
-    let assistantText = "";
-
-    function appendAssistantText(text: string) {
-      if (!text) return;
-      const isFirstChunk = assistantText.length === 0;
-      assistantText += text;
-      setThreads((current) =>
-        current.map((thread) => {
-          if (thread.id !== threadId) return thread;
-          if (isFirstChunk) {
-            return {
-              ...thread,
-              messages: [
-                ...thread.messages,
-                {
-                  id: assistantMessageId,
-                  sender: "business",
-                  body: assistantText,
-                  time: assistantMessageTime,
-                },
-              ],
-              updatedAt: "Just now",
-            };
-          }
-          return {
-            ...thread,
-            messages: thread.messages.map((message) =>
-              message.id === assistantMessageId ? { ...message, body: assistantText } : message
-            ),
-          };
-        })
-      );
-    }
-
-    await readBusinessSupportStream(response, {
-      onText: appendAssistantText,
-      onApproval: (approval) => {
-        setThreads((current) =>
-          current.map((thread) =>
-            thread.id === threadId
-              ? { ...thread, pendingApproval: approval, updatedAt: "Just now" }
-              : thread
-          )
-        );
-        announce("Booking change ready for confirmation");
-      },
-    });
-
-    if (assistantText.trim()) announce("Oak & Pine replied");
-    return assistantText;
-  }
-
-  async function askAssistant(threadId: string, messages: Message[]) {
-    setIsSending(true);
-    let receivedText = false;
-    try {
-      const response = await createBusinessSupportChat(
-        messages.map((message) => ({
-          role: message.sender === "customer" ? "user" : "assistant",
-          content: message.body,
-        }))
-      );
-      receivedText = !!(await consumeAssistantResponse(response, threadId));
-    } catch {
-      announce(
-        receivedText
-          ? "Response interrupted — please try again"
-          : "Assistant unavailable — try again"
-      );
-    } finally {
-      setIsSending(false);
-    }
-  }
-
-  async function decideApproval(
-    threadId: string,
-    approval: PendingApproval,
-    decision: "confirm" | "decline",
-    reason?: string
-  ) {
-    const busyStatus = decision === "confirm" ? "confirming" : "declining";
-    setThreads((current) =>
-      current.map((thread) =>
-        thread.id === threadId && thread.pendingApproval?.id === approval.id
-          ? {
-              ...thread,
-              pendingApproval: { ...thread.pendingApproval, status: busyStatus, error: undefined },
-            }
-          : thread
-      )
-    );
-    setIsSending(true);
-    let decisionAccepted = false;
-
-    try {
-      const response = await createApprovalDecision(
-        approval,
-        decision === "confirm" ? "approve" : "decline",
-        reason
-      );
-      decisionAccepted = true;
-      setThreads((current) =>
-        current.map((thread) =>
-          thread.id === threadId && thread.pendingApproval?.id === approval.id
-            ? { ...thread, pendingApproval: undefined }
-            : thread
-        )
-      );
-      await consumeAssistantResponse(response, threadId);
-      announce(decision === "confirm" ? "Booking change confirmed" : "Booking change declined");
-    } catch {
-      if (!decisionAccepted) {
-        setThreads((current) =>
-          current.map((thread) =>
-            thread.id === threadId && thread.pendingApproval?.id === approval.id
-              ? {
-                  ...thread,
-                  pendingApproval: {
-                    ...thread.pendingApproval,
-                    status: "pending",
-                    error: "Couldn’t process that decision. Please try again.",
-                  },
-                }
-              : thread
-          )
-        );
-        announce("Decision unavailable — try again");
-      } else {
-        announce("Response interrupted — the decision was received");
-      }
-    } finally {
-      setIsSending(false);
-    }
-  }
-
-  async function sendReply(event: FormEvent<HTMLFormElement>) {
+  async function submitReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const body = reply.trim();
-    if (!body || !activeThread || isSending) return;
-
-    const message: Message = {
-      id: createLocalId(),
-      sender: "customer",
-      body,
-      time: currentTime(),
-    };
-
-    setThreads((current) =>
-      current.map((thread) =>
-        thread.id === activeThread.id
-          ? {
-              ...thread,
-              messages: [...thread.messages, message],
-              status: "Open",
-              updatedAt: "Just now",
-            }
-          : thread
-      )
-    );
+    const message = reply.trim();
+    if (!message) return;
     setReply("");
-    if (activeThread.pendingApproval) {
-      await decideApproval(activeThread.id, activeThread.pendingApproval, "decline", body);
-    } else {
-      await askAssistant(activeThread.id, [...activeThread.messages, message]);
-    }
+    await support.sendReply(message);
   }
 
-  async function createThread(event: FormEvent<HTMLFormElement>) {
+  async function submitNewRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const title = String(form.get("title") ?? "").trim();
-    const body = String(form.get("message") ?? "").trim();
-    const category = String(form.get("category") ?? "General question");
-    if (!title || !body) return;
-
-    const id = createLocalId();
-    const nextThread: SupportThread = {
-      id,
-      title,
-      category,
-      updatedAt: "Just now",
-      status: "Open",
-      messages: [{ id: createLocalId(), sender: "customer", body, time: currentTime() }],
-    };
-
-    setThreads((current) => [nextThread, ...current]);
-    setActiveThreadId(id);
+    const message = String(form.get("message") ?? "").trim();
+    if (!message) return;
     setView("conversation");
-    await askAssistant(id, nextThread.messages);
+    await support.createRequest(message);
   }
 
   return (
     <>
-      <button className="support-inline-trigger" type="button" onClick={() => openChat("new")}>
+      <button
+        className="support-inline-trigger"
+        type="button"
+        onClick={() => {
+          setView("new");
+          setIsOpen(true);
+        }}
+      >
         Start a conversation <MessageCircle size={16} />
       </button>
 
@@ -396,9 +83,6 @@ export function SupportStudio() {
           role="dialog"
           aria-modal="false"
           aria-labelledby="support-chat-title"
-          onKeyDown={(event) => {
-            if (event.key === "Escape") setIsOpen(false);
-          }}
         >
           <header className="chat-header">
             <span className="chat-brand-mark">
@@ -407,7 +91,7 @@ export function SupportStudio() {
             <div>
               <strong id="support-chat-title">Oak & Pine</strong>
               <span>
-                <span className="chat-online-dot" aria-hidden="true" /> Support is online
+                <span className="chat-online-dot" /> Support is online
               </span>
             </div>
             <div className="chat-header-actions">
@@ -433,47 +117,40 @@ export function SupportStudio() {
 
           {view === "threads" ? (
             <ThreadList
-              threads={threads}
-              activeThreadId={activeThreadId}
-              onSelect={selectThread}
+              threads={support.threads}
+              activeId={support.activeId}
+              onSelect={(id) => {
+                setReply("");
+                setView("conversation");
+                void support.selectConversation(id);
+              }}
               onNew={() => setView("new")}
-              onReset={resetDemo}
             />
           ) : null}
-
           {view === "new" ? (
-            <NewRequestForm onCancel={() => setView("conversation")} onSubmit={createThread} />
+            <NewRequestForm onCancel={() => setView("conversation")} onSubmit={submitNewRequest} />
           ) : null}
-
-          {view === "conversation" && activeThread ? (
-            <Conversation
-              thread={activeThread}
+          {view === "conversation" ? (
+            <ConversationView
+              conversation={support.conversation}
+              messages={support.messages}
+              approval={support.approval}
               reply={reply}
+              error={support.error}
+              isSending={support.isSending}
+              decisionState={support.decisionState}
               onReplyChange={setReply}
-              onSend={sendReply}
+              onSubmit={submitReply}
               onBack={() => setView("threads")}
-              onClear={clearMessages}
-              onToggleStatus={toggleStatus}
-              onConfirmApproval={() => {
-                if (activeThread.pendingApproval) {
-                  void decideApproval(activeThread.id, activeThread.pendingApproval, "confirm");
-                }
-              }}
-              onDeclineApproval={() => {
-                if (activeThread.pendingApproval) {
-                  void decideApproval(activeThread.id, activeThread.pendingApproval, "decline");
-                }
-              }}
-              isSending={isSending}
+              onDecision={support.submitDecision}
             />
           ) : null}
-
           <div
-            className={`chat-notice ${notice ? "chat-notice--visible" : ""}`}
+            className={`chat-notice ${support.notice ? "chat-notice--visible" : ""}`}
             role="status"
             aria-live="polite"
           >
-            <Check size={14} /> {notice}
+            <Check size={14} /> {support.notice}
           </div>
         </aside>
       ) : (
@@ -482,9 +159,8 @@ export function SupportStudio() {
           id="support-chat"
           type="button"
           aria-label="Open customer support chat"
-          aria-expanded="false"
           aria-controls="support-chat-window"
-          onClick={() => openChat()}
+          onClick={() => setIsOpen(true)}
         >
           <span className="chat-launcher-icon">
             <MessageCircle size={21} />
@@ -493,7 +169,7 @@ export function SupportStudio() {
             <strong>Need a hand?</strong>
             <small>Chat with us</small>
           </span>
-          <span className="chat-online-dot" aria-hidden="true" />
+          <span className="chat-online-dot" />
         </button>
       )}
     </>
@@ -502,23 +178,19 @@ export function SupportStudio() {
 
 function ThreadList({
   threads,
-  activeThreadId,
+  activeId,
   onSelect,
   onNew,
-  onReset,
 }: {
-  threads: SupportThread[];
-  activeThreadId: string;
+  threads: ConversationSummary[];
+  activeId?: string;
   onSelect: (id: string) => void;
   onNew: () => void;
-  onReset: () => void;
 }) {
   return (
     <div className="chat-view chat-thread-view">
       <div className="chat-view-heading">
-        <div>
-          <h3>Your conversations</h3>
-        </div>
+        <h3>Your conversations</h3>
         <button type="button" onClick={onNew}>
           <Plus size={15} /> New
         </button>
@@ -526,17 +198,13 @@ function ThreadList({
       <div className="chat-thread-list">
         {threads.map((thread) => (
           <button
-            className={
-              thread.id === activeThreadId ? "chat-thread chat-thread--active" : "chat-thread"
-            }
+            className={thread.id === activeId ? "chat-thread chat-thread--active" : "chat-thread"}
             key={thread.id}
             type="button"
             onClick={() => onSelect(thread.id)}
           >
-            <span
-              className={`chat-thread-status chat-thread-status--${thread.status.toLowerCase()}`}
-            >
-              {thread.status === "Open" ? (
+            <span className={`chat-thread-status chat-thread-status--${thread.status}`}>
+              {thread.status === "open" ? (
                 <Circle size={8} fill="currentColor" />
               ) : (
                 <Check size={11} />
@@ -544,50 +212,44 @@ function ThreadList({
             </span>
             <span>
               <strong>{thread.title}</strong>
-              <small>
-                {thread.category} · {thread.updatedAt}
-              </small>
+              <small>{formatUpdatedAt(thread.updatedAt)}</small>
             </span>
           </button>
         ))}
       </div>
-      <button className="chat-reset" type="button" onClick={onReset}>
-        <RotateCcw size={14} /> Reset demo conversations
-      </button>
     </div>
   );
 }
 
-function Conversation({
-  thread,
+function ConversationView({
+  conversation,
+  messages,
+  approval,
   reply,
-  onReplyChange,
-  onSend,
-  onBack,
-  onClear,
-  onToggleStatus,
-  onConfirmApproval,
-  onDeclineApproval,
+  error,
   isSending,
+  decisionState,
+  onReplyChange,
+  onSubmit,
+  onBack,
+  onDecision,
 }: {
-  thread: SupportThread;
+  conversation: SupportConversation | null;
+  messages: Array<{ id: string; sender: "customer" | "business"; body: string }>;
+  approval: ApprovalRequest | null;
   reply: string;
-  onReplyChange: (value: string) => void;
-  onSend: (event: FormEvent<HTMLFormElement>) => void;
-  onBack: () => void;
-  onClear: () => void;
-  onToggleStatus: () => void;
-  onConfirmApproval: () => void;
-  onDeclineApproval: () => void;
+  error: string;
   isSending: boolean;
+  decisionState: DecisionState;
+  onReplyChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onBack: () => void;
+  onDecision: (decision: "approve" | "decline") => void;
 }) {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const lastMessage = thread.messages[thread.messages.length - 1];
-  const isWaitingForAssistant = isSending && lastMessage?.sender !== "business";
-
+  const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: "end" });
-  }, [isSending, thread.messages]);
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [messages, isSending]);
 
   return (
     <div className="chat-view chat-conversation-view">
@@ -596,43 +258,22 @@ function Conversation({
           <ArrowLeft size={17} />
         </button>
         <div>
-          <h3>{thread.title}</h3>
+          <h3>{conversation?.title ?? "Business support"}</h3>
         </div>
-        <button
-          type="button"
-          onClick={onToggleStatus}
-          aria-label={thread.status === "Open" ? "Close request" : "Reopen request"}
-        >
-          <Archive size={16} />
-        </button>
-        <button type="button" onClick={onClear} aria-label="Clear messages">
-          <Trash2 size={16} />
-        </button>
       </div>
       <div className="chat-messages">
-        <div className={`chat-status chat-status--${thread.status.toLowerCase()}`}>
-          {thread.status}
-        </div>
-        {thread.messages.length > 0 ? (
-          thread.messages.map((message) => (
-            <div className={`chat-message chat-message--${message.sender}`} key={message.id}>
-              {message.sender === "business" ? <span>O&P</span> : null}
-              <div>
-                <div className="chat-message-body">
-                  <ReactMarkdown>{message.body}</ReactMarkdown>
-                </div>
-                <small>{message.time}</small>
+        <div className="chat-status chat-status--open">Open</div>
+        {messages.map((message) => (
+          <div className={`chat-message chat-message--${message.sender}`} key={message.id}>
+            {message.sender === "business" ? <span>O&amp;P</span> : null}
+            <div>
+              <div className="chat-message-body">
+                <ReactMarkdown>{message.body}</ReactMarkdown>
               </div>
             </div>
-          ))
-        ) : (
-          <div className="chat-empty">
-            <Trash2 size={20} />
-            <strong>Messages cleared</strong>
-            <span>Send a message to begin again.</span>
           </div>
-        )}
-        {isWaitingForAssistant ? (
+        ))}
+        {isSending && !messages.some((message) => message.id === "streaming-assistant") ? (
           <div
             className="chat-message chat-message--business chat-message--typing"
             aria-label="Oak and Pine is typing"
@@ -647,28 +288,37 @@ function Conversation({
             </div>
           </div>
         ) : null}
-        <div ref={messagesEndRef} aria-hidden="true" />
+        <div ref={endRef} />
       </div>
-      {thread.pendingApproval ? (
+      {approval ? (
         <ApprovalCard
-          approval={thread.pendingApproval}
-          onConfirm={onConfirmApproval}
-          onDecline={onDeclineApproval}
+          approval={approval}
+          decisionState={decisionState}
+          error={error}
+          onDecision={onDecision}
         />
+      ) : error ? (
+        <p className="chat-approval-error" role="alert">
+          {error}
+        </p>
       ) : null}
-      <form className="chat-reply" onSubmit={onSend}>
+      <form className="chat-reply" onSubmit={onSubmit}>
         <label className="sr-only" htmlFor="chat-reply-input">
           Write a message
         </label>
         <textarea
           id="chat-reply-input"
           rows={2}
-          placeholder={thread.status === "Closed" ? "Reply to reopen…" : "Write a message…"}
+          placeholder={approval ? "Decline and suggest a correction…" : "Write a message…"}
           value={reply}
           onChange={(event) => onReplyChange(event.target.value)}
-          disabled={isSending}
+          disabled={isSending || decisionState !== "idle"}
         />
-        <button type="submit" disabled={!reply.trim() || isSending} aria-label="Send message">
+        <button
+          type="submit"
+          disabled={!reply.trim() || isSending || decisionState !== "idle"}
+          aria-label="Send message"
+        >
           <Send size={17} />
         </button>
       </form>
@@ -678,68 +328,66 @@ function Conversation({
 
 function ApprovalCard({
   approval,
-  onConfirm,
-  onDecline,
+  decisionState,
+  error,
+  onDecision,
 }: {
-  approval: PendingApproval;
-  onConfirm: () => void;
-  onDecline: () => void;
+  approval: ApprovalRequest;
+  decisionState: DecisionState;
+  error: string;
+  onDecision: (decision: "approve" | "decline") => void;
 }) {
-  const isConfirming = approval.status === "confirming";
-  const isDeclining = approval.status === "declining";
-  const isBusy = isConfirming || isDeclining;
-  const headingId = "booking-approval-heading";
-  const currentStart = formatBookingTime(approval.currentStartTime);
-  const proposedStart = formatBookingTime(approval.proposedStartTime);
-
+  const busy = decisionState !== "idle";
   return (
-    <section className="chat-approval" aria-labelledby={headingId} aria-busy={isBusy}>
+    <section className="chat-approval" aria-labelledby="booking-approval-heading" aria-busy={busy}>
       <span className="sr-only" aria-live="polite">
         A booking change is waiting for your confirmation.
       </span>
       <div className="chat-approval-heading">
-        <span aria-hidden="true">
+        <span>
           <CalendarClock size={16} />
         </span>
         <div>
-          <strong id={headingId}>Confirm booking change?</strong>
+          <strong id="booking-approval-heading">Confirm booking change?</strong>
           <small>
             {approval.service}
             {approval.staff ? ` with ${approval.staff}` : ""}
           </small>
         </div>
       </div>
-      <div
-        className="chat-approval-change"
-        aria-label={`Change ${currentStart} to ${proposedStart}`}
-      >
-        <span>{currentStart}</span>
-        <span aria-hidden="true">→</span>
-        <strong>{proposedStart}</strong>
+      <div className="chat-approval-change">
+        <span>{formatBookingTime(approval.currentStartTime)}</span>
+        <span>→</span>
+        <strong>{formatBookingTime(approval.proposedStartTime)}</strong>
       </div>
-      {approval.error ? (
+      {approval.status === "stale" ? (
+        <p className="chat-approval-error">
+          This request is stale. Decline it and ask for a new time.
+        </p>
+      ) : null}
+      {error ? (
         <p className="chat-approval-error" role="alert">
-          {approval.error}
+          {error}
         </p>
       ) : null}
       <div className="chat-approval-actions">
         <button
           type="button"
           className="chat-approval-decline"
-          onClick={onDecline}
-          disabled={isBusy}
+          onClick={() => onDecision("decline")}
+          disabled={busy}
           aria-label={`Decline change for ${approval.service}`}
         >
-          {isDeclining ? "Declining…" : "Decline"}
+          {decisionState === "declining" ? "Declining…" : "Decline"}
         </button>
         <button
           type="button"
           className="chat-approval-confirm"
-          onClick={onConfirm}
-          disabled={isBusy}
+          onClick={() => onDecision("approve")}
+          disabled={busy || !approval.canApprove}
           aria-label={`Confirm change for ${approval.service}`}
         >
-          {isConfirming ? "Confirming…" : "Confirm"}
+          {decisionState === "confirming" ? "Confirming…" : "Confirm"}
         </button>
       </div>
     </section>
@@ -772,40 +420,26 @@ function NewRequestForm({
           </div>
         </div>
         <label>
-          <span>Topic</span>
-          <select name="category" defaultValue="Booking change">
-            <option>Booking change</option>
-            <option>New service</option>
-            <option>Repair request</option>
-            <option>Billing question</option>
-            <option>General question</option>
-          </select>
-        </label>
-        <label>
-          <span>Request title</span>
-          <input
-            name="title"
-            required
-            defaultValue="Reschedule my booking"
-            placeholder="A short summary"
-          />
-        </label>
-        <label>
           <span>Message</span>
           <textarea
             name="message"
             required
-            rows={4}
+            rows={5}
             defaultValue="I need to reschedule my next appointment."
             placeholder="Share the details…"
           />
         </label>
         <p>
-          <Clock3 size={14} /> Typical reply time is under 10 minutes.
+          <Clock3 size={14} /> We usually reply in a few moments.
         </p>
-        <button type="submit">
-          Create request <Send size={14} />
-        </button>
+        <div className="chat-request-actions">
+          <button type="button" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit">
+            Start conversation <Send size={14} />
+          </button>
+        </div>
       </form>
     </div>
   );

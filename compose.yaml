@@ -26,11 +26,12 @@ services:
       PORT: 4111
       API_URL: http://host.docker.internal:3333
       MASTRA_DATABASE_URL: postgresql://mastra:mastra@mastra-db:5432/mastra
+      MASTRA_INTERNAL_TOKEN: ${MASTRA_INTERNAL_TOKEN:-development-internal-token}
     depends_on:
       mastra-db:
         condition: service_healthy
     ports:
-      - "${AGENT_PORT:-4111}:4111"
+      - "127.0.0.1:${AGENT_PORT:-4111}:4111"
     volumes:
       - ./apps/agent/src:/workspace/apps/agent/src
       - ./apps/agent/.data:/workspace/apps/agent/.data

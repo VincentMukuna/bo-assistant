@@ -1,45 +1,80 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
+import {
+  bootstrapCustomerSession,
+  decideApproval,
+  readBusinessSupportStream,
+  sendCustomerReply,
+} from "../lib/business-support-agent.ts";
 
-const component = readFileSync(
-  new URL("../components/support-studio.tsx", import.meta.url),
-  "utf8"
-);
-const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-const nextConfig = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
-const agentClient = readFileSync(
-  new URL("../lib/business-support-agent.ts", import.meta.url),
-  "utf8"
-);
-const supportState = readFileSync(new URL("../lib/support-state.ts", import.meta.url), "utf8");
+test("bootstraps identity without sending a customer selector", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    assert.equal(String(input), "/api/v1/demo/session");
+    assert.equal(init.method, "POST");
+    assert.equal(init.body, "{}");
+    return Response.json({ customer: { name: "Alice Morgan" } });
+  };
+  try {
+    assert.deepEqual(await bootstrapCustomerSession(), { customer: { name: "Alice Morgan" } });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
-test("routes every typed reply through decline while approval is pending", () => {
-  assert.match(
-    component,
-    /if \(activeThread\.pendingApproval\)[\s\S]*?decideApproval\(activeThread\.id, activeThread\.pendingApproval, "decline", body\)/
+test("routes every composer reply through decline while an approval is pending", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (input, init) => {
+    requests.push({ path: String(input), body: JSON.parse(String(init.body)) });
+    return new Response("data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
+  };
+  try {
+    await sendCustomerReply("conversation-1", "yes", true);
+    await sendCustomerReply("conversation-1", "Tuesday at 3 instead", true);
+    await sendCustomerReply("conversation-1", "Hello", false);
+    assert.deepEqual(requests, [
+      {
+        path: "/api/v1/support/conversations/conversation-1/approval-decisions",
+        body: { decision: "decline", reason: "yes" },
+      },
+      {
+        path: "/api/v1/support/conversations/conversation-1/approval-decisions",
+        body: { decision: "decline", reason: "Tuesday at 3 instead" },
+      },
+      {
+        path: "/api/v1/support/conversations/conversation-1/messages",
+        body: { message: "Hello" },
+      },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("approval decisions expose no run or tool-call locator", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_input, init) => {
+    assert.deepEqual(JSON.parse(String(init.body)), { decision: "approve" });
+    return new Response("data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
+  };
+  try {
+    await decideApproval("conversation-1", "approve");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("consumes native Mastra text streams", async () => {
+  const response = new Response(
+    [
+      `data: ${JSON.stringify({ type: "text-delta", payload: { text: "Hello" } })}\n\n`,
+      `data: ${JSON.stringify({ type: "text-delta", payload: { text: " there" } })}\n\n`,
+      "data: [DONE]\n\n",
+    ].join(""),
+    { headers: { "content-type": "text/event-stream" } }
   );
-  assert.doesNotMatch(component, /body\s*===?\s*["']yes["'][\s\S]*?"confirm"/i);
-});
-
-test("consumes Mastra approval chunks directly through the Adonis rewrite", () => {
-  assert.match(agentClient, /parseJsonEventStream/);
-  assert.match(agentClient, /chunk\.type !== "tool-call-approval"/);
-  assert.match(agentClient, /payload\.toolName === "rescheduleBooking"/);
-  assert.match(agentClient, /post\("\/api\/v1\/demo\/chats"/);
-  assert.match(agentClient, /"\/api\/v1\/demo\/approvals"/);
-  assert.doesNotMatch(agentClient, /x-demo-chat-protocol/);
-  assert.match(nextConfig, /source: "\/api\/:path\*"/);
-});
-
-test("persists native approval identity and renders accessible actions", () => {
-  assert.match(supportState, /SUPPORT_STATE_VERSION\s*=\s*3/);
-  assert.match(supportState, /pendingApproval\?: PendingApproval/);
-  assert.match(agentClient, /runId: string/);
-  assert.match(agentClient, /toolCallId: string/);
-  assert.match(component, /aria-label={`Confirm change for \$\{approval\.service\}`}/);
-  assert.match(component, /aria-label={`Decline change for \$\{approval\.service\}`}/);
-  assert.match(component, /aria-live="polite"/);
-  assert.match(styles, /\.chat-approval\s*{/);
-  assert.match(styles, /\.chat-approval-actions button:focus-visible/);
+  let text = "";
+  await readBusinessSupportStream(response, (delta) => (text += delta));
+  assert.equal(text, "Hello there");
 });

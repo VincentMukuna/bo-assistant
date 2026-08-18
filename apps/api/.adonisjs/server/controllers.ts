@@ -4,11 +4,15 @@
  */
 
 export const controllers = {
-  AgentBookings: () => import('#controllers/agent_bookings_controller'),
+  AgentBookingReschedules: () => import('#controllers/agent_booking_reschedules_controller'),
+  AgentBookingSearches: () => import('#controllers/agent_booking_searches_controller'),
+  ApprovalDecisions: () => import('#controllers/approval_decisions_controller'),
+  ApprovalRequests: () => import('#controllers/approval_requests_controller'),
   Bookings: () => import('#controllers/bookings_controller'),
+  ConversationMessages: () => import('#controllers/conversation_messages_controller'),
   Customers: () => import('#controllers/customers_controller'),
-  DemoApprovals: () => import('#controllers/demo_approvals_controller'),
-  DemoChats: () => import('#controllers/demo_chats_controller'),
+  DemoSessions: () => import('#controllers/demo_sessions_controller'),
   Profile: () => import('#controllers/profile_controller'),
   Sessions: () => import('#controllers/sessions_controller'),
+  SupportConversations: () => import('#controllers/support_conversations_controller'),
 }

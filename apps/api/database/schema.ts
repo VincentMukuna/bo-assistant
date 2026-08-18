@@ -53,6 +53,23 @@ export class CustomerSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class SupportConversationSchema extends BaseModel {
+  static $columns = ['createdAt', 'customerId', 'id', 'status', 'title', 'updatedAt'] as const
+  $columns = SupportConversationSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare customerId: number
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare status: string
+  @column()
+  declare title: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
 export class UserSchema extends BaseModel {
   static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'updatedAt'] as const
   $columns = UserSchema.$columns
