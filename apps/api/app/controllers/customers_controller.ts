@@ -13,9 +13,14 @@ export default class CustomersController {
     return serialize(CustomerTransformer.transform(customers));
   }
 
-  async store({ request, response, serialize }: HttpContext) {
+  async store({ request, response, serialize, logger }: HttpContext) {
     const payload = await request.validateUsing(createCustomerValidator);
-    const customer = await createCustomer(payload);
+    const created = await createCustomer(payload);
+    if (created.status === "error") {
+      logger.error({ err: created.error }, "Unable to create customer");
+      return response.serviceUnavailable({ error: "The customer could not be created right now." });
+    }
+    const customer = created.value;
     response.status(201);
     return serialize(CustomerTransformer.transform(customer));
   }
@@ -28,16 +33,24 @@ export default class CustomersController {
     return serialize(CustomerDetailsTransformer.transform(customer));
   }
 
-  async update({ params, request, serialize }: HttpContext) {
+  async update({ params, request, response, serialize, logger }: HttpContext) {
     const customer = await Customer.findOrFail(params.id);
     const payload = await request.validateUsing(updateCustomerValidator);
-    const updatedCustomer = await updateCustomer(customer, payload);
-    return serialize(CustomerTransformer.transform(updatedCustomer));
+    const updated = await updateCustomer(customer, payload);
+    if (updated.status === "error") {
+      logger.error({ err: updated.error, customerId: customer.id }, "Unable to update customer");
+      return response.serviceUnavailable({ error: "The customer could not be updated right now." });
+    }
+    return serialize(CustomerTransformer.transform(updated.value));
   }
 
-  async destroy({ params, response }: HttpContext) {
+  async destroy({ params, response, logger }: HttpContext) {
     const customer = await Customer.findOrFail(params.id);
-    await deleteCustomer(customer);
+    const deleted = await deleteCustomer(customer);
+    if (deleted.status === "error") {
+      logger.error({ err: deleted.error, customerId: customer.id }, "Unable to delete customer");
+      return response.serviceUnavailable({ error: "The customer could not be deleted right now." });
+    }
     return response.noContent();
   }
 }
