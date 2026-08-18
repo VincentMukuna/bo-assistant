@@ -1,6 +1,6 @@
 import { environmentManager, QueryClient } from "@tanstack/react-query";
 
-import { ApiError } from "@/lib/api";
+import { isApiError, isRetryableApiError } from "@/lib/api";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -8,7 +8,7 @@ function makeQueryClient() {
       queries: {
         staleTime: 30_000,
         retry: (failureCount, error) =>
-          !(error instanceof ApiError && error.status < 500) && failureCount < 2,
+          failureCount < 2 && (!isApiError(error) || isRetryableApiError(error)),
       },
     },
   });

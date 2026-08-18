@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { panic } from "better-result";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -199,7 +200,7 @@ function ConversationList({
                     </span>
                     {conversation.preview ? (
                       <span
-                        className="mt-0.5 block overflow-hidden text-[11px] leading-4 text-zinc-500 text-ellipsis whitespace-nowrap"
+                        className="mt-0.5 block overflow-hidden text-[11px] leading-4 text-ellipsis whitespace-nowrap text-zinc-500"
                         title={conversation.preview}
                       >
                         {conversation.preview}
@@ -366,7 +367,7 @@ function ConversationPanel({
   });
   const decisionMutation = useMutation({
     mutationFn: (decision: "approve" | "decline") => {
-      if (!conversation?.attention) throw new Error("No attention item to decide.");
+      if (!conversation?.attention) return panic("No attention item to decide.");
       return api.inbox.decideAttention(id, conversation.attention.id, decision);
     },
     onSuccess: refresh,
