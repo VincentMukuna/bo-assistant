@@ -5,6 +5,7 @@ Turborepo monorepo containing:
 - `apps/app` — Next.js CRM frontend
 - `apps/api` — API server
 - `apps/agent` — Independent Mastra business-support agent service
+- `apps/demo` — Customer-facing service business demo site
 
 Customers and bookings are persisted with Lucid; Inbox and Agent Activity remain demo-backed for the next agentic phase.
 
@@ -28,7 +29,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with:
 - Email: `owner@oakandpine.test`
 - Password: `password123`
 
-`npm run dev` starts the frontend on port 3000, the API server on port 3333, and Mastra Studio on port 4111. All three reload as you edit their source. Set `ADONIS_URL` when the backend is hosted elsewhere.
+`npm run dev` starts the CRM frontend on port 3000, the customer demo on port 3100, the API server on port 3333, and Mastra Studio on port 4111. All four reload as you edit their source. Set `ADONIS_URL` when the backend is hosted elsewhere.
 
 ## Agent development
 
@@ -40,7 +41,7 @@ npm run dev
 
 Open [http://localhost:4111](http://localhost:4111) for Mastra Studio. Changes to agent instructions, scorers, and other Mastra code reload automatically.
 
-The health check is available at [http://localhost:4111/health](http://localhost:4111/health), and the agent accepts requests at `POST /api/agents/business-support-agent/generate`. Press `Ctrl+C` to stop all three development services.
+The health check is available at [http://localhost:4111/health](http://localhost:4111/health), and the agent accepts requests at `POST /api/agents/business-support-agent/generate`. Press `Ctrl+C` to stop all four development services.
 
 See the [agent quickstart](apps/agent/RUNBOOK.md) for background start, logs, status, and stop commands.
 
