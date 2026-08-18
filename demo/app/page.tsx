@@ -56,7 +56,7 @@ export default function Home() {
           <span className="brand-mark" aria-hidden="true">
             <Leaf size={20} strokeWidth={2.2} />
           </span>
-          <span>Oak <i>&</i> Pine</span>
+          <span>Oak <span className="brand-amp">&</span> Pine</span>
         </a>
 
         <nav className="desktop-nav" aria-label="Main navigation">
@@ -79,7 +79,7 @@ export default function Home() {
           <h1>
             Home care,
             <br />
-            <em>beautifully handled.</em>
+            <span className="heading-accent">beautifully handled.</span>
           </h1>
           <p className="hero-lede">
             Cleaning, repairs, and everyday upkeep from one thoughtful team—so your home gets the care it
@@ -142,7 +142,7 @@ export default function Home() {
             <span>
               <small>Next visit</small>
               <strong>Tuesday, 2:30 PM</strong>
-              <em><Check size={11} /> Confirmed</em>
+              <span className="appointment-status"><Check size={11} /> Confirmed</span>
             </span>
           </div>
           <span className="visual-caption">Care you can feel at home</span>
@@ -159,7 +159,7 @@ export default function Home() {
       <section className="section services-section" id="services">
         <div className="section-heading">
           <div>
-            <h2>One trusted team.<br /><em>Everyday peace of mind.</em></h2>
+            <h2>One trusted team.<br /><span className="heading-accent">Everyday peace of mind.</span></h2>
           </div>
           <p>
             From weekly upkeep to the unexpected fix, we make looking after your home feel refreshingly
@@ -189,7 +189,7 @@ export default function Home() {
 
       <section className="process-section" id="how-it-works">
         <div className="process-intro">
-          <h2>A better way to<br /><em>care for home.</em></h2>
+          <h2>A better way to<br /><span className="heading-accent">care for home.</span></h2>
           <p>Clear communication, respectful professionals, and no surprises. That is the whole idea.</p>
           <div className="process-stat">
             <strong>4.9</strong>
@@ -224,7 +224,7 @@ export default function Home() {
       <section className="support-section" id="support">
         <div className="support-section__heading">
           <div>
-            <h2>Help is already<br /><em>on the way.</em></h2>
+            <h2>Help is already<br /><span className="heading-accent">on the way.</span></h2>
           </div>
           <div className="support-copy">
             <p>
@@ -240,7 +240,7 @@ export default function Home() {
         <div className="footer-brand">
           <a className="brand brand--light" href="#top">
             <span className="brand-mark brand-mark--light"><Leaf size={20} /></span>
-            <span>Oak <i>&</i> Pine</span>
+            <span>Oak <span className="brand-amp">&</span> Pine</span>
           </a>
           <p>Thoughtful care for San Francisco homes.</p>
         </div>

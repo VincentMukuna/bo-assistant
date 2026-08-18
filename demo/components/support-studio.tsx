@@ -213,7 +213,7 @@ export function SupportStudio() {
             <span className="chat-brand-mark"><MessageCircle size={18} /></span>
             <div>
               <strong id="support-chat-title">Oak & Pine</strong>
-              <span><i /> Support is online</span>
+              <span><span className="chat-online-dot" aria-hidden="true" /> Support is online</span>
             </div>
             <div className="chat-header-actions">
               <button type="button" onClick={() => setView("threads")} aria-label="View conversations">
@@ -263,13 +263,14 @@ export function SupportStudio() {
           className="chat-launcher"
           id="support-chat"
           type="button"
+          aria-label="Open customer support chat"
           aria-expanded="false"
           aria-controls="support-chat-window"
           onClick={() => openChat()}
         >
           <span className="chat-launcher-icon"><MessageCircle size={21} /></span>
           <span><strong>Need a hand?</strong><small>Chat with us</small></span>
-          <i aria-hidden="true" />
+          <span className="chat-online-dot" aria-hidden="true" />
         </button>
       )}
     </>
