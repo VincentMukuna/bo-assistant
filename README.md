@@ -3,7 +3,7 @@
 Turborepo monorepo containing:
 
 - `apps/app` — Next.js CRM frontend
-- `apps/api` — AdonisJS API with Lucid and session authentication
+- `apps/api` — API server
 - `apps/agent` — Independent Mastra business-support agent service
 
 Customers and bookings are persisted with Lucid; Inbox and Agent Activity remain demo-backed for the next agentic phase.
@@ -28,7 +28,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with:
 - Email: `owner@oakandpine.test`
 - Password: `password123`
 
-`npm run dev` starts Next.js on port 3000 and Adonis on port 3333. Set `ADONIS_URL` when the backend is hosted elsewhere.
+`npm run dev` starts the frontend on port 3000 and the API server on port 3333. Set `ADONIS_URL` when the backend is hosted elsewhere.
 
 ## Agent development
 
