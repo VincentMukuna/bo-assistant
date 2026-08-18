@@ -1,4 +1,5 @@
 import { conversationPreview } from "#actions/send-conversation-message";
+import { reportBusinessSupportAgentError } from "#contracts/business_support_agent_failure";
 import InboxAnnotation from "#models/inbox_annotation";
 import SupportConversation from "#models/support_conversation";
 import { businessSupportAgent } from "#services/business_support_agent";
@@ -19,28 +20,32 @@ export default class OwnerConversationMessagesController {
       return response.conflict({ error: "Take over this conversation before replying." });
     }
 
-    try {
-      await businessSupportAgent.appendOwnerMessage(
-        conversation.customer,
-        conversation.id,
-        message
+    const appended = await businessSupportAgent.appendOwnerMessage(
+      conversation.customer,
+      conversation.id,
+      message
+    );
+    if (appended.status === "error") {
+      reportBusinessSupportAgentError(
+        appended.error,
+        logger,
+        { conversationId: conversation.id },
+        "Unable to save owner reply in Mastra"
       );
-      conversation.lastMessagePreview = conversationPreview(message);
-      conversation.nextStepOwner = "customer";
-      conversation.updatedAt = DateTime.now();
-      await conversation.save();
-      await InboxAnnotation.create({
-        id: crypto.randomUUID(),
-        conversationId: conversation.id,
-        kind: "milestone",
-        summary: "Owner replied to the customer",
-        detail: "The agent remains paused while the owner has control.",
-      });
-      inboxEventStream.publish(conversation.id);
-      return response.created({ message: "Reply sent." });
-    } catch (error) {
-      logger.error({ err: error, conversationId: conversation.id }, "Unable to save owner reply");
       return response.badGateway({ error: "The reply could not be sent right now." });
     }
+    conversation.lastMessagePreview = conversationPreview(message);
+    conversation.nextStepOwner = "customer";
+    conversation.updatedAt = DateTime.now();
+    await conversation.save();
+    await InboxAnnotation.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      kind: "milestone",
+      summary: "Owner replied to the customer",
+      detail: "The agent remains paused while the owner has control.",
+    });
+    inboxEventStream.publish(conversation.id);
+    return response.created({ message: "Reply sent." });
   }
 }

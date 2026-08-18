@@ -1,10 +1,16 @@
 import InboxAnnotation from "#models/inbox_annotation";
 import InboxAttentionItem from "#models/inbox_attention_item";
-import { businessSupportAgent } from "#services/business_support_agent";
+import { reportBusinessSupportAgentError } from "#contracts/business_support_agent_failure";
+import {
+  AgentUnavailable,
+  businessSupportAgent,
+  type BusinessSupportAgentError,
+} from "#services/business_support_agent";
 import { inboxEventStream } from "#services/inbox_event_stream";
 import { createAttentionDecisionValidator } from "#validators/inbox";
 import type { HttpContext } from "@adonisjs/core/http";
 import { DateTime } from "luxon";
+import { Result } from "better-result";
 
 async function drain(body: ReadableStream<Uint8Array>) {
   const reader = body.getReader();
@@ -33,7 +39,17 @@ export default class AttentionDecisionsController {
     }
 
     const conversation = item.conversation;
-    const context = item.context;
+    const contextResult = item.readBookingRescheduleContext();
+    if (contextResult.status === "error") {
+      logger.error(
+        { err: contextResult.error, attentionId: item.id },
+        "Unable to decode attention decision context"
+      );
+      return response.unprocessableEntity({
+        error: "This action contains invalid decision context and needs review.",
+      });
+    }
+    const context = contextResult.value;
     if (
       item.actionType !== "booking_reschedule" ||
       typeof context.runId !== "string" ||
@@ -68,20 +84,30 @@ export default class AttentionDecisionsController {
       conversation.outcomeSummary = item.outcomeSummary;
       await conversation.save();
     } else {
-      try {
-        const stream = await businessSupportAgent.decideToolCall({
-          customer: conversation.customer,
-          decision: "decline",
-          runId: context.runId,
-          toolCallId: context.toolCallId,
-          reason: decision.reason || "The business owner declined this booking change.",
+      const stream = await businessSupportAgent.decideToolCall({
+        customer: conversation.customer,
+        decision: "decline",
+        runId: context.runId,
+        toolCallId: context.toolCallId,
+        reason: decision.reason || "The business owner declined this booking change.",
+      });
+      let failure: BusinessSupportAgentError | undefined;
+      if (stream.status === "error") {
+        failure = stream.error;
+      } else {
+        const drained = await Result.tryPromise({
+          try: () => drain(stream.value.body),
+          catch: (cause) =>
+            new AgentUnavailable({
+              operation: "drain-declined-decision-stream",
+              cause,
+              message: "The declined decision stream ended before Mastra persisted the follow-up.",
+            }),
         });
-        await drain(stream.body);
-        conversation.nextStepOwner = "none";
-        conversation.outcomeStatus = "completed";
-        conversation.outcomeSummary = item.outcomeSummary;
-        await conversation.save();
-      } catch (error) {
+        if (drained.status === "error") failure = drained.error;
+      }
+
+      if (failure) {
         item.status = "failed";
         item.outcomeSummary = "The decision was recorded, but the customer follow-up failed.";
         await item.save();
@@ -89,10 +115,20 @@ export default class AttentionDecisionsController {
         conversation.outcomeStatus = "failed";
         conversation.outcomeSummary = item.outcomeSummary;
         await conversation.save();
-        logger.error({ err: error, attentionId: item.id }, "Unable to complete declined action");
+        reportBusinessSupportAgentError(
+          failure,
+          logger,
+          { attentionId: item.id },
+          "Unable to complete declined action"
+        );
         inboxEventStream.publish(conversation.id);
         return response.badGateway({ error: item.outcomeSummary });
       }
+
+      conversation.nextStepOwner = "none";
+      conversation.outcomeStatus = "completed";
+      conversation.outcomeSummary = item.outcomeSummary;
+      await conversation.save();
     }
 
     inboxEventStream.publish(conversation.id);
