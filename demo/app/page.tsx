@@ -76,9 +76,6 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <div className="eyebrow">
-            <span className="eyebrow-dot" /> Serving San Francisco homes
-          </div>
           <h1>
             Home care,
             <br />
@@ -162,7 +159,6 @@ export default function Home() {
       <section className="section services-section" id="services">
         <div className="section-heading">
           <div>
-            <span className="kicker">What we do</span>
             <h2>One trusted team.<br /><em>Everyday peace of mind.</em></h2>
           </div>
           <p>
@@ -193,7 +189,6 @@ export default function Home() {
 
       <section className="process-section" id="how-it-works">
         <div className="process-intro">
-          <span className="kicker kicker--light">How it works</span>
           <h2>A better way to<br /><em>care for home.</em></h2>
           <p>Clear communication, respectful professionals, and no surprises. That is the whole idea.</p>
           <div className="process-stat">
@@ -229,15 +224,16 @@ export default function Home() {
       <section className="support-section" id="support">
         <div className="support-section__heading">
           <div>
-            <span className="kicker">Customer support</span>
             <h2>Help is already<br /><em>on the way.</em></h2>
           </div>
-          <p>
-            This customer area is a local demo environment. Create, continue, close, and clear support
-            conversations as Alice Morgan—no API or live team is connected yet.
-          </p>
+          <div className="support-copy">
+            <p>
+              This customer area is a local demo environment. Create, continue, close, and clear support
+              conversations as Alice Morgan—no API or live team is connected yet.
+            </p>
+            <SupportStudio />
+          </div>
         </div>
-        <SupportStudio />
       </section>
 
       <footer className="site-footer">
