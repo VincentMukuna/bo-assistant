@@ -10,7 +10,7 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=app --filter=api",
     "dev:app": "turbo dev --filter=app",
     "dev:api": "turbo dev --filter=api",
     "build": "turbo build",
@@ -20,6 +20,11 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:api": "turbo test --filter=api",
+    "agent:dev": "docker compose up --build agent",
+    "agent:start": "docker compose up -d --build agent",
+    "agent:logs": "docker compose logs --follow --tail=100 agent",
+    "agent:status": "docker compose ps agent",
+    "agent:stop": "docker compose down",
     "db:migrate": "npm run db:migrate --workspace=api",
     "db:seed": "npm run db:seed --workspace=api",
     "db:fresh": "npm run db:fresh --workspace=api"

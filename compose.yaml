@@ -1,0 +1,26 @@
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: apps/agent/Dockerfile
+    env_file:
+      - apps/agent/.env
+    environment:
+      NODE_ENV: development
+      PORT: 4111
+    ports:
+      - "${AGENT_PORT:-4111}:4111"
+    volumes:
+      - ./apps/agent/src:/workspace/apps/agent/src
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4111/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
