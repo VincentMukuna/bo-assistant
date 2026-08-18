@@ -19,6 +19,12 @@ test("requires explicit approval only for the reschedule mutation", () => {
   assert.equal(rescheduleBooking.requireApproval, true);
 });
 
+test("documents the API's 90-day booking search boundary for the model", () => {
+  assert.match(findBookingsForCustomer.description, /no more than 90 days/i);
+  const toDescription = findBookingsForCustomer.inputSchema.shape.to.description;
+  assert.match(toDescription, /no more than 90 days/i);
+});
+
 test("accepts only authoritative reschedule identifiers and timestamps", () => {
   const parsed = rescheduleBooking.inputSchema.parse({
     booking_id: 6,

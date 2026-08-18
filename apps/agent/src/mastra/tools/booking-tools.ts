@@ -68,10 +68,12 @@ function presentBooking(booking: Booking, currentDate: string, timezone: string)
 export const findBookingsForCustomer = createTool({
   id: "find_bookings_for_customer",
   description:
-    "Find the authenticated customer's appointments in an ISO timestamp range. Each result includes start_time_display, a customer-friendly date that must be used verbatim in replies. Use this before choosing a booking to reschedule.",
+    "Find the authenticated customer's appointments in an ISO timestamp range of no more than 90 days. Each result includes start_time_display, a customer-friendly date that must be used verbatim in replies. Use this before choosing a booking to reschedule.",
   inputSchema: z.object({
     from: z.string().describe("Inclusive ISO timestamp with timezone offset"),
-    to: z.string().describe("Exclusive ISO timestamp with timezone offset"),
+    to: z
+      .string()
+      .describe("Exclusive ISO timestamp with timezone offset, no more than 90 days after from"),
   }),
   outputSchema: z.object({ bookings: z.array(presentedBookingSchema) }),
   requestContextSchema: bookingContextSchema,
