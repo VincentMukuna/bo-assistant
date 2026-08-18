@@ -1,10 +1,7 @@
 import { trackConversationStream } from "#actions/send-conversation-message";
+import createBookingRescheduleGrant from "#actions/create-booking-reschedule-grant";
 import Booking from "#models/booking";
 import SupportConversation from "#models/support_conversation";
-import {
-  issueBookingReadCapability,
-  issueBookingRescheduleCapability,
-} from "#services/booking_capability";
 import { businessSupportAgent } from "#services/business_support_agent";
 import { createApprovalDecisionValidator } from "#validators/support";
 import type { HttpContext } from "@adonisjs/core/http";
@@ -25,7 +22,6 @@ export default class ApprovalDecisionsController {
         return response.conflict({ error: "There is no single pending approval to decide." });
       }
       const call = pending[0];
-      let bookingCapability = issueBookingReadCapability(customer.id);
 
       if (decision.decision === "approve") {
         const booking = await Booking.query()
@@ -46,11 +42,11 @@ export default class ApprovalDecisionsController {
           });
         }
 
-        bookingCapability = issueBookingRescheduleCapability({
+        await createBookingRescheduleGrant({
           customerId: customer.id,
           bookingId: booking.id,
-          expectedStartTime: booking.scheduledAt.toUTC().toISO()!,
-          proposedStartTime: proposed.toUTC().toISO()!,
+          expectedStartTime: booking.scheduledAt,
+          proposedStartTime: proposed,
           runId: call.runId,
           toolCallId: call.toolCallId,
         });
@@ -61,7 +57,6 @@ export default class ApprovalDecisionsController {
         decision: decision.decision,
         runId: call.runId,
         toolCallId: call.toolCallId,
-        bookingCapability,
         reason: decision.reason,
       });
       conversation.updatedAt = DateTime.now();

@@ -1,4 +1,5 @@
 import Booking from "#models/booking";
+import BookingRescheduleGrant from "#models/booking_reschedule_grant";
 import Customer from "#models/customer";
 import SupportConversation from "#models/support_conversation";
 import { readBookingCapability } from "#services/booking_capability";
@@ -387,7 +388,10 @@ test.group("Customer support agent", (group) => {
     }
   });
 
-  test("mints exact write authority only after a scoped approval", async ({ assert, client }) => {
+  test("persists exact write authority only after a scoped approval", async ({
+    assert,
+    client,
+  }) => {
     const customer = await createCustomer("alice-approval@example.com");
     const conversation = await createConversation(customer);
     const booking = await Booking.create({
@@ -425,27 +429,30 @@ test.group("Customer support agent", (group) => {
         });
       }
 
-      assert.include(String(input), "/approve-tool-call");
+      assert.include(String(input), "/resume-stream");
       const body = JSON.parse(String(init?.body)) as {
         runId: string;
         toolCallId: string;
+        resumeData: { approved: boolean };
         requestContext: { bookingCapability: string };
       };
       assert.equal(body.runId, "run-123");
       assert.equal(body.toolCallId, "tool-123");
-      const capability = readBookingCapability(`Bearer ${body.requestContext.bookingCapability}`);
-      assert.deepInclude(capability, {
-        kind: "booking-reschedule",
-        customerId: customer.id,
-        bookingId: booking.id,
-        runId: "run-123",
-        toolCallId: "tool-123",
-        scopes: ["reschedule_booking"],
-      });
-      assert.equal(
-        capability?.kind === "booking-reschedule" && capability.proposedStartTime,
-        "2026-08-25T17:00:00.000Z"
+      assert.deepEqual(body.resumeData, { approved: true });
+      const readCapability = readBookingCapability(
+        `Bearer ${body.requestContext.bookingCapability}`
       );
+      assert.deepInclude(readCapability, {
+        kind: "booking-read",
+        customerId: customer.id,
+        scopes: ["find_bookings"],
+      });
+      const grant = await BookingRescheduleGrant.findOrFail("tool-123");
+      assert.equal(grant.customerId, customer.id);
+      assert.equal(grant.bookingId, booking.id);
+      assert.equal(grant.runId, "run-123");
+      assert.equal(grant.expectedStartTime.toUTC().toISO(), "2026-08-22T17:00:00.000Z");
+      assert.equal(grant.proposedStartTime.toUTC().toISO(), "2026-08-25T17:00:00.000Z");
       return agentStream([{ type: "text-delta", payload: { text: "Done." } }]);
     };
 

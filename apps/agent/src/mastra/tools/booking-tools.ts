@@ -106,19 +106,22 @@ export const rescheduleBooking = createTool({
   }),
   outputSchema: z.object({ booking: presentedBookingSchema }),
   requestContextSchema: bookingContextSchema,
-  execute: async (input, { requestContext }) => {
+  execute: async (input, context) => {
     const { booking_id, new_start_time } = input;
+    const toolCallId = context.agent?.toolCallId;
+    if (!toolCallId) throw new Error("The booking approval reference is missing.");
+
     const result = await callBookingApi<{ booking: Booking }>(
       "/api/v1/agent/booking-reschedules",
-      { booking_id, new_start_time },
-      requestContext.all.bookingCapability
+      { booking_id, new_start_time, tool_call_id: toolCallId },
+      context.requestContext.all.bookingCapability
     );
 
     return {
       booking: presentBooking(
         result.booking,
-        requestContext.all.currentDate,
-        requestContext.all.timezone
+        context.requestContext.all.currentDate,
+        context.requestContext.all.timezone
       ),
     };
   },

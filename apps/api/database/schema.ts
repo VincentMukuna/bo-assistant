@@ -7,6 +7,29 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
+export class BookingRescheduleGrantSchema extends BaseModel {
+  static $columns = ['bookingId', 'createdAt', 'customerId', 'expectedStartTime', 'expiresAt', 'proposedStartTime', 'runId', 'toolCallId', 'updatedAt'] as const
+  $columns = BookingRescheduleGrantSchema.$columns
+  @column()
+  declare bookingId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare customerId: number
+  @column.dateTime()
+  declare expectedStartTime: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column.dateTime()
+  declare proposedStartTime: DateTime
+  @column()
+  declare runId: string
+  @column({ isPrimary: true })
+  declare toolCallId: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
 export class BookingSchema extends BaseModel {
   static $columns = ['createdAt', 'customerId', 'durationMinutes', 'id', 'scheduledAt', 'service', 'serviceAddress', 'staff', 'status', 'updatedAt'] as const
   $columns = BookingSchema.$columns

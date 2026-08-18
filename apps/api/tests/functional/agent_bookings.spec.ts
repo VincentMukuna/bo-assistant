@@ -1,7 +1,5 @@
-import {
-  issueBookingReadCapability,
-  issueBookingRescheduleCapability,
-} from "#services/booking_capability";
+import createBookingRescheduleGrant from "#actions/create-booking-reschedule-grant";
+import { issueBookingReadCapability } from "#services/booking_capability";
 import Booking from "#models/booking";
 import Customer from "#models/customer";
 import testUtils from "@adonisjs/core/services/test_utils";
@@ -59,7 +57,7 @@ test.group("Agent booking resources", (group) => {
     );
   });
 
-  test("executes only the exact approved reschedule and rejects replay after state changes", async ({
+  test("executes only the exact approved reschedule and makes exact retries idempotent", async ({
     client,
     db,
   }) => {
@@ -79,33 +77,46 @@ test.group("Agent booking resources", (group) => {
       status: "confirmed",
       serviceAddress: customer.address,
     });
-    const capability = issueBookingRescheduleCapability({
+    await createBookingRescheduleGrant({
       customerId: customer.id,
       bookingId: booking.id,
-      expectedStartTime: "2026-09-01T17:00:00Z",
-      proposedStartTime: "2026-09-08T17:00:00Z",
+      expectedStartTime: DateTime.fromISO("2026-09-01T17:00:00Z"),
+      proposedStartTime: DateTime.fromISO("2026-09-08T17:00:00Z"),
       runId: "run-1",
       toolCallId: "tool-1",
     });
+    const capability = issueBookingReadCapability(customer.id);
 
     const altered = await client
       .post("/api/v1/agent/booking-reschedules")
       .header("authorization", `Bearer ${capability}`)
-      .json({ booking_id: booking.id, new_start_time: "2026-09-09T10:00:00-07:00" });
+      .json({
+        booking_id: booking.id,
+        tool_call_id: "tool-1",
+        new_start_time: "2026-09-09T10:00:00-07:00",
+      });
     altered.assertStatus(401);
 
     const accepted = await client
       .post("/api/v1/agent/booking-reschedules")
       .header("authorization", `Bearer ${capability}`)
-      .json({ booking_id: booking.id, new_start_time: "2026-09-08T10:00:00-07:00" });
+      .json({
+        booking_id: booking.id,
+        tool_call_id: "tool-1",
+        new_start_time: "2026-09-08T10:00:00-07:00",
+      });
     accepted.assertStatus(200);
     await db.assertHas("bookings", { id: booking.id, scheduled_at: "2026-09-08 17:00:00" });
 
     const replay = await client
       .post("/api/v1/agent/booking-reschedules")
       .header("authorization", `Bearer ${capability}`)
-      .json({ booking_id: booking.id, new_start_time: "2026-09-08T10:00:00-07:00" });
-    replay.assertStatus(409);
+      .json({
+        booking_id: booking.id,
+        tool_call_id: "tool-1",
+        new_start_time: "2026-09-08T10:00:00-07:00",
+      });
+    replay.assertStatus(200);
   });
 
   test("rejects overlapping staff bookings, not only identical start times", async ({ client }) => {
@@ -134,27 +145,36 @@ test.group("Agent booking resources", (group) => {
       status: "confirmed",
       serviceAddress: customer.address,
     });
-    const capability = issueBookingRescheduleCapability({
+    await createBookingRescheduleGrant({
       customerId: customer.id,
       bookingId: booking.id,
-      expectedStartTime: "2026-09-01T17:00:00Z",
-      proposedStartTime: "2026-09-08T17:00:00Z",
+      expectedStartTime: DateTime.fromISO("2026-09-01T17:00:00Z"),
+      proposedStartTime: DateTime.fromISO("2026-09-08T17:00:00Z"),
       runId: "run-2",
       toolCallId: "tool-2",
     });
+    const capability = issueBookingReadCapability(customer.id);
 
     const response = await client
       .post("/api/v1/agent/booking-reschedules")
       .header("authorization", `Bearer ${capability}`)
-      .json({ booking_id: booking.id, new_start_time: "2026-09-08T10:00:00-07:00" });
+      .json({
+        booking_id: booking.id,
+        tool_call_id: "tool-2",
+        new_start_time: "2026-09-08T10:00:00-07:00",
+      });
     response.assertStatus(409);
   });
 
-  test("does not accept a read capability for a write", async ({ client }) => {
+  test("does not accept a customer capability without an approval grant", async ({ client }) => {
     const response = await client
       .post("/api/v1/agent/booking-reschedules")
       .header("authorization", `Bearer ${issueBookingReadCapability(1)}`)
-      .json({ booking_id: 1, new_start_time: "2026-09-08T10:00:00-07:00" });
+      .json({
+        booking_id: 1,
+        tool_call_id: "unapproved-tool",
+        new_start_time: "2026-09-08T10:00:00-07:00",
+      });
     response.assertStatus(401);
   });
 });

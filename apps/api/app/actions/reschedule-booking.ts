@@ -37,6 +37,9 @@ export default async function rescheduleBooking(input: RescheduleBookingInput) {
     if (!RESCHEDULABLE_STATUSES.has(booking.status)) {
       throw new BookingRescheduleError(`A ${booking.status} booking cannot be rescheduled.`, 409);
     }
+    if (booking.scheduledAt.toUTC().toMillis() === input.proposedStartTime.toUTC().toMillis()) {
+      return booking;
+    }
     if (booking.scheduledAt.toUTC().toMillis() !== input.expectedStartTime.toUTC().toMillis()) {
       throw new BookingRescheduleError(
         "This booking changed after the customer approved the request.",

@@ -49,7 +49,7 @@ router
       .use(middleware.bookingCapability({ scope: "find_bookings" }));
     router
       .post("booking-reschedules", [AgentBookingReschedulesController, "store"])
-      .use(middleware.bookingCapability({ scope: "reschedule_booking" }));
+      .use(middleware.bookingCapability({ scope: "find_bookings" }));
   })
   .prefix("/api/v1/agent");
 

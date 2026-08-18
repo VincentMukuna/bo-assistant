@@ -271,17 +271,19 @@ export class BusinessSupportAgentClient {
     decision: "approve" | "decline";
     runId: string;
     toolCallId: string;
-    bookingCapability: string;
     reason?: string;
   }) {
-    const operation = input.decision === "approve" ? "approve-tool-call" : "decline-tool-call";
-    return this.stream(`/agents/${AGENT_ID}/${operation}`, {
+    return this.stream(`/agents/${AGENT_ID}/resume-stream`, {
       runId: input.runId,
       toolCallId: input.toolCallId,
-      requestContext: this.context(input.customer, input.bookingCapability),
-      ...(input.decision === "decline"
-        ? { reason: input.reason || "The customer declined this booking change." }
-        : {}),
+      requestContext: this.context(input.customer),
+      resumeData:
+        input.decision === "approve"
+          ? { approved: true }
+          : {
+              approved: false,
+              reason: input.reason || "The customer declined this booking change.",
+            },
     });
   }
 }

@@ -1,4 +1,8 @@
-import rescheduleBooking, { BookingRescheduleError } from "#actions/reschedule-booking";
+import {
+  BookingRescheduleGrantError,
+  default as rescheduleBookingWithGrant,
+} from "#actions/reschedule-booking-with-grant";
+import { BookingRescheduleError } from "#actions/reschedule-booking";
 import { serializeAgentBooking } from "#controllers/agent_booking_searches_controller";
 import type { HttpContext } from "@adonisjs/core/http";
 import { DateTime } from "luxon";
@@ -11,40 +15,28 @@ function parseOffsetDate(value: unknown) {
 
 export default class AgentBookingReschedulesController {
   async store({ request, response, bookingCapability }: HttpContext) {
-    if (bookingCapability.kind !== "booking-reschedule") {
-      return response.unauthorized({ error: "A reschedule capability is required." });
-    }
-
     const bookingId = Number(request.input("booking_id"));
+    const toolCallId = request.input("tool_call_id");
     const proposedStartTime = parseOffsetDate(request.input("new_start_time"));
-    const expectedStartTime = parseOffsetDate(bookingCapability.expectedStartTime);
-    const authorizedStartTime = parseOffsetDate(bookingCapability.proposedStartTime);
-    if (
-      !Number.isInteger(bookingId) ||
-      !proposedStartTime ||
-      !expectedStartTime ||
-      !authorizedStartTime
-    ) {
+    if (!Number.isInteger(bookingId) || typeof toolCallId !== "string" || !proposedStartTime) {
       return response.badRequest({
-        error: "booking_id and an ISO new_start_time with a timezone offset are required.",
+        error:
+          "booking_id, tool_call_id, and an ISO new_start_time with a timezone offset are required.",
       });
-    }
-    if (
-      bookingId !== bookingCapability.bookingId ||
-      proposedStartTime.toUTC().toMillis() !== authorizedStartTime.toUTC().toMillis()
-    ) {
-      return response.unauthorized({ error: "The request exceeds the approved booking change." });
     }
 
     try {
-      const booking = await rescheduleBooking({
+      const booking = await rescheduleBookingWithGrant({
         customerId: bookingCapability.customerId,
         bookingId,
-        expectedStartTime,
+        toolCallId,
         proposedStartTime,
       });
       return { booking: serializeAgentBooking(booking) };
     } catch (error) {
+      if (error instanceof BookingRescheduleGrantError) {
+        return response.unauthorized({ error: error.message });
+      }
       if (error instanceof BookingRescheduleError) {
         return response.status(error.status).send({ error: error.message });
       }

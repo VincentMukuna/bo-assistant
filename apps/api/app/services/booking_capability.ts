@@ -5,19 +5,10 @@ const BOOKING_CAPABILITY_PURPOSE = "demo-booking-agent";
 export type BookingCapability = {
   customerId: number;
   scopes: BookingCapabilityScope[];
-} & (
-  | { kind: "booking-read" }
-  | {
-      kind: "booking-reschedule";
-      bookingId: number;
-      expectedStartTime: string;
-      proposedStartTime: string;
-      runId: string;
-      toolCallId: string;
-    }
-);
+  kind: "booking-read";
+};
 
-export type BookingCapabilityScope = "find_bookings" | "reschedule_booking";
+export type BookingCapabilityScope = "find_bookings";
 
 export function issueBookingReadCapability(customerId: number) {
   return encryption.encrypt(
@@ -27,29 +18,6 @@ export function issueBookingReadCapability(customerId: number) {
       scopes: ["find_bookings"],
     } satisfies BookingCapability,
     { expiresIn: "15 minutes", purpose: BOOKING_CAPABILITY_PURPOSE }
-  );
-}
-
-export function issueBookingRescheduleCapability(input: {
-  customerId: number;
-  bookingId: number;
-  expectedStartTime: string;
-  proposedStartTime: string;
-  runId: string;
-  toolCallId: string;
-}) {
-  return encryption.encrypt(
-    {
-      kind: "booking-reschedule",
-      customerId: input.customerId,
-      bookingId: input.bookingId,
-      expectedStartTime: input.expectedStartTime,
-      proposedStartTime: input.proposedStartTime,
-      runId: input.runId,
-      toolCallId: input.toolCallId,
-      scopes: ["reschedule_booking"],
-    } satisfies BookingCapability,
-    { expiresIn: "5 minutes", purpose: BOOKING_CAPABILITY_PURPOSE }
   );
 }
 
@@ -65,21 +33,8 @@ export function readBookingCapability(authorization: string | undefined) {
     !capability ||
     !Number.isInteger(capability.customerId) ||
     !Array.isArray(capability.scopes) ||
-    !capability.scopes.every(
-      (scope) => scope === "find_bookings" || scope === "reschedule_booking"
-    ) ||
-    (capability.kind !== "booking-read" && capability.kind !== "booking-reschedule")
-  ) {
-    return null;
-  }
-
-  if (
-    capability.kind === "booking-reschedule" &&
-    (!Number.isInteger(capability.bookingId) ||
-      typeof capability.expectedStartTime !== "string" ||
-      typeof capability.proposedStartTime !== "string" ||
-      typeof capability.runId !== "string" ||
-      typeof capability.toolCallId !== "string")
+    !capability.scopes.every((scope) => scope === "find_bookings") ||
+    capability.kind !== "booking-read"
   ) {
     return null;
   }

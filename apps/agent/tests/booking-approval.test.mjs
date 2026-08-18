@@ -6,11 +6,12 @@ import { findBookingsForCustomer, rescheduleBooking } from "../src/mastra/tools/
 const context = {
   requestContext: {
     all: {
-      bookingCapability: "read-or-write-capability",
+      bookingCapability: "read-capability",
       currentDate: "2026-08-18",
       timezone: "America/Los_Angeles",
     },
   },
+  agent: { toolCallId: "approved-tool-call" },
 };
 
 test("requires explicit approval only for the reschedule mutation", () => {
@@ -38,10 +39,11 @@ test("sends the approved mutation to the focused internal booking resource", asy
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
     assert.equal(String(input), "http://localhost:3333/api/v1/agent/booking-reschedules");
-    assert.equal(new Headers(init.headers).get("authorization"), "Bearer read-or-write-capability");
+    assert.equal(new Headers(init.headers).get("authorization"), "Bearer read-capability");
     assert.deepEqual(JSON.parse(String(init.body)), {
       booking_id: 6,
       new_start_time: "2026-08-24T10:00:00-07:00",
+      tool_call_id: "approved-tool-call",
     });
     return Response.json({
       booking: {
