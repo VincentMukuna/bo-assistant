@@ -20,9 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { weekDays } from "@/lib/demo-data";
 import { api, type Booking, type BookingInput, type BookingStatus, type Customer } from "@/lib/api";
 import { errorMessage, queryKeys } from "@/lib/queries";
+
+const weekDays = [
+  { day: "Mon", date: "17" },
+  { day: "Tue", date: "18" },
+  { day: "Wed", date: "19" },
+  { day: "Thu", date: "20" },
+  { day: "Fri", date: "21" },
+];
 
 const dateByDay: Record<string, string> = {
   Mon: "2026-08-17",

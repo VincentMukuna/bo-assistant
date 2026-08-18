@@ -15,6 +15,97 @@ export type CustomerInput = RouteBody<"customers.store">;
 export type BookingInput = RouteBody<"bookings.store">;
 export type BookingStatus = BookingInput["status"];
 
+export type InboxAttention = {
+  id: string;
+  cause: "authority" | "judgment" | "relationship" | "failure";
+  actionType: string;
+  status: "pending" | "approved" | "declined" | "completed" | "failed";
+  summary: string;
+  context: Record<string, unknown>;
+  outcomeSummary: string | null;
+  createdAt: string;
+};
+
+export type InboxCustomer = {
+  id: number;
+  name: string;
+  initials: string;
+  phone: string;
+  email: string;
+  address: string;
+  notes: string;
+  createdAt: string;
+};
+
+export type InboxConversationSummary = {
+  id: string;
+  title: string;
+  preview: string | null;
+  status: string;
+  updatedAt: string;
+  nextStepOwner: "agent" | "owner" | "customer" | "none";
+  handlingMode: "agent" | "owner";
+  outcomeStatus: "active" | "completed" | "failed";
+  outcomeSummary: string | null;
+  attention: InboxAttention | null;
+  customer: InboxCustomer;
+};
+
+export type InboxConversation = InboxConversationSummary & {
+  messages: Array<{
+    id: string;
+    sender: "customer" | "business";
+    body: string;
+    createdAt: string | null;
+    author: "agent" | "owner" | null;
+  }>;
+  annotations: Array<{
+    id: string;
+    kind: string;
+    summary: string;
+    detail: string | null;
+    createdAt: string;
+  }>;
+  bookings: Array<{
+    id: number;
+    service: string;
+    staff: string;
+    scheduledAt: string;
+    durationMinutes: number;
+    status: BookingStatus;
+    serviceAddress: string;
+  }>;
+};
+
+export type AgentActivityCategory = "attention" | "decision" | "handoff" | "completed" | "activity";
+export type AgentActivityFilter = "all" | AgentActivityCategory;
+
+export type AgentActivity = {
+  id: string;
+  category: AgentActivityCategory;
+  kind: string;
+  summary: string;
+  detail: string | null;
+  createdAt: string;
+  conversation: {
+    id: string;
+    title: string;
+    nextStepOwner: InboxConversationSummary["nextStepOwner"];
+    outcomeStatus: InboxConversationSummary["outcomeStatus"];
+  };
+  customer: Pick<InboxCustomer, "id" | "name" | "initials">;
+};
+
+export type AgentActivityFeed = {
+  metrics: {
+    needsOwner: number;
+    agentHandling: number;
+    completedToday: number;
+    failures: number;
+  };
+  activities: AgentActivity[];
+};
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -36,6 +127,7 @@ function responseMessage(details: unknown) {
 
   const body = details as Record<string, unknown>;
   if (typeof body.message === "string") return body.message;
+  if (typeof body.error === "string") return body.error;
 
   const firstError = Array.isArray(body.errors) ? body.errors[0] : undefined;
   if (typeof firstError !== "object" || firstError === null) return undefined;
@@ -61,6 +153,23 @@ async function execute<T>(request: PromiseLike<T>): Promise<T> {
 
 function data<T>(response: { data: T }) {
   return response.data;
+}
+
+async function jsonRequest<T>(path: string, init: RequestInit = {}) {
+  const response = await fetch(path, {
+    ...init,
+    credentials: "include",
+    headers: { "accept": "application/json", "content-type": "application/json", ...init.headers },
+  });
+  const body = (await response.json().catch(() => null)) as T | Record<string, unknown> | null;
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      responseMessage(body) ?? `Request failed with status ${response.status}`,
+      body
+    );
+  }
+  return body as T;
 }
 
 export function createApi({ baseUrl = "/", cache, headers }: CreateApiOptions = {}) {
@@ -114,6 +223,47 @@ export function createApi({ baseUrl = "/", cache, headers }: CreateApiOptions = 
       },
       async destroy(id: number) {
         await execute(client.api.bookings.destroy({ params: { id } }));
+      },
+    },
+    inbox: {
+      async index() {
+        const result = await jsonRequest<{ conversations: InboxConversationSummary[] }>(
+          "/api/v1/inbox/conversations"
+        );
+        return result.conversations;
+      },
+      async show(id: string) {
+        const result = await jsonRequest<{ conversation: InboxConversation }>(
+          `/api/v1/inbox/conversations/${encodeURIComponent(id)}`
+        );
+        return result.conversation;
+      },
+      async setHandlingMode(id: string, handlingMode: "agent" | "owner") {
+        return jsonRequest<{ handlingMode: "agent" | "owner"; nextStepOwner: string }>(
+          `/api/v1/inbox/conversations/${encodeURIComponent(id)}/ownership`,
+          { method: "PUT", body: JSON.stringify({ handlingMode }) }
+        );
+      },
+      async sendMessage(id: string, message: string) {
+        return jsonRequest<{ message: string }>(
+          `/api/v1/inbox/conversations/${encodeURIComponent(id)}/messages`,
+          { method: "POST", body: JSON.stringify({ message }) }
+        );
+      },
+      async decideAttention(
+        conversationId: string,
+        attentionId: string,
+        decision: "approve" | "decline"
+      ) {
+        return jsonRequest<{ attention: { id: string; status: string; outcomeSummary: string } }>(
+          `/api/v1/inbox/conversations/${encodeURIComponent(conversationId)}/attention/${encodeURIComponent(attentionId)}/decisions`,
+          { method: "POST", body: JSON.stringify({ decision }) }
+        );
+      },
+    },
+    agentActivity: {
+      async index() {
+        return jsonRequest<AgentActivityFeed>("/api/v1/agent-activities");
       },
     },
   };

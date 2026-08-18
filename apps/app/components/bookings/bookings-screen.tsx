@@ -2,20 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
+import { BookingDetailsDialog } from "@/components/bookings/booking-details-sheet";
 import { NewBookingDialog } from "@/components/bookings/new-booking-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { api, type Booking } from "@/lib/api";
-import {
-  bookingsQueryOptions,
-  customersQueryOptions,
-  errorMessage,
-  queryKeys,
-} from "@/lib/queries";
+import type { Booking } from "@/lib/api";
+import { bookingsQueryOptions, customersQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const statusLabels = {
@@ -80,91 +76,61 @@ function weekRangeLabel(start: Date) {
     : `${startMonth} ${start.getUTCDate()}–${endMonth} ${end.getUTCDate()}, ${year}`;
 }
 
-function BookingActions({
-  booking,
-  onEdit,
-  onRemove,
-  deleting,
-}: {
-  booking: Booking;
-  onEdit: (booking: Booking) => void;
-  onRemove: (booking: Booking) => void;
-  deleting: boolean;
-}) {
-  return (
-    <div className="flex shrink-0 items-center gap-0.5">
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="text-muted-foreground hover:text-foreground"
-        aria-label={`Edit ${booking.service} booking`}
-        onClick={() => onEdit(booking)}
-      >
-        <Pencil />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="text-muted-foreground hover:text-destructive"
-        aria-label={`Delete ${booking.service} booking`}
-        onClick={() => onRemove(booking)}
-        disabled={deleting}
-      >
-        <Trash2 />
-      </Button>
-    </div>
-  );
-}
-
 function BookingRow({
   booking,
-  onEdit,
-  onRemove,
-  deleting,
+  onOpen,
 }: {
   booking: Booking;
-  onEdit: (booking: Booking) => void;
-  onRemove: (booking: Booking) => void;
-  deleting: boolean;
+  onOpen: (booking: Booking) => void;
 }) {
   const date = displayDate(booking);
 
   return (
-    <article className="group flex items-center gap-4 rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:border-zinc-300 sm:gap-5 sm:px-5">
-      <div className="flex w-12 shrink-0 flex-col items-center rounded-lg bg-secondary px-1 py-2 text-center">
-        <span className="font-mono text-[9px] font-medium text-muted-foreground">{date.month}</span>
-        <span className="text-lg leading-5 font-semibold text-foreground">{date.day}</span>
+    <button
+      type="button"
+      onClick={() => onOpen(booking)}
+      className="group grid w-full grid-cols-[58px_minmax(0,1fr)] gap-4 bg-white px-4 py-4 text-left transition-colors hover:bg-zinc-50 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400 focus-visible:outline-none sm:grid-cols-[76px_minmax(0,1fr)_minmax(140px,0.55fr)_auto] sm:gap-5 sm:px-5"
+      aria-label={`Open ${booking.service} booking for ${booking.customer.name}`}
+    >
+      <div className="border-border/60 border-r pr-4">
+        <span className="text-muted-foreground block text-[10px] font-medium tracking-wide uppercase">
+          {date.weekday} · {date.month}
+        </span>
+        <span className="text-foreground mt-0.5 block text-xl leading-6 font-semibold">
+          {date.day}
+        </span>
+        <span className="text-muted-foreground mt-1 block text-[11px]">{date.time}</span>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h3 className="truncate text-sm font-semibold">{booking.customer.name}</h3>
-          <StatusBadge status={statusLabels[booking.status]} />
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <h3 className="truncate text-sm font-semibold text-zinc-900">{booking.service}</h3>
+          <span className="sm:hidden">
+            <StatusBadge status={statusLabels[booking.status]} />
+          </span>
         </div>
-        <p className="mt-1 truncate text-sm font-medium text-zinc-700">{booking.service}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-          <span>{date.time}</span>
-          <span aria-hidden="true">·</span>
-          <span>{durationLabel(booking.durationMinutes)}</span>
-          <span aria-hidden="true">·</span>
-          <span>{booking.staff}</span>
-        </div>
-        <p className="mt-1.5 hidden truncate text-xs text-muted-foreground/80 sm:block">
-          {booking.serviceAddress}
+        <p className="mt-1 truncate text-sm text-zinc-600">{booking.customer.name}</p>
+        <p className="text-muted-foreground mt-1.5 truncate text-xs sm:hidden">
+          {booking.staff} · {durationLabel(booking.durationMinutes)}
         </p>
       </div>
-      <BookingActions
-        booking={booking}
-        onEdit={onEdit}
-        onRemove={onRemove}
-        deleting={deleting}
-      />
-    </article>
+      <div className="hidden min-w-0 self-center sm:block">
+        <p className="truncate text-xs font-medium text-zinc-700">{booking.staff}</p>
+        <p className="text-muted-foreground mt-1 truncate text-xs">
+          {durationLabel(booking.durationMinutes)} · {booking.serviceAddress}
+        </p>
+      </div>
+      <div className="hidden items-center justify-end gap-3 self-center sm:flex">
+        <div className="flex justify-end">
+          <StatusBadge status={statusLabels[booking.status]} />
+        </div>
+        <ChevronRight className="size-4 text-zinc-300 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:opacity-100" />
+      </div>
+    </button>
   );
 }
 
 export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const bookingsQuery = useQuery(bookingsQueryOptions);
   const customersQuery = useQuery(customersQueryOptions);
   const bookings = bookingsQuery.data ?? emptyBookings;
@@ -178,14 +144,7 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
   const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date()));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Booking>();
-  const deleteMutation = useMutation({
-    mutationFn: api.bookings.destroy,
-    onSuccess: (_, deletedId) => {
-      queryClient.setQueryData<Booking[]>(queryKeys.bookings, (current = []) =>
-        current.filter((booking) => booking.id !== deletedId)
-      );
-    },
-  });
+  const [selectedBookingId, setSelectedBookingId] = useState<number>();
 
   const weekDates = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addUtcDays(weekStart, index)),
@@ -199,17 +158,7 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
     (booking) => dateKey(bookingDate(booking)) === selectedDate
   );
   const upcomingBookings = sortedBookings.filter((booking) => booking.status !== "completed");
-
-  function removeBooking(booking: Booking) {
-    if (!window.confirm(`Delete the ${booking.service} booking for ${booking.customer.name}?`))
-      return;
-    deleteMutation.mutate(booking.id);
-  }
-
-  function editBooking(booking: Booking) {
-    setEditing(booking);
-    setDialogOpen(true);
-  }
+  const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId);
 
   function shiftWeek(days: number) {
     const next = addUtcDays(weekStart, days);
@@ -224,30 +173,41 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
 
   if (bookingsQuery.isPending || customersQuery.isPending)
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
         Loading bookings…
       </div>
     );
   if (bookingsQuery.isError || customersQuery.isError)
     return (
-      <div className="flex h-full items-center justify-center text-sm text-destructive">
+      <div className="text-destructive flex h-full items-center justify-center text-sm">
         Unable to load bookings.
       </div>
     );
 
   return (
     <>
-      <div className="flex h-full min-h-0 flex-col bg-background">
-        <header className="flex min-h-[52px] shrink-0 flex-wrap items-center gap-2 border-b border-border bg-card px-4 py-2 sm:px-5">
-          <h1 className="sr-only">Bookings</h1>
+      <div className="bg-background flex h-full min-h-0 flex-col">
+        <header className="border-border/60 bg-card flex min-h-[56px] shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2 sm:px-5">
+          <h1 className="mr-2 text-base font-semibold">Bookings</h1>
+          <span className="bg-border/60 mr-1 hidden h-5 w-px sm:block" aria-hidden="true" />
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="bg-card" onClick={goToToday}>
               Today
             </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Previous week" onClick={() => shiftWeek(-7)}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Previous week"
+              onClick={() => shiftWeek(-7)}
+            >
               <ChevronLeft />
             </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Next week" onClick={() => shiftWeek(7)}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Next week"
+              onClick={() => shiftWeek(7)}
+            >
               <ChevronRight />
             </Button>
             <span className="ml-1 hidden text-sm font-medium text-zinc-600 sm:inline">
@@ -255,14 +215,14 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <div className="flex rounded-lg bg-secondary p-1">
+            <div className="bg-secondary flex rounded-lg p-1">
               {(["week", "agenda"] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => router.replace(`/bookings?view=${option}`, { scroll: false })}
                   className={cn(
-                    "rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-colors",
+                    "text-muted-foreground rounded-md px-3 py-1 text-xs font-medium transition-colors",
                     view === option && "bg-card text-foreground shadow-sm"
                   )}
                   aria-pressed={view === option}
@@ -284,16 +244,10 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
           </div>
         </header>
 
-        {deleteMutation.isError ? (
-          <p className="mx-5 mt-4 text-sm text-destructive" role="alert">
-            {errorMessage(deleteMutation.error, "Unable to delete this booking.")}
-          </p>
-        ) : null}
-
         {view === "week" ? (
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-            <aside className="flex max-h-[46%] shrink-0 flex-col border-b border-border bg-card lg:max-h-none lg:w-[324px] lg:border-r lg:border-b-0">
-              <div className="shrink-0 border-b border-border px-4 py-4 sm:px-5">
+            <aside className="border-border/60 flex max-h-[46%] shrink-0 flex-col border-b bg-zinc-50/70 lg:max-h-none lg:w-[324px] lg:border-r lg:border-b-0">
+              <div className="border-border/50 shrink-0 border-b px-4 py-4 sm:px-5">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-sm font-semibold">
                     {weekStart.toLocaleDateString("en-US", {
@@ -317,7 +271,7 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
                         type="button"
                         onClick={() => setSelectedDate(key)}
                         className={cn(
-                          "flex min-h-14 flex-col items-center justify-center rounded-lg py-1.5 transition-colors hover:bg-secondary",
+                          "hover:bg-secondary flex min-h-14 flex-col items-center justify-center rounded-lg py-1.5 transition-colors",
                           selected && "bg-primary text-primary-foreground hover:bg-primary"
                         )}
                         aria-label={`Select ${date.toLocaleDateString("en-US", {
@@ -330,19 +284,21 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
                       >
                         <span
                           className={cn(
-                            "text-[9px] text-muted-foreground",
+                            "text-muted-foreground text-[9px]",
                             selected && "text-primary-foreground/70"
                           )}
                         >
                           {date.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })}
                         </span>
-                        <span className="mt-0.5 text-sm leading-4 font-semibold">{date.getUTCDate()}</span>
+                        <span className="mt-0.5 text-sm leading-4 font-semibold">
+                          {date.getUTCDate()}
+                        </span>
                         <span className="mt-1 flex h-1 gap-0.5">
                           {Array.from({ length: Math.min(count, 3) }, (_, index) => (
                             <span
                               key={index}
                               className={cn(
-                                "size-1 rounded-full bg-primary",
+                                "bg-primary size-1 rounded-full",
                                 selected && "bg-primary-foreground/60"
                               )}
                             />
@@ -355,41 +311,52 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
               </div>
               <ScrollArea className="min-h-0 flex-1">
                 <div className="px-4 py-4 sm:px-5">
-                  <p className="label-caps mb-3 text-muted-foreground">
-                    {selectedBookings.length} {selectedBookings.length === 1 ? "booking" : "bookings"} · {new Date(`${selectedDate}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}
+                  <p className="label-caps text-muted-foreground mb-3">
+                    {selectedBookings.length}{" "}
+                    {selectedBookings.length === 1 ? "booking" : "bookings"} ·{" "}
+                    {new Date(`${selectedDate}T00:00:00Z`).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
                   </p>
                   <div className="space-y-2">
                     {selectedBookings.map((booking) => {
                       const date = displayDate(booking);
                       return (
-                        <article key={booking.id} className="rounded-lg border border-border bg-secondary/80 p-3">
+                        <button
+                          key={booking.id}
+                          type="button"
+                          onClick={() => setSelectedBookingId(booking.id)}
+                          className="group w-full rounded-lg bg-white p-3 text-left transition-colors hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:outline-none"
+                          aria-label={`Open ${booking.service} booking for ${booking.customer.name}`}
+                        >
                           <div className="flex items-start gap-2">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="truncate text-sm font-semibold">{booking.customer.name}</h3>
+                                <h3 className="truncate text-sm font-semibold">
+                                  {booking.customer.name}
+                                </h3>
                                 <StatusBadge status={statusLabels[booking.status]} />
                               </div>
-                              <p className="mt-1 text-xs font-medium text-zinc-700">{booking.service}</p>
+                              <p className="mt-1 text-xs font-medium text-zinc-700">
+                                {booking.service}
+                              </p>
                             </div>
-                            <BookingActions
-                              booking={booking}
-                              onEdit={editBooking}
-                              onRemove={removeBooking}
-                              deleting={deleteMutation.isPending && deleteMutation.variables === booking.id}
-                            />
+                            <ChevronRight className="size-4 shrink-0 text-zinc-300 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-500" />
                           </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                          <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 text-xs">
                             <span>{date.time}</span>
                             <span aria-hidden="true">·</span>
                             <span>{durationLabel(booking.durationMinutes)}</span>
                             <span aria-hidden="true">·</span>
                             <span>{booking.staff}</span>
                           </div>
-                        </article>
+                        </button>
                       );
                     })}
                     {selectedBookings.length === 0 ? (
-                      <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+                      <p className="text-muted-foreground rounded-lg bg-white/70 px-4 py-8 text-center text-sm">
                         No bookings this day.
                       </p>
                     ) : null}
@@ -402,17 +369,15 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
               <div className="px-5 py-6 sm:px-8 lg:px-8">
                 <div className="max-w-[760px]">
                   <h2 className="text-base font-semibold">Upcoming bookings</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-sm">
                     All scheduled and pending appointments
                   </p>
-                  <div className="mt-6 space-y-3">
+                  <div className="border-border/70 mt-6 divide-y divide-zinc-100 overflow-hidden rounded-xl border bg-white shadow-sm shadow-zinc-950/[0.025]">
                     {upcomingBookings.map((booking) => (
                       <BookingRow
                         key={booking.id}
                         booking={booking}
-                        onEdit={editBooking}
-                        onRemove={removeBooking}
-                        deleting={deleteMutation.isPending && deleteMutation.variables === booking.id}
+                        onOpen={(item) => setSelectedBookingId(item.id)}
                       />
                     ))}
                   </div>
@@ -424,17 +389,15 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
           <ScrollArea className="min-h-0 flex-1">
             <div className="mx-auto max-w-[900px] px-5 py-7 sm:px-8">
               <h2 className="text-base font-semibold">All bookings</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-muted-foreground mt-1 text-sm">
                 A complete agenda of scheduled appointments
               </p>
-              <div className="mt-6 space-y-3">
+              <div className="border-border/70 mt-6 divide-y divide-zinc-100 overflow-hidden rounded-xl border bg-white shadow-sm shadow-zinc-950/[0.025]">
                 {sortedBookings.map((booking) => (
                   <BookingRow
                     key={booking.id}
                     booking={booking}
-                    onEdit={editBooking}
-                    onRemove={removeBooking}
-                    deleting={deleteMutation.isPending && deleteMutation.variables === booking.id}
+                    onOpen={(item) => setSelectedBookingId(item.id)}
                   />
                 ))}
               </div>
@@ -450,6 +413,15 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
           }}
           customers={customers}
           booking={editing}
+        />
+      ) : null}
+      {selectedBooking ? (
+        <BookingDetailsDialog
+          key={selectedBooking.id}
+          booking={selectedBooking}
+          onOpenChange={(open) => {
+            if (!open) setSelectedBookingId(undefined);
+          }}
         />
       ) : null}
     </>

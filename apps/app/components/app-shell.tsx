@@ -28,7 +28,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "/inbox", label: "Inbox", icon: Inbox, count: 3 },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/agent-activity", label: "Agent Activity", icon: Activity },
@@ -181,7 +181,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-svh min-h-[620px] flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex h-[52px] shrink-0 items-center gap-4 border-b border-border bg-card px-4 sm:px-5">
+      <header className="flex h-[52px] shrink-0 items-center gap-4 border-b border-border/50 bg-card px-4 sm:px-5">
         <Sheet open={navOpen} onOpenChange={setNavOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon-sm" className="md:hidden" aria-label="Open navigation">
@@ -196,7 +196,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           </SheetContent>
         </Sheet>
         <Brand />
-        <span className="mx-2 hidden h-5 w-px bg-border md:block" />
         <DesktopNavigation pathname={pathname} />
         <div className="ml-auto flex items-center gap-3">
           <div className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">

@@ -23,11 +23,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api, type Booking, type Customer } from "@/lib/api";
-import { conversations } from "@/lib/demo-data";
 import {
   bookingsQueryOptions,
   customersQueryOptions,
   errorMessage,
+  inboxQueryOptions,
   queryKeys,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,7 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
   const queryClient = useQueryClient();
   const customersQuery = useQuery(customersQueryOptions);
   const bookingsQuery = useQuery(bookingsQueryOptions);
+  const conversationsQuery = useQuery(inboxQueryOptions);
   const customers = customersQuery.data ?? emptyCustomers;
   const bookings = bookingsQuery.data ?? emptyBookings;
   const [search, setSearch] = useState("");
@@ -101,7 +102,11 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
     ? bookings.filter((booking) => booking.customerId === selected.id)
     : [];
   const customerConversation = selected
-    ? conversations.find((conversation) => conversation.customerId === `c${selected.id}`)
+    ? conversationsQuery.data
+        ?.filter((conversation) => conversation.customer.id === selected.id)
+        .sort(
+          (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+        )[0]
     : undefined;
 
   function removeCustomer() {
@@ -124,18 +129,15 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
 
   return (
     <>
-      <div className="flex h-full min-h-0 flex-col bg-zinc-50/50">
+      <div className="flex h-full min-h-0 flex-col bg-white">
         <h1 className="sr-only">Customers</h1>
         {deleteMutation.isError ? (
-          <p
-            className="border-b border-red-100 bg-red-50 px-5 py-2 text-sm text-red-600"
-            role="alert"
-          >
+          <p className="bg-red-50 px-5 py-2 text-sm text-red-600" role="alert">
             {errorMessage(deleteMutation.error, "Unable to delete this customer.")}
           </p>
         ) : null}
         <div className="grid min-h-0 flex-1 md:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="flex min-h-0 flex-col border-r border-zinc-200 bg-white">
+          <div className="flex min-h-0 flex-col border-r border-zinc-200/60 bg-zinc-50/70">
             <div className="flex gap-2 p-4 pb-2">
               <div className="relative flex-1">
                 <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -143,7 +145,7 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Find a customer"
-                  className="h-9 bg-zinc-50 pl-9 shadow-none"
+                  className="h-9 border-zinc-200/70 bg-white pl-9 shadow-none"
                 />
               </div>
               <Button
@@ -164,12 +166,12 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                     href={`/customers/${customer.id}`}
                     key={customer.id}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-zinc-50",
-                      selected?.id === customer.id && "bg-zinc-100 hover:bg-zinc-100"
+                      "flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-white/70",
+                      selected?.id === customer.id && "bg-white hover:bg-white"
                     )}
                   >
                     <Avatar className="size-9">
-                      <AvatarFallback className="bg-white text-xs ring-1 ring-zinc-200">
+                      <AvatarFallback className="bg-zinc-200/60 text-xs">
                         {customer.initials}
                       </AvatarFallback>
                     </Avatar>
@@ -182,12 +184,12 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
               </div>
             </ScrollArea>
           </div>
-          <ScrollArea className="min-h-0">
+          <ScrollArea className="min-h-0 bg-white">
             {selected ? (
               <div className="mx-auto max-w-4xl p-5 sm:p-8">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <Avatar className="size-14">
-                    <AvatarFallback className="bg-white text-base font-medium ring-1 ring-zinc-200">
+                    <AvatarFallback className="bg-zinc-100 text-base font-medium">
                       {selected.initials}
                     </AvatarFallback>
                   </Avatar>
@@ -224,8 +226,8 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                     <Plus /> Book service
                   </Button>
                 </div>
-                <div className="mt-8 grid gap-5 lg:grid-cols-2">
-                  <section className="rounded-xl border border-zinc-200 bg-white p-5">
+                <div className="mt-8 grid gap-8 border-t border-zinc-200/60 pt-7 lg:grid-cols-2">
+                  <section>
                     <h3 className="text-sm font-semibold">Contact details</h3>
                     <div className="mt-5 space-y-4 text-sm">
                       <div className="flex gap-3">
@@ -251,7 +253,7 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                       </div>
                     </div>
                   </section>
-                  <section className="rounded-xl border border-zinc-200 bg-white p-5">
+                  <section>
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-semibold">Notes</h3>
                       <Button
@@ -271,8 +273,8 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                     </p>
                   </section>
                 </div>
-                <section className="mt-5 rounded-xl border border-zinc-200 bg-white">
-                  <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
+                <section className="mt-8 border-t border-zinc-200/60 pt-7">
+                  <div className="flex items-center justify-between pb-3">
                     <h3 className="text-sm font-semibold">Bookings</h3>
                     <span className="text-muted-foreground text-xs">
                       {customerBookings.length} total
@@ -285,8 +287,8 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                         <div
                           key={booking.id}
                           className={cn(
-                            "flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center",
-                            index !== 0 && "border-t border-zinc-200"
+                            "flex flex-col gap-3 py-4 sm:flex-row sm:items-center",
+                            index !== 0 && "border-t border-zinc-200/60"
                           )}
                         >
                           <div className="flex size-9 items-center justify-center rounded-lg bg-zinc-100">
@@ -303,21 +305,33 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                       );
                     })
                   ) : (
-                    <div className="text-muted-foreground px-5 py-10 text-center text-sm">
+                    <div className="text-muted-foreground py-10 text-center text-sm">
                       No bookings yet.
                     </div>
                   )}
                 </section>
-                <section className="mt-5 rounded-xl border border-zinc-200 bg-white p-5">
+                <section className="mt-8 rounded-xl bg-emerald-50/50 p-5">
                   <h3 className="text-sm font-semibold">Recent conversation</h3>
                   {customerConversation ? (
-                    <div className="mt-4 flex gap-3 rounded-lg bg-zinc-50 p-4">
+                    <div className="mt-4 flex gap-3">
                       <MessageSquare className="mt-0.5 size-4 shrink-0 text-zinc-500" />
                       <div>
                         <div className="text-sm leading-6">{customerConversation.preview}</div>
                         <div className="text-muted-foreground mt-1 text-xs">
-                          {customerConversation.channel} · {customerConversation.time} ago
+                          Website chat ·{" "}
+                          {new Date(customerConversation.updatedAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
                         </div>
+                        <Link
+                          href={`/inbox?conversation=${customerConversation.id}`}
+                          className="mt-3 inline-flex text-xs font-medium text-emerald-800 hover:underline"
+                        >
+                          Open conversation
+                        </Link>
                       </div>
                     </div>
                   ) : (
