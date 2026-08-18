@@ -21,6 +21,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:api": "turbo test --filter=api",
+    "evals": "npm run evals --workspace=agent",
     "agent:start": "docker compose up -d --build agent",
     "agent:db:start": "docker compose up -d --wait mastra-db",
     "agent:db:stop": "docker compose stop mastra-db",

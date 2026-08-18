@@ -11,6 +11,7 @@
     "build": "mastra build",
     "start": "mastra start",
     "test": "tsx --test tests/*.test.mjs",
+    "evals": "tsx evals/run.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@mastra/evals": "^1.7.0",
     "@types/node": "^24.0.0",
     "mastra": "1.25.0",
     "tsx": "^4.23.12",
