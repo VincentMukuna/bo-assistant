@@ -6,11 +6,17 @@ import type { ApiDefinition } from './tree.d.ts'
 const placeholder: any = {}
 
 const routes = {
-  'demo_chat': {
+  'demo_chats.store': {
     methods: ["POST"],
-    pattern: '/api/v1/demo/chat',
-    tokens: [{"old":"/api/v1/demo/chat","type":0,"val":"api","end":""},{"old":"/api/v1/demo/chat","type":0,"val":"v1","end":""},{"old":"/api/v1/demo/chat","type":0,"val":"demo","end":""},{"old":"/api/v1/demo/chat","type":0,"val":"chat","end":""}],
-    types: placeholder as Registry['demo_chat']['types'],
+    pattern: '/api/v1/demo/chats',
+    tokens: [{"old":"/api/v1/demo/chats","type":0,"val":"api","end":""},{"old":"/api/v1/demo/chats","type":0,"val":"v1","end":""},{"old":"/api/v1/demo/chats","type":0,"val":"demo","end":""},{"old":"/api/v1/demo/chats","type":0,"val":"chats","end":""}],
+    types: placeholder as Registry['demo_chats.store']['types'],
+  },
+  'demo_approvals.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/demo/approvals',
+    tokens: [{"old":"/api/v1/demo/approvals","type":0,"val":"api","end":""},{"old":"/api/v1/demo/approvals","type":0,"val":"v1","end":""},{"old":"/api/v1/demo/approvals","type":0,"val":"demo","end":""},{"old":"/api/v1/demo/approvals","type":0,"val":"approvals","end":""}],
+    types: placeholder as Registry['demo_approvals.store']['types'],
   },
   'agent_bookings.find': {
     methods: ["POST"],

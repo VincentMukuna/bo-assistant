@@ -7,7 +7,8 @@ export const controllers = {
   AgentBookings: () => import('#controllers/agent_bookings_controller'),
   Bookings: () => import('#controllers/bookings_controller'),
   Customers: () => import('#controllers/customers_controller'),
-  DemoChat: () => import('#controllers/demo_chat_controller'),
+  DemoApprovals: () => import('#controllers/demo_approvals_controller'),
+  DemoChats: () => import('#controllers/demo_chats_controller'),
   Profile: () => import('#controllers/profile_controller'),
   Sessions: () => import('#controllers/sessions_controller'),
 }

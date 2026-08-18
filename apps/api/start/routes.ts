@@ -11,14 +11,16 @@ import { middleware } from "#start/kernel";
 import router from "@adonisjs/core/services/router";
 import { controllers } from "#generated/controllers";
 
-const DemoChatController = () => import("#controllers/demo_chat_controller");
+const DemoChatsController = () => import("#controllers/demo_chats_controller");
+const DemoApprovalsController = () => import("#controllers/demo_approvals_controller");
 const AgentBookingsController = () => import("#controllers/agent_bookings_controller");
 
 router.get("/", () => {
   return { hello: "world" };
 });
 
-router.post("/api/v1/demo/chat", [DemoChatController, "handle"]);
+router.post("/api/v1/demo/chats", [DemoChatsController, "store"]);
+router.post("/api/v1/demo/approvals", [DemoApprovalsController, "store"]);
 router
   .group(() => {
     router.post("bookings/find", [AgentBookingsController, "find"]);

@@ -4,7 +4,8 @@ type ParamValue = string | number | bigint | boolean
 
 export type ScannedRoutes = {
   ALL: {
-    'demo_chat': { paramsTuple?: []; params?: {} }
+    'demo_chats.store': { paramsTuple?: []; params?: {} }
+    'demo_approvals.store': { paramsTuple?: []; params?: {} }
     'agent_bookings.find': { paramsTuple?: []; params?: {} }
     'agent_bookings.reschedule': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
@@ -36,7 +37,8 @@ export type ScannedRoutes = {
     'bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   POST: {
-    'demo_chat': { paramsTuple?: []; params?: {} }
+    'demo_chats.store': { paramsTuple?: []; params?: {} }
+    'demo_approvals.store': { paramsTuple?: []; params?: {} }
     'agent_bookings.find': { paramsTuple?: []; params?: {} }
     'agent_bookings.reschedule': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }

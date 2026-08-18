@@ -93,19 +93,26 @@ export const findBookingsForCustomer = createTool({
 export const rescheduleBooking = createTool({
   id: "reschedule_booking",
   description:
-    "Reschedule one authenticated-customer booking after the customer has clearly confirmed the exact new date and time. The result includes start_time_display, a customer-friendly date that must be used verbatim in replies.",
+    "Propose an exact reschedule for one authenticated-customer booking. The application asks the customer to approve the tool call before it executes. The result includes start_time_display, a customer-friendly date that must be used verbatim in replies.",
+  requireApproval: true,
   inputSchema: z.object({
     booking_id: z.number().int().positive(),
+    service: z.string().describe("The service name from the selected booking"),
+    staff: z.string().describe("The staff name from the selected booking"),
+    current_start_time: z
+      .string()
+      .describe("The selected booking's current ISO start time with timezone offset"),
     new_start_time: z
       .string()
-      .describe("The confirmed new appointment time as an ISO timestamp with timezone offset"),
+      .describe("The proposed new appointment time as an ISO timestamp with timezone offset"),
   }),
   outputSchema: z.object({ booking: presentedBookingSchema }),
   requestContextSchema: bookingContextSchema,
   execute: async (input, { requestContext }) => {
+    const { booking_id, new_start_time } = input;
     const result = await callBookingApi<{ booking: Booking }>(
       "/api/v1/agent/bookings/reschedule",
-      input,
+      { booking_id, new_start_time },
       requestContext.all.bookingCapability
     );
 

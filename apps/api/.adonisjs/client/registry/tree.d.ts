@@ -2,7 +2,12 @@
 import type { routes } from './index.ts'
 
 export interface ApiDefinition {
-  demoChat: typeof routes['demo_chat']
+  demoChats: {
+    store: typeof routes['demo_chats.store']
+  }
+  demoApprovals: {
+    store: typeof routes['demo_approvals.store']
+  }
   agentBookings: {
     find: typeof routes['agent_bookings.find']
     reschedule: typeof routes['agent_bookings.reschedule']

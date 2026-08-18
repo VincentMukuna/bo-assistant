@@ -7,16 +7,28 @@ import type { InferInput, SimpleError } from '@vinejs/vine/types'
 export type ParamValue = string | number | bigint | boolean
 
 export interface Registry {
-  'demo_chat': {
+  'demo_chats.store': {
     methods: ["POST"]
-    pattern: '/api/v1/demo/chat'
+    pattern: '/api/v1/demo/chats'
     types: {
-      body: {}
+      body: ExtractBody<InferInput<(typeof import('#validators/demo_agent').createDemoChatValidator)>>
       paramsTuple: []
       params: {}
-      query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/demo_chat_controller').default['handle']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/demo_chat_controller').default['handle']>>>
+      query: ExtractQuery<InferInput<(typeof import('#validators/demo_agent').createDemoChatValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/demo_chats_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/demo_chats_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'demo_approvals.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/demo/approvals'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/demo_agent').createDemoApprovalValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/demo_agent').createDemoApprovalValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/demo_approvals_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/demo_approvals_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'agent_bookings.find': {
