@@ -1,3 +1,5 @@
+import { Result, TaggedError, type Result as ResultType } from "better-result";
+
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1_000;
 
 type FriendlyDateOptions = {
@@ -12,10 +14,21 @@ type CalendarDate = {
   year: number;
 };
 
-function parseCurrentDate(value: string): CalendarDate {
+export class InvalidDatePresentation extends TaggedError("InvalidDatePresentation")<{
+  field: "currentDate" | "timestamp" | "timezone";
+  cause?: unknown;
+  message: string;
+}> {}
+
+function parseCurrentDate(value: string): ResultType<CalendarDate, InvalidDatePresentation> {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) {
-    throw new RangeError("currentDate must use the YYYY-MM-DD format");
+    return Result.err(
+      new InvalidDatePresentation({
+        field: "currentDate",
+        message: "The customer calendar date must use the YYYY-MM-DD format.",
+      })
+    );
   }
 
   const [, year, month, day] = match;
@@ -31,26 +44,45 @@ function parseCurrentDate(value: string): CalendarDate {
     normalized.getUTCMonth() + 1 !== parsed.month ||
     normalized.getUTCDate() !== parsed.day
   ) {
-    throw new RangeError("currentDate must be a valid calendar date");
+    return Result.err(
+      new InvalidDatePresentation({
+        field: "currentDate",
+        message: "The customer calendar date is not a valid date.",
+      })
+    );
   }
 
-  return parsed;
+  return Result.ok(parsed);
 }
 
-function calendarDateInTimezone(date: Date, locale: string, timezone: string): CalendarDate {
-  const parts = new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "numeric",
-    timeZone: timezone,
-    year: "numeric",
-  }).formatToParts(date);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+function calendarDateInTimezone(
+  date: Date,
+  locale: string,
+  timezone: string
+): ResultType<CalendarDate, InvalidDatePresentation> {
+  return Result.try({
+    try: () => {
+      const parts = new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        month: "numeric",
+        timeZone: timezone,
+        year: "numeric",
+      }).formatToParts(date);
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
 
-  return {
-    year: Number(values.year),
-    month: Number(values.month),
-    day: Number(values.day),
-  };
+      return {
+        year: Number(values.year),
+        month: Number(values.month),
+        day: Number(values.day),
+      };
+    },
+    catch: (cause) =>
+      new InvalidDatePresentation({
+        field: "timezone",
+        cause,
+        message: "The customer timezone or locale is invalid.",
+      }),
+  });
 }
 
 function dayNumber(date: CalendarDate) {
@@ -60,40 +92,58 @@ function dayNumber(date: CalendarDate) {
 export function formatFriendlyDate(
   timestamp: string,
   { currentDate, locale = "en-US", timezone }: FriendlyDateOptions
-) {
+): ResultType<string, InvalidDatePresentation> {
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) {
-    throw new RangeError("timestamp must be a valid ISO date and time");
+    return Result.err(
+      new InvalidDatePresentation({
+        field: "timestamp",
+        message: "The booking timestamp is not a valid ISO date and time.",
+      })
+    );
   }
 
   const today = parseCurrentDate(currentDate);
+  if (today.status === "error") return today;
   const target = calendarDateInTimezone(date, locale, timezone);
-  const differenceInDays = dayNumber(target) - dayNumber(today);
-  const time = new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: timezone,
-  }).format(date);
+  if (target.status === "error") return target;
 
-  if (differenceInDays === 0) return `today at ${time}`;
-  if (differenceInDays === 1) return `tomorrow at ${time}`;
-  if (differenceInDays === -1) return `yesterday at ${time}`;
+  return Result.try({
+    try: () => {
+      const differenceInDays = dayNumber(target.value) - dayNumber(today.value);
+      const time = new Intl.DateTimeFormat(locale, {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: timezone,
+      }).format(date);
 
-  const weekday = new Intl.DateTimeFormat(locale, {
-    timeZone: timezone,
-    weekday: "long",
-  }).format(date);
+      if (differenceInDays === 0) return `today at ${time}`;
+      if (differenceInDays === 1) return `tomorrow at ${time}`;
+      if (differenceInDays === -1) return `yesterday at ${time}`;
 
-  if (differenceInDays > 1 && differenceInDays < 7) return `${weekday} at ${time}`;
-  if (differenceInDays < -1 && differenceInDays > -7) return `last ${weekday} at ${time}`;
+      const weekday = new Intl.DateTimeFormat(locale, {
+        timeZone: timezone,
+        weekday: "long",
+      }).format(date);
 
-  const calendarDate = new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "long",
-    timeZone: timezone,
-    weekday: "long",
-    ...(target.year === today.year ? {} : { year: "numeric" as const }),
-  }).format(date);
+      if (differenceInDays > 1 && differenceInDays < 7) return `${weekday} at ${time}`;
+      if (differenceInDays < -1 && differenceInDays > -7) return `last ${weekday} at ${time}`;
 
-  return `${calendarDate} at ${time}`;
+      const calendarDate = new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        month: "long",
+        timeZone: timezone,
+        weekday: "long",
+        ...(target.value.year === today.value.year ? {} : { year: "numeric" as const }),
+      }).format(date);
+
+      return `${calendarDate} at ${time}`;
+    },
+    catch: (cause) =>
+      new InvalidDatePresentation({
+        field: "timezone",
+        cause,
+        message: "The booking date could not be presented in the customer timezone.",
+      }),
+  });
 }

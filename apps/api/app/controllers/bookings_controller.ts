@@ -12,9 +12,22 @@ export default class BookingsController {
     return serialize(BookingTransformer.transform(bookings));
   }
 
-  async store({ request, response, serialize }: HttpContext) {
+  async store({ request, response, serialize, logger }: HttpContext) {
     const payload = await request.validateUsing(createBookingValidator);
-    const booking = await createBooking(payload);
+    const created = await createBooking(payload);
+    if (created.status === "error") {
+      return created.error.match({
+        BookingCustomerNotFound: () =>
+          response.notFound({ error: "The selected customer no longer exists." }),
+        BookingStoreUnavailable: (failure) => {
+          logger.error({ err: failure }, "Unable to create booking");
+          return response.serviceUnavailable({
+            error: "The booking could not be created right now.",
+          });
+        },
+      });
+    }
+    const booking = created.value;
     await booking.load("customer");
     response.status(201);
     return serialize(BookingTransformer.transform(booking));
@@ -25,17 +38,33 @@ export default class BookingsController {
     return serialize(BookingTransformer.transform(booking));
   }
 
-  async update({ params, request, serialize }: HttpContext) {
+  async update({ params, request, response, serialize, logger }: HttpContext) {
     const booking = await Booking.findOrFail(params.id);
     const payload = await request.validateUsing(updateBookingValidator);
-    await updateBooking(booking, payload);
+    const updated = await updateBooking(booking, payload);
+    if (updated.status === "error") {
+      return updated.error.match({
+        BookingCustomerNotFound: () =>
+          response.notFound({ error: "The selected customer no longer exists." }),
+        BookingStoreUnavailable: (failure) => {
+          logger.error({ err: failure, bookingId: booking.id }, "Unable to update booking");
+          return response.serviceUnavailable({
+            error: "The booking could not be updated right now.",
+          });
+        },
+      });
+    }
     await booking.load("customer");
     return serialize(BookingTransformer.transform(booking));
   }
 
-  async destroy({ params, response }: HttpContext) {
+  async destroy({ params, response, logger }: HttpContext) {
     const booking = await Booking.findOrFail(params.id);
-    await deleteBooking(booking);
+    const deleted = await deleteBooking(booking);
+    if (deleted.status === "error") {
+      logger.error({ err: deleted.error, bookingId: booking.id }, "Unable to delete booking");
+      return response.serviceUnavailable({ error: "The booking could not be deleted right now." });
+    }
     return response.noContent();
   }
 }
