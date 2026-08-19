@@ -6,6 +6,7 @@ import {
   compactChatFormatScorer,
   privateDataSafetyScorer,
 } from "../src/mastra/scorers/support-response-scorers.ts";
+import { evaluationScorers } from "../src/mastra/scorers/evaluation-scorers.ts";
 import { scenarios } from "../evals/scenarios.ts";
 
 function runWithOutput(output) {
@@ -51,15 +52,31 @@ test("format scorer catches chat layouts forbidden by the prompt", async () => {
   assert.match(result.reason, /used 1\) ordered-list syntax/);
 });
 
-test("eval scenarios keep unique IDs for Mastra score aggregation", () => {
+test("eval scenarios reference unique registered Mastra scorers", () => {
   assert.equal(new Set(scenarios.map((scenario) => scenario.id)).size, scenarios.length);
+  const registeredIds = new Set(Object.values(evaluationScorers).map((scorer) => scorer.id));
 
   for (const scenario of scenarios) {
-    const gateIds = scenario.gates.map((gate) => gate.id);
+    const scorerIds = [...scenario.requiredScorerIds, ...(scenario.signalScorerIds ?? [])];
     assert.equal(
-      new Set(gateIds).size,
-      gateIds.length,
-      `${scenario.id} contains duplicate gate IDs`
+      new Set(scorerIds).size,
+      scorerIds.length,
+      `${scenario.id} contains duplicate scorer IDs`
+    );
+    assert.ok(
+      scorerIds.every((scorerId) => registeredIds.has(scorerId)),
+      `${scenario.id} references an unregistered scorer`
     );
   }
+});
+
+test("scenario scorer composes Mastra Quick Checks", async () => {
+  const result = await evaluationScorers.publicFactsScorer.run(
+    runWithOutput(
+      "We offer home cleaning, repairs, and whole‑home care. Support is open Monday through Saturday, 8 AM to 6 PM, at (415) 555-0140."
+    )
+  );
+
+  assert.equal(result.score, 1);
+  assert.equal(result.reason, "All Mastra Quick Checks passed.");
 });

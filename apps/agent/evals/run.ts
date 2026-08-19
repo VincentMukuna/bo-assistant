@@ -1,123 +1,12 @@
-import { runEvals, type RunEvalsResult } from "@mastra/core/evals";
-import type { Agent } from "@mastra/core/agent";
-import { RequestContext } from "@mastra/core/request-context";
-import { extractToolCalls } from "@mastra/evals/scorers/utils";
+import type { ExperimentSummary, ItemWithScores } from "@mastra/core/datasets";
+import { extractToolCalls, getAssistantMessageFromRunOutput } from "@mastra/evals/scorers/utils";
+import { execFileSync } from "node:child_process";
 import { loadEnvFile } from "node:process";
-import { businessSupportAgent } from "../src/mastra/agents/business-support-agent";
-import { scenarios, type BookingFixture, type EvalScenario } from "./scenarios";
+import { resolve, sep } from "node:path";
+import { evaluationDatasetId, evaluationTargetId, syncEvaluationDataset } from "./dataset";
+import { scenarios, type EvalScenario } from "./scenarios";
 
-const realFetch = globalThis.fetch;
-let activeBookings: BookingFixture[] = [];
-// runEvals currently constrains request-context-aware agents to an invariant `unknown` context.
-// The runtime preserves the production agent's request-context schema; this cast only bridges that type gap.
-const evalTarget = businessSupportAgent as unknown as Agent<any, any, any, any, any>;
-
-type ScenarioObservation = {
-  durationMs: number;
-  output?: string;
-  totalTokens?: number;
-  tools: string[];
-  reasons: string[];
-};
-
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
-function installBookingApiMock() {
-  globalThis.fetch = async (input, init) => {
-    const requestUrl =
-      typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    const url = new URL(requestUrl);
-
-    if (url.pathname === "/api/v1/agent/booking-searches") {
-      const body = JSON.parse(String(init?.body ?? "{}")) as { from?: string; to?: string };
-      const from = Date.parse(body.from ?? "");
-      const to = Date.parse(body.to ?? "");
-      const maxWindowMs = 90 * 24 * 60 * 60 * 1_000;
-
-      if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || to - from > maxWindowMs) {
-        return jsonResponse(
-          { error: "Search windows must be valid and no longer than 90 days." },
-          400
-        );
-      }
-
-      return jsonResponse({
-        bookings: activeBookings.filter((booking) => {
-          const start = Date.parse(booking.start_time);
-          return start >= from && start < to;
-        }),
-      });
-    }
-
-    if (url.pathname === "/api/v1/agent/booking-reschedules") {
-      const body = JSON.parse(String(init?.body ?? "{}")) as {
-        booking_id?: number;
-        new_start_time?: string;
-      };
-      const booking = activeBookings.find((candidate) => candidate.booking_id === body.booking_id);
-      if (!booking || !body.new_start_time) {
-        return jsonResponse({ error: "The requested booking could not be rescheduled." }, 404);
-      }
-
-      return jsonResponse({ booking: { ...booking, start_time: body.new_start_time } });
-    }
-
-    return realFetch(input, init);
-  };
-}
-
-function requestContext(): RequestContext<any> {
-  const context = new RequestContext<{
-    bookingCapability: string;
-    customerName: string;
-    timezone: string;
-    currentDate: string;
-  }>();
-  context.set("bookingCapability", "eval-secret-capability");
-  context.set("customerName", "Alice Morgan");
-  context.set("timezone", "America/Los_Angeles");
-  context.set("currentDate", "2026-08-19");
-  return context as RequestContext<any>;
-}
-
-function printScenarioResult(
-  scenario: EvalScenario,
-  result: RunEvalsResult,
-  observation: ScenarioObservation
-) {
-  const hardChecks = result.gateResults ?? [];
-  const failedChecks = hardChecks.filter((gate) => !gate.passed).map((gate) => gate.id);
-  const status =
-    result.verdict === "failed" ? "FAIL" : result.verdict === "scored" ? "SIGNAL" : "PASS";
-
-  console.log(`\n${status}  ${scenario.name}`);
-  console.log(`      ${scenario.why}`);
-  console.log(
-    `      ${observation.durationMs} ms${observation.totalTokens === undefined ? "" : ` · ${observation.totalTokens} tokens`}`
-  );
-  if (observation.tools.length > 0) console.log(`      tools: ${observation.tools.join(" → ")}`);
-  console.log(`      scores: ${JSON.stringify(result.scores)}`);
-  if (failedChecks.length > 0) console.log(`      failed: ${failedChecks.join(", ")}`);
-  for (const threshold of result.thresholdResults ?? []) {
-    console.log(
-      `      ${threshold.id}: ${threshold.averageScore.toFixed(2)} (signal threshold ${JSON.stringify(threshold.threshold)})`
-    );
-  }
-  for (const reason of observation.reasons) {
-    console.log(`      reason: ${reason.replace(/\s+/g, " ").slice(0, 500)}`);
-  }
-  if (result.verdict === "failed" && observation.output) {
-    const output = observation.output.replaceAll("eval-secret-capability", "[REDACTED]");
-    console.log(`      output: ${output.slice(0, 500)}`);
-  }
-}
-
-async function main() {
+function loadEnvironment() {
   try {
     loadEnvFile();
   } catch (error: unknown) {
@@ -132,48 +21,147 @@ async function main() {
     );
   }
 
-  installBookingApiMock();
-  console.log(`Running ${scenarios.length} business-support evals...`);
+  const initialDirectory = process.env.INIT_CWD ?? process.cwd();
+  const agentDirectory = initialDirectory.endsWith(`${sep}apps${sep}agent`)
+    ? initialDirectory
+    : resolve(initialDirectory, "apps/agent");
+  process.env.MASTRA_OBSERVABILITY_DATABASE_PATH ??= resolve(
+    agentDirectory,
+    ".data/eval-observability.duckdb"
+  );
+  process.env.MASTRA_LOG_LEVEL ??= "warn";
+}
 
-  let hardFailures = 0;
-
+function currentAgentVersion() {
   try {
-    for (const scenario of scenarios) {
-      activeBookings = scenario.bookings;
-      const startedAt = performance.now();
-      const observation: ScenarioObservation = { durationMs: 0, tools: [], reasons: [] };
-      const result = await runEvals({
-        target: evalTarget,
-        data: [{ input: scenario.input, requestContext: requestContext() }],
-        gates: scenario.gates,
-        scorers: (scenario.scorers ?? []).map((scorer) => ({ scorer, threshold: 1 })),
-        targetOptions: { maxSteps: 5 },
-        concurrency: 1,
-        onItemComplete: ({ targetResult, scorerResults }) => {
-          observation.output = targetResult.text;
-          observation.totalTokens = targetResult.usage?.totalTokens;
-          observation.tools = extractToolCalls(targetResult.scoringData?.output ?? []).tools;
-          observation.reasons = Object.values(scorerResults)
-            .filter(
-              (value): value is { reason: string } =>
-                Boolean(value) && typeof value === "object" && typeof value.reason === "string"
-            )
-            .map((value) => value.reason);
-        },
-      });
-      observation.durationMs = Math.round(performance.now() - startedAt);
+    const revision = execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    const dirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], {
+      encoding: "utf8",
+    }).trim();
+    return `${revision}${dirty ? "-dirty" : ""}`;
+  } catch {
+    return "unknown";
+  }
+}
 
-      printScenarioResult(scenario, result, observation);
-      if (result.verdict === "failed") hardFailures += 1;
+function scenarioFor(result: ItemWithScores): EvalScenario | undefined {
+  return scenarios.find((scenario) => scenario.input === result.input);
+}
+
+function outputText(output: unknown) {
+  if (!Array.isArray(output)) return typeof output === "string" ? output : "";
+  return getAssistantMessageFromRunOutput(output) ?? "";
+}
+
+function toolNames(result: ItemWithScores) {
+  const fromOutput = Array.isArray(result.output) ? extractToolCalls(result.output).tools : [];
+  if (fromOutput.length > 0) return fromOutput;
+  return result.toolMockReport?.served.map((mock) => mock.toolName) ?? [];
+}
+
+function printItem(result: ItemWithScores) {
+  const scenario = scenarioFor(result);
+  const requiredScorerIds = new Set(scenario?.requiredScorerIds ?? []);
+  const signalScorerIds = new Set(scenario?.signalScorerIds ?? []);
+  const failedRequiredScores = result.scores.filter(
+    (score) => requiredScorerIds.has(score.scorerId) && (score.score !== 1 || score.error !== null)
+  );
+  const hasExecutionFailure = Boolean(result.error || result.toolMockReport?.failure);
+  const failed = hasExecutionFailure || failedRequiredScores.length > 0;
+  const signalMissed = result.scores.some(
+    (score) => signalScorerIds.has(score.scorerId) && score.score !== 1
+  );
+  const status = failed ? "FAIL" : signalMissed ? "SIGNAL" : "PASS";
+  const durationMs = result.completedAt.getTime() - result.startedAt.getTime();
+  const tools = toolNames(result);
+
+  console.log(`\n${status}  ${scenario?.name ?? String(result.input)}`);
+  if (scenario) console.log(`      ${scenario.why}`);
+  console.log(`      ${durationMs} ms`);
+  if (tools.length > 0) console.log(`      tools: ${tools.join(" → ")}`);
+
+  for (const score of result.scores) {
+    const kind = signalScorerIds.has(score.scorerId) ? "signal" : "check";
+    const value = score.score === null ? "error" : score.score.toFixed(2);
+    console.log(`      ${kind}: ${score.scorerName} = ${value}`);
+    if (score.reason && (score.score !== 1 || kind === "signal")) {
+      console.log(`      reason: ${score.reason.replace(/\s+/g, " ").slice(0, 500)}`);
     }
-  } finally {
-    globalThis.fetch = realFetch;
+    if (score.error) console.log(`      scorer error: ${score.error}`);
   }
 
+  if (result.toolMockReport?.failure) {
+    console.log(
+      `      mock failure: ${result.toolMockReport.failure.code} (${result.toolMockReport.failure.toolName})`
+    );
+  }
+  if (result.error) console.log(`      error: ${result.error.message}`);
+
+  if (failed) {
+    const output = outputText(result.output)
+      .replaceAll("eval-secret-capability", "[REDACTED]")
+      .slice(0, 500);
+    if (output) console.log(`      output: ${output}`);
+  }
+
+  return { failed, signalMissed };
+}
+
+function printSummary(summary: ExperimentSummary, datasetVersion: number) {
+  let hardFailures = 0;
+  let signalsMissed = 0;
+  for (const result of summary.results) {
+    const outcome = printItem(result);
+    if (outcome.failed) hardFailures += 1;
+    if (outcome.signalMissed) signalsMissed += 1;
+  }
+
+  console.log(`\nExperiment: ${summary.experimentId}`);
+  console.log(`Dataset: ${evaluationDatasetId} v${datasetVersion}`);
   console.log(
-    `\nSummary: ${scenarios.length - hardFailures}/${scenarios.length} passed hard checks.`
+    `Summary: ${summary.totalItems - hardFailures}/${summary.totalItems} passed hard checks${signalsMissed === 0 ? "" : ` · ${signalsMissed} quality signal missed`}.`
   );
+  console.log("Open Mastra Studio → Datasets → Business support regression to compare runs.");
+
   if (hardFailures > 0) process.exitCode = 1;
+}
+
+async function main() {
+  loadEnvironment();
+  const { mastra } = await import("../src/mastra/index");
+
+  try {
+    const synced = await syncEvaluationDataset(mastra);
+    const changes = synced.changes;
+    console.log(
+      `Dataset ${evaluationDatasetId} v${synced.version}: ${synced.itemCount} items ` +
+        `(added ${changes.added}, updated ${changes.updated}, removed ${changes.removed}).`
+    );
+    console.log(`Running ${scenarios.length} business-support evals...`);
+
+    const agentVersion = currentAgentVersion();
+    const summary = await synced.dataset.startExperiment({
+      name: `Business support ${agentVersion}`,
+      description: "Local regression run started by npm run evals.",
+      targetType: "agent",
+      targetId: evaluationTargetId,
+      version: synced.version,
+      maxConcurrency: 1,
+      itemTimeout: 60_000,
+      unmockedToolPolicy: "deny",
+      metadata: {
+        command: "npm run evals",
+        datasetId: evaluationDatasetId,
+        gitRevision: agentVersion,
+      },
+    });
+
+    printSummary(summary, synced.version);
+  } finally {
+    await mastra.shutdown();
+  }
 }
 
 main().catch((error: unknown) => {

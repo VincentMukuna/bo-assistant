@@ -5,10 +5,16 @@ import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability";
 import { SimpleAuth } from "@mastra/core/server";
 import { MastraCompositeStore } from "@mastra/core/storage";
 import { DuckDBStore } from "@mastra/duckdb";
+import { LibSQLStore } from "@mastra/libsql";
 import { PinoLogger } from "@mastra/loggers";
 import { MastraStorageExporter, Observability } from "@mastra/observability";
 import { businessSupportAgent } from "./agents/business-support-agent";
 import { conversationTitleAgent } from "./agents/conversation-title-agent";
+import { evaluationScorers } from "./scorers/evaluation-scorers";
+import {
+  compactChatFormatScorer,
+  privateDataSafetyScorer,
+} from "./scorers/support-response-scorers";
 import { postgresStore } from "./storage";
 
 const initialDirectory = process.env.INIT_CWD ?? process.cwd();
@@ -18,6 +24,16 @@ const agentDirectory = initialDirectory.endsWith(`${sep}apps${sep}agent`)
 const observabilityDatabasePath =
   process.env.MASTRA_OBSERVABILITY_DATABASE_PATH ??
   resolve(agentDirectory, ".data/observability.duckdb");
+const evaluationDatabaseUrl =
+  process.env.MASTRA_EVALUATION_DATABASE_URL ??
+  `file:${resolve(agentDirectory, ".data/evaluations.db")}`;
+const logLevel =
+  process.env.MASTRA_LOG_LEVEL === "error" ||
+  process.env.MASTRA_LOG_LEVEL === "warn" ||
+  process.env.MASTRA_LOG_LEVEL === "info" ||
+  process.env.MASTRA_LOG_LEVEL === "debug"
+    ? process.env.MASTRA_LOG_LEVEL
+    : "debug";
 
 mkdirSync(dirname(observabilityDatabasePath), { recursive: true });
 
@@ -26,6 +42,11 @@ const observabilityStore = new DuckDBStore({
   path: observabilityDatabasePath,
   memoryLimit: "512MB",
   threads: 2,
+});
+
+const evaluationStore = new LibSQLStore({
+  id: "agent-evaluations",
+  url: evaluationDatabaseUrl,
 });
 
 function redactBookingCapabilities(value: unknown): unknown {
@@ -59,16 +80,24 @@ const bookingCapabilityRedactor: SpanOutputProcessor = {
 
 export const mastra = new Mastra({
   agents: { businessSupportAgent, conversationTitleAgent },
+  scorers: {
+    privateDataSafetyScorer,
+    compactChatFormatScorer,
+    ...evaluationScorers,
+  },
   environment: "development",
   logger: new PinoLogger({
     name: "business-support-agent",
-    level: "debug",
+    level: logLevel,
   }),
   storage: new MastraCompositeStore({
     id: "agent-storage",
     default: postgresStore,
     domains: {
       observability: observabilityStore.observability,
+      datasets: evaluationStore.stores.datasets,
+      experiments: evaluationStore.stores.experiments,
+      scores: evaluationStore.stores.scores,
     },
   }),
   observability: new Observability({
