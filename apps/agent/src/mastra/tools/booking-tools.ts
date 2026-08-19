@@ -1,6 +1,7 @@
 import { createTool } from "@mastra/core/tools";
+import { Result, TaggedError, panic, type Result as ResultType } from "better-result";
 import { z } from "zod";
-import { formatFriendlyDate } from "../presentation/format-date";
+import { formatFriendlyDate, type InvalidDatePresentation } from "../presentation/format-date";
 
 const bookingContextSchema = z.object({
   bookingCapability: z.string().min(1),
@@ -23,6 +24,45 @@ const presentedBookingSchema = bookingSchema.extend({
 
 type Booking = z.infer<typeof bookingSchema>;
 
+export class BookingApiUnavailable extends TaggedError("BookingApiUnavailable")<{
+  operation: string;
+  cause: unknown;
+  message: string;
+}> {}
+
+export class BookingApiRejected extends TaggedError("BookingApiRejected")<{
+  operation: string;
+  status: number;
+  code: string;
+  retryable: boolean;
+  message: string;
+}> {}
+
+export class InvalidBookingApiResponse extends TaggedError("InvalidBookingApiResponse")<{
+  operation: string;
+  status: number;
+  cause?: unknown;
+  message: string;
+}> {}
+
+type BookingApiError = BookingApiUnavailable | BookingApiRejected | InvalidBookingApiResponse;
+type BookingToolError = BookingApiError | InvalidDatePresentation;
+
+const bookingApiErrorSchema = z.object({
+  error: z.union([
+    z.string().transform((message) => ({
+      code: "BOOKING_API_REJECTED",
+      message,
+      retryable: false,
+    })),
+    z.object({
+      code: z.string(),
+      message: z.string(),
+      retryable: z.boolean(),
+    }),
+  ]),
+});
+
 function apiUrl() {
   return (process.env.API_URL ?? "http://localhost:3333").replace(/\/$/, "");
 }
@@ -30,39 +70,91 @@ function apiUrl() {
 async function callBookingApi<T>(
   path: string,
   body: Record<string, unknown>,
-  bookingCapability: string
-): Promise<T> {
-  const response = await fetch(`${apiUrl()}${path}`, {
-    method: "POST",
-    headers: {
-      "authorization": `Bearer ${bookingCapability}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15_000),
+  bookingCapability: string,
+  schema: z.ZodType<T>
+): Promise<ResultType<T, BookingApiError>> {
+  const response = await Result.tryPromise({
+    try: () =>
+      fetch(`${apiUrl()}${path}`, {
+        method: "POST",
+        headers: {
+          "authorization": `Bearer ${bookingCapability}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15_000),
+      }),
+    catch: (cause) =>
+      new BookingApiUnavailable({
+        operation: path,
+        cause,
+        message: `Unable to call the booking API operation ${path}. The request did not complete.`,
+      }),
   });
+  if (response.status === "error") return response;
 
-  const result = (await response.json().catch(() => null)) as { error?: unknown } | null;
+  const payload = await Result.tryPromise({
+    try: () => response.value.json(),
+    catch: (cause) =>
+      new InvalidBookingApiResponse({
+        operation: path,
+        status: response.value.status,
+        cause,
+        message: `The booking API operation ${path} returned a non-JSON response with status ${response.value.status}.`,
+      }),
+  });
+  if (payload.status === "error") return payload;
 
-  if (!response.ok) {
-    const message =
-      result && typeof result.error === "string"
-        ? result.error
-        : "The booking service rejected the request.";
-    throw new Error(message);
+  if (!response.value.ok) {
+    const failure = bookingApiErrorSchema.safeParse(payload.value);
+    if (!failure.success) {
+      return Result.err(
+        new InvalidBookingApiResponse({
+          operation: path,
+          status: response.value.status,
+          cause: failure.error,
+          message: `The booking API operation ${path} returned an invalid error payload with status ${response.value.status}.`,
+        })
+      );
+    }
+    return Result.err(
+      new BookingApiRejected({
+        operation: path,
+        status: response.value.status,
+        ...failure.data.error,
+      })
+    );
   }
 
-  return result as T;
+  const parsed = schema.safeParse(payload.value);
+  return parsed.success
+    ? Result.ok(parsed.data)
+    : Result.err(
+        new InvalidBookingApiResponse({
+          operation: path,
+          status: response.value.status,
+          cause: parsed.error,
+          message: `The booking API operation ${path} returned an invalid success payload.`,
+        })
+      );
+}
+
+function leaveBookingResult<T>(result: ResultType<T, BookingToolError>): T {
+  if (result.status === "ok") return result.value;
+
+  // Mastra models tool failure through a rejected execute callback. Keep this throw at the
+  // framework edge so all application and transport code before it remains Result-based.
+  throw result.error;
 }
 
 function presentBooking(booking: Booking, currentDate: string, timezone: string) {
-  return {
+  return formatFriendlyDate(booking.start_time, {
+    currentDate,
+    timezone,
+  }).map((startTimeDisplay) => ({
     ...booking,
-    start_time_display: formatFriendlyDate(booking.start_time, {
-      currentDate,
-      timezone,
-    }),
-  };
+    start_time_display: startTimeDisplay,
+  }));
 }
 
 export const findBookingsForCustomer = createTool({
@@ -78,15 +170,22 @@ export const findBookingsForCustomer = createTool({
   outputSchema: z.object({ bookings: z.array(presentedBookingSchema) }),
   requestContextSchema: bookingContextSchema,
   execute: async (input, { requestContext }) => {
-    const result = await callBookingApi<{ bookings: Booking[] }>(
-      "/api/v1/agent/booking-searches",
-      input,
-      requestContext.all.bookingCapability
+    const result = leaveBookingResult(
+      await callBookingApi(
+        "/api/v1/agent/booking-searches",
+        input,
+        requestContext.all.bookingCapability,
+        z.object({ bookings: z.array(bookingSchema) })
+      )
     );
 
     return {
-      bookings: result.bookings.map((booking) =>
-        presentBooking(booking, requestContext.all.currentDate, requestContext.all.timezone)
+      bookings: leaveBookingResult(
+        Result.all(
+          result.bookings.map((booking) =>
+            presentBooking(booking, requestContext.all.currentDate, requestContext.all.timezone)
+          )
+        )
       ),
     };
   },
@@ -111,19 +210,28 @@ export const rescheduleBooking = createTool({
   execute: async (input, context) => {
     const { booking_id, new_start_time } = input;
     const toolCallId = context.agent?.toolCallId;
-    if (!toolCallId) throw new Error("The booking approval reference is missing.");
+    if (!toolCallId) {
+      return panic(
+        "The approval-required reschedule tool executed without Mastra providing a tool-call ID."
+      );
+    }
 
-    const result = await callBookingApi<{ booking: Booking }>(
-      "/api/v1/agent/booking-reschedules",
-      { booking_id, new_start_time, tool_call_id: toolCallId },
-      context.requestContext.all.bookingCapability
+    const result = leaveBookingResult(
+      await callBookingApi(
+        "/api/v1/agent/booking-reschedules",
+        { booking_id, new_start_time, tool_call_id: toolCallId },
+        context.requestContext.all.bookingCapability,
+        z.object({ booking: bookingSchema })
+      )
     );
 
     return {
-      booking: presentBooking(
-        result.booking,
-        context.requestContext.all.currentDate,
-        context.requestContext.all.timezone
+      booking: leaveBookingResult(
+        presentBooking(
+          result.booking,
+          context.requestContext.all.currentDate,
+          context.requestContext.all.timezone
+        )
       ),
     };
   },

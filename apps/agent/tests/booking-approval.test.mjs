@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { businessSupportAgent } from "../src/mastra/agents/business-support-agent.ts";
-import { findBookingsForCustomer, rescheduleBooking } from "../src/mastra/tools/booking-tools.ts";
+import {
+  BookingApiRejected,
+  BookingApiUnavailable,
+  InvalidBookingApiResponse,
+  findBookingsForCustomer,
+  rescheduleBooking,
+} from "../src/mastra/tools/booking-tools.ts";
 
 const context = {
   requestContext: {
@@ -74,6 +80,87 @@ test("sends the approved mutation to the focused internal booking resource", asy
     );
     assert.equal(result.booking.booking_id, 6);
     assert.equal(result.booking.start_time_display, "Monday at 10:00 AM");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("preserves a typed booking rejection at the Mastra execution boundary", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    Response.json(
+      {
+        error: {
+          code: "STAFF_UNAVAILABLE",
+          message: "That staff member is already booked at this time.",
+          retryable: false,
+        },
+      },
+      { status: 409 }
+    );
+
+  try {
+    await assert.rejects(
+      () =>
+        rescheduleBooking.execute(
+          {
+            booking_id: 6,
+            expected_start_time: "2026-08-21T18:30:00Z",
+            new_start_time: "2026-08-24T10:00:00-07:00",
+          },
+          context
+        ),
+      (error) => {
+        assert.ok(BookingApiRejected.is(error));
+        assert.equal(error.code, "STAFF_UNAVAILABLE");
+        assert.equal(error.status, 409);
+        return true;
+      }
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejects malformed booking success payloads as typed contract failures", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({ booking: { booking_id: "wrong" } });
+  try {
+    await assert.rejects(
+      () =>
+        rescheduleBooking.execute(
+          {
+            booking_id: 6,
+            expected_start_time: "2026-08-21T18:30:00Z",
+            new_start_time: "2026-08-24T10:00:00-07:00",
+          },
+          context
+        ),
+      (error) => InvalidBookingApiResponse.is(error)
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("turns booking network rejection into a typed availability failure", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("connection refused");
+  };
+  try {
+    await assert.rejects(
+      () =>
+        rescheduleBooking.execute(
+          {
+            booking_id: 6,
+            expected_start_time: "2026-08-21T18:30:00Z",
+            new_start_time: "2026-08-24T10:00:00-07:00",
+          },
+          context
+        ),
+      (error) => BookingApiUnavailable.is(error)
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
