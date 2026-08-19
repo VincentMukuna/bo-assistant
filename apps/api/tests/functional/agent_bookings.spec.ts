@@ -1,4 +1,10 @@
 import createBookingRescheduleGrant from "#actions/create-booking-reschedule-grant";
+import rescheduleBooking, {
+  BookingChangedSinceApproval,
+  BookingNotFound,
+  BookingNotReschedulable,
+  InvalidRescheduleTime,
+} from "#actions/reschedule-booking";
 import { issueBookingReadCapability } from "#services/booking_capability";
 import Booking from "#models/booking";
 import Customer from "#models/customer";
@@ -58,6 +64,7 @@ test.group("Agent booking resources", (group) => {
   });
 
   test("executes only the exact approved reschedule and makes exact retries idempotent", async ({
+    assert,
     client,
     db,
   }) => {
@@ -96,6 +103,13 @@ test.group("Agent booking resources", (group) => {
         new_start_time: "2026-09-09T10:00:00-07:00",
       });
     altered.assertStatus(401);
+    assert.deepEqual(altered.body(), {
+      error: {
+        code: "RESCHEDULE_NOT_AUTHORIZED",
+        message: "The booking change has not been approved.",
+        retryable: false,
+      },
+    });
 
     const accepted = await client
       .post("/api/v1/agent/booking-reschedules")
@@ -119,7 +133,10 @@ test.group("Agent booking resources", (group) => {
     replay.assertStatus(200);
   });
 
-  test("rejects overlapping staff bookings, not only identical start times", async ({ client }) => {
+  test("rejects overlapping staff bookings, not only identical start times", async ({
+    assert,
+    client,
+  }) => {
     const customer = await Customer.create({
       name: "Alice",
       email: "alice-overlap@example.com",
@@ -164,6 +181,13 @@ test.group("Agent booking resources", (group) => {
         new_start_time: "2026-09-08T10:00:00-07:00",
       });
     response.assertStatus(409);
+    assert.deepEqual(response.body(), {
+      error: {
+        code: "STAFF_UNAVAILABLE",
+        message: "That staff member is already booked at this time.",
+        retryable: false,
+      },
+    });
   });
 
   test("does not accept a customer capability without an approval grant", async ({ client }) => {
@@ -176,5 +200,72 @@ test.group("Agent booking resources", (group) => {
         new_start_time: "2026-09-08T10:00:00-07:00",
       });
     response.assertStatus(401);
+  });
+
+  test("returns a named failure when the proposed time is not in the future", async ({
+    assert,
+  }) => {
+    const result = await rescheduleBooking({
+      customerId: 1,
+      bookingId: 1,
+      expectedStartTime: DateTime.now().minus({ days: 2 }),
+      proposedStartTime: DateTime.now().minus({ days: 1 }),
+    });
+
+    assert.equal(result.status, "error");
+    if (result.status === "error") assert.isTrue(InvalidRescheduleTime.is(result.error));
+  });
+
+  test("returns a named failure when the scoped booking is absent", async ({ assert }) => {
+    const result = await rescheduleBooking({
+      customerId: 999,
+      bookingId: 999,
+      expectedStartTime: DateTime.fromISO("2026-09-01T17:00:00Z"),
+      proposedStartTime: DateTime.fromISO("2026-09-08T17:00:00Z"),
+    });
+
+    assert.equal(result.status, "error");
+    if (result.status === "error") assert.isTrue(BookingNotFound.is(result.error));
+  });
+
+  test("returns named failures for ineligible and stale bookings", async ({ assert }) => {
+    const customer = await Customer.create({
+      name: "Alice",
+      email: "alice-state-errors@example.com",
+      phone: "1",
+      address: "1 Pine",
+      notes: "",
+    });
+    const booking = await Booking.create({
+      customerId: customer.id,
+      service: "Deep clean",
+      staff: "Jamie",
+      scheduledAt: DateTime.fromISO("2026-09-01T17:00:00Z"),
+      durationMinutes: 120,
+      status: "completed",
+      serviceAddress: customer.address,
+    });
+
+    const ineligible = await rescheduleBooking({
+      customerId: customer.id,
+      bookingId: booking.id,
+      expectedStartTime: booking.scheduledAt,
+      proposedStartTime: DateTime.fromISO("2026-09-08T17:00:00Z"),
+    });
+    assert.equal(ineligible.status, "error");
+    if (ineligible.status === "error") {
+      assert.isTrue(BookingNotReschedulable.is(ineligible.error));
+    }
+
+    booking.status = "confirmed";
+    await booking.save();
+    const stale = await rescheduleBooking({
+      customerId: customer.id,
+      bookingId: booking.id,
+      expectedStartTime: DateTime.fromISO("2026-09-02T17:00:00Z"),
+      proposedStartTime: DateTime.fromISO("2026-09-08T17:00:00Z"),
+    });
+    assert.equal(stale.status, "error");
+    if (stale.status === "error") assert.isTrue(BookingChangedSinceApproval.is(stale.error));
   });
 });
