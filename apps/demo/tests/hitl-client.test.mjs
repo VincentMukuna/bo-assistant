@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  InvalidSupportApiResponse,
+  InvalidSupportStream,
+  SupportApiRejected,
   bootstrapCustomerSession,
   decideApproval,
   readBusinessSupportStream,
@@ -16,7 +19,9 @@ test("bootstraps identity without sending a customer selector", async () => {
     return Response.json({ customer: { name: "Alice Morgan" } });
   };
   try {
-    assert.deepEqual(await bootstrapCustomerSession(), { customer: { name: "Alice Morgan" } });
+    const result = await bootstrapCustomerSession();
+    assert.equal(result.status, "ok");
+    assert.deepEqual(result.value, { customer: { name: "Alice Morgan" } });
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -77,4 +82,36 @@ test("consumes native Mastra text streams", async () => {
   let text = "";
   await readBusinessSupportStream(response, (delta) => (text += delta));
   assert.equal(text, "Hello there");
+});
+
+test("returns a typed failure for malformed support API JSON", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("not json");
+  try {
+    const result = await bootstrapCustomerSession();
+    assert.equal(result.status, "error");
+    assert.ok(InvalidSupportApiResponse.is(result.error));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("returns a typed rejection for non-success support responses", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({ error: "Session expired." }, { status: 401 });
+  try {
+    const result = await bootstrapCustomerSession();
+    assert.equal(result.status, "error");
+    assert.ok(SupportApiRejected.is(result.error));
+    assert.equal(result.error.status, 401);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("returns a typed failure for an empty support stream", async () => {
+  const result = await readBusinessSupportStream(new Response(null), () => {});
+  assert.equal(result.status, "error");
+  assert.ok(InvalidSupportStream.is(result.error));
+  assert.equal(result.error.reason, "empty");
 });
