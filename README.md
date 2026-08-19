@@ -46,8 +46,10 @@ The request path is:
 Oak & Pine chatbot → demo server route → Adonis API → Mastra agent → Adonis booking tools
 ```
 
-Set `OPENAI_API_KEY` in `apps/agent/.env`. `MASTRA_URL` and `API_URL` default to their local ports;
-their examples show how to override them for separate deployments.
+Set `OPENAI_API_KEY` in `apps/agent/.env`. The API development server listens on all host
+interfaces so the containerized agent can reach it through `host.docker.internal`; its customer
+routes remain origin-checked. `MASTRA_URL` and `API_URL` default to their local ports, and their
+examples show how to override them for separate deployments.
 
 ## Agent development
 
