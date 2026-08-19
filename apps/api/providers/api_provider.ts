@@ -3,6 +3,7 @@ import { BaseSerializer } from "@adonisjs/core/transformers";
 import { type SimplePaginatorMetaKeys } from "@adonisjs/lucid/types/querybuilder";
 import type Customer from "#models/customer";
 import type { BookingCapability } from "#services/booking_capability";
+import { panic } from "better-result";
 
 /**
  * Custom serializer for API responses that ensures consistent JSON structure
@@ -27,7 +28,7 @@ class ApiSerializer extends BaseSerializer<{
    */
   definePaginationMetaData(metaData: unknown): SimplePaginatorMetaKeys {
     if (!this.isLucidPaginatorMetaData(metaData)) {
-      throw new Error(
+      return panic(
         "Invalid pagination metadata. Expected metadata to contain Lucid pagination keys"
       );
     }

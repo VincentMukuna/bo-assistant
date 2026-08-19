@@ -7,6 +7,7 @@ import { MastraCompositeStore } from "@mastra/core/storage";
 import { DuckDBStore } from "@mastra/duckdb";
 import { PinoLogger } from "@mastra/loggers";
 import { MastraStorageExporter, Observability } from "@mastra/observability";
+import { panic } from "better-result";
 import { businessSupportAgent } from "./agents/business-support-agent";
 import { conversationTitleAgent } from "./agents/conversation-title-agent";
 import { postgresStore } from "./storage";
@@ -98,7 +99,7 @@ export const mastra = new Mastra({
 function internalToken() {
   const token = process.env.MASTRA_INTERNAL_TOKEN;
   if (!token && process.env.NODE_ENV === "production") {
-    throw new Error("MASTRA_INTERNAL_TOKEN is required in production");
+    return panic("MASTRA_INTERNAL_TOKEN is required in production");
   }
   return token ?? "development-internal-token";
 }
