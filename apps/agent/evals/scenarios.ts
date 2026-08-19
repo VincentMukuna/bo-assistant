@@ -1,4 +1,4 @@
-import { evaluationScorerIds } from "../src/mastra/scorers/evaluation-scorers";
+import { evaluationScorerIds } from "../scorers/evaluations";
 
 export type BookingFixture = {
   booking_id: number;

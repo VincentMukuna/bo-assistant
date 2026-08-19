@@ -130,7 +130,7 @@ function printSummary(summary: ExperimentSummary, datasetVersion: number) {
 
 async function main() {
   loadEnvironment();
-  const { mastra } = await import("../src/mastra/index");
+  const { mastra } = await import("../index");
 
   try {
     const synced = await syncEvaluationDataset(mastra);

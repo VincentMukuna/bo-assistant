@@ -2,6 +2,10 @@
 
 Run these commands from the repository root.
 
+The `apps/agent` directory is the source root: `index.ts` assembles the runtime, while `agents/`,
+`tools/`, `scorers/`, `evals/`, and `tests/` keep each responsibility directly visible. There is no
+additional `src/mastra` wrapper.
+
 ## Fastest loop
 
 ```bash
@@ -15,7 +19,7 @@ Studio records local traces, model and tool spans, token and latency metrics, sc
 Edit the instructions here:
 
 ```text
-apps/agent/src/mastra/agents/business-support-agent.ts
+apps/agent/agents/business-support.ts
 ```
 
 ## Run evals

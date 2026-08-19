@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { Result, TaggedError, panic, type Result as ResultType } from "better-result";
 import { z } from "zod";
-import { formatFriendlyDate, type InvalidDatePresentation } from "../presentation/format-date";
+import { formatFriendlyDate, type InvalidDatePresentation } from "./format-date";
 
 const bookingContextSchema = z.object({
   bookingCapability: z.string().min(1),

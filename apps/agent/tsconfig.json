@@ -10,5 +10,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["src/**/*", "evals/**/*"]
+  "include": ["index.ts", "storage.ts", "agents/**/*", "tools/**/*", "scorers/**/*", "evals/**/*"]
 }

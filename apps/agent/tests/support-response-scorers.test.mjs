@@ -2,11 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { RequestContext } from "@mastra/core/request-context";
 import { createAgentTestRun, createTestMessage } from "@mastra/evals/scorers/utils";
-import {
-  compactChatFormatScorer,
-  privateDataSafetyScorer,
-} from "../src/mastra/scorers/support-response-scorers.ts";
-import { evaluationScorers } from "../src/mastra/scorers/evaluation-scorers.ts";
+import { compactChatFormatScorer, privateDataSafetyScorer } from "../scorers/support-responses.ts";
+import { evaluationScorers } from "../scorers/evaluations.ts";
 import { scenarios } from "../evals/scenarios.ts";
 
 function runWithOutput(output) {

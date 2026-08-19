@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { conversationTitleAgent } from "../src/mastra/agents/conversation-title-agent.ts";
+import { conversationTitleAgent } from "../agents/conversation-title.ts";
 
 test("uses the nano title model with minimal reasoning", async () => {
   const model = await conversationTitleAgent.getModel();

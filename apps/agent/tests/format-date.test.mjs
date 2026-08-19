@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatFriendlyDate } from "../src/mastra/presentation/format-date.ts";
+import { formatFriendlyDate } from "../tools/format-date.ts";
 
 const customerContext = {
   currentDate: "2026-08-18",

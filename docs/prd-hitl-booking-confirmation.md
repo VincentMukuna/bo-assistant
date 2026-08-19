@@ -209,8 +209,8 @@ The retained seam is the one the application actually needs: Adonis authenticate
 
 ## Implementation map
 
-- `apps/agent/src/mastra/tools/booking-tools.ts`
-- `apps/agent/src/mastra/agents/business-support-agent.ts`
+- `apps/agent/tools/bookings.ts`
+- `apps/agent/agents/business-support.ts`
 - `apps/api/app/services/business_support_agent.ts`
 - `apps/api/app/controllers/demo_chats_controller.ts`
 - `apps/api/app/controllers/demo_approvals_controller.ts`

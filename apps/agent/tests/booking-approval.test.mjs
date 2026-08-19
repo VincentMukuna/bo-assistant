@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { businessSupportAgent } from "../src/mastra/agents/business-support-agent.ts";
+import { businessSupportAgent } from "../agents/business-support.ts";
 import {
   BookingApiRejected,
   BookingApiUnavailable,
   InvalidBookingApiResponse,
   findBookingsForCustomer,
   rescheduleBooking,
-} from "../src/mastra/tools/booking-tools.ts";
+} from "../tools/bookings.ts";
 
 const context = {
   requestContext: {

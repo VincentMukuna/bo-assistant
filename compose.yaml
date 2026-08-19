@@ -33,7 +33,11 @@ services:
     ports:
       - "127.0.0.1:${AGENT_PORT:-4111}:4111"
     volumes:
-      - ./apps/agent/src:/workspace/apps/agent/src
+      - ./apps/agent/index.ts:/workspace/apps/agent/index.ts
+      - ./apps/agent/storage.ts:/workspace/apps/agent/storage.ts
+      - ./apps/agent/agents:/workspace/apps/agent/agents
+      - ./apps/agent/tools:/workspace/apps/agent/tools
+      - ./apps/agent/scorers:/workspace/apps/agent/scorers
       - ./apps/agent/.data:/workspace/apps/agent/.data
     healthcheck:
       test:

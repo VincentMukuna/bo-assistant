@@ -7,8 +7,8 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "NODE_ENV=development mastra dev",
-    "build": "mastra build",
+    "dev": "NODE_ENV=development mastra dev --dir .",
+    "build": "mastra build --dir .",
     "start": "mastra start",
     "test": "tsx --test tests/*.test.mjs",
     "evals": "tsx evals/run.ts",
