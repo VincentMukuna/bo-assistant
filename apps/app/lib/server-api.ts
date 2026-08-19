@@ -2,7 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-import { ApiError, createApi, type User } from "@/lib/api";
+import { createApi, isUnauthorizedApiError, type User } from "@/lib/api";
 import { getBackendUrl } from "@/lib/backend-url";
 
 export async function getServerProfile(): Promise<User | null> {
@@ -18,7 +18,7 @@ export async function getServerProfile(): Promise<User | null> {
   try {
     return await api.profile();
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) return null;
+    if (isUnauthorizedApiError(error)) return null;
     throw error;
   }
 }

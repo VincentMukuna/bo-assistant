@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { api, ApiError } from "@/lib/api";
+import { api, isApiError, isUnauthorizedApiError } from "@/lib/api";
 
 export const queryKeys = {
   profile: ["auth", "profile"] as const,
@@ -17,7 +17,7 @@ export const profileQueryOptions = queryOptions({
     try {
       return await api.profile();
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) return null;
+      if (isUnauthorizedApiError(error)) return null;
       throw error;
     }
   },
@@ -53,5 +53,5 @@ export function inboxConversationQueryOptions(id: string) {
 }
 
 export function errorMessage(error: unknown, fallback: string) {
-  return error instanceof ApiError ? error.message : fallback;
+  return isApiError(error) ? error.message : fallback;
 }
