@@ -18,6 +18,20 @@ Edit the instructions here:
 apps/agent/src/mastra/agents/business-support-agent.ts
 ```
 
+## Run evals
+
+With `OPENAI_API_KEY` in `apps/agent/.env`, run the full eval suite from the repository root:
+
+```bash
+npm run evals
+```
+
+The suite uses a deterministic in-process booking API, so it does not need the API server or
+Postgres. It covers public facts, unknown pricing, friendly booking dates, 90-day search windows,
+ambiguous and exact reschedules, and prompt-injection attempts. Deterministic gates make the
+command fail; the LLM-judged pricing rubric is reported as a quality signal. Ordinary agent runs
+also record the zero-cost private-data and compact-format scores in Mastra Studio.
+
 To run only the agent and Studio, start its database first:
 
 ```bash
