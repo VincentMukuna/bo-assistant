@@ -2,7 +2,7 @@ import type { Dataset } from "@mastra/core/datasets";
 import type { Mastra } from "@mastra/core/mastra";
 import type { DatasetItem, DatasetItemPayload } from "@mastra/core/storage";
 import { z } from "zod";
-import { scenarios } from "./scenarios";
+import { scenarios } from "@/evals/scenarios";
 
 export const evaluationDatasetId = "business-support-regression";
 export const evaluationTargetId = "business-support-agent";

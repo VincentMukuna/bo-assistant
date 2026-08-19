@@ -3,8 +3,8 @@
 Run these commands from the repository root.
 
 The `apps/agent` directory is the source root: `index.ts` assembles the runtime, while `agents/`,
-`tools/`, `scorers/`, `evals/`, and `tests/` keep each responsibility directly visible. There is no
-additional `src/mastra` wrapper.
+`tools/`, `lib/`, `scorers/`, `evals/`, and `tests/` keep each responsibility directly visible.
+Internal imports use the `@/` root alias, and there is no additional `src/mastra` wrapper.
 
 ## Fastest loop
 

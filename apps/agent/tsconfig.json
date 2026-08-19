@@ -7,8 +7,19 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
+    "paths": {
+      "@/*": ["./*"]
+    },
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["index.ts", "storage.ts", "agents/**/*", "tools/**/*", "scorers/**/*", "evals/**/*"]
+  "include": [
+    "index.ts",
+    "storage.ts",
+    "agents/**/*",
+    "tools/**/*",
+    "lib/**/*",
+    "scorers/**/*",
+    "evals/**/*"
+  ]
 }

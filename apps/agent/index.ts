@@ -8,11 +8,11 @@ import { DuckDBStore } from "@mastra/duckdb";
 import { LibSQLStore } from "@mastra/libsql";
 import { PinoLogger } from "@mastra/loggers";
 import { MastraStorageExporter, Observability } from "@mastra/observability";
-import { businessSupportAgent } from "./agents/business-support";
-import { conversationTitleAgent } from "./agents/conversation-title";
-import { evaluationScorers } from "./scorers/evaluations";
-import { compactChatFormatScorer, privateDataSafetyScorer } from "./scorers/support-responses";
-import { postgresStore } from "./storage";
+import { businessSupportAgent } from "@/agents/business-support";
+import { conversationTitleAgent } from "@/agents/conversation-title";
+import { evaluationScorers } from "@/scorers/evaluations";
+import { compactChatFormatScorer, privateDataSafetyScorer } from "@/scorers/support-responses";
+import { postgresStore } from "@/storage";
 
 const initialDirectory = process.env.INIT_CWD ?? process.cwd();
 const agentDirectory = initialDirectory.endsWith(`${sep}apps${sep}agent`)

@@ -1,9 +1,9 @@
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { z } from "zod";
-import { postgresStore } from "../storage";
-import { compactChatFormatScorer, privateDataSafetyScorer } from "../scorers/support-responses";
-import { findBookingsForCustomer, rescheduleBooking } from "../tools/bookings";
+import { compactChatFormatScorer, privateDataSafetyScorer } from "@/scorers/support-responses";
+import { postgresStore } from "@/storage";
+import { findBookingsForCustomer, rescheduleBooking } from "@/tools/bookings";
 
 export const businessSupportAgent = new Agent({
   id: "business-support-agent",

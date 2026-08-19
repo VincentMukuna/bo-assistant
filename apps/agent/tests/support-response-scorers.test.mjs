@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { RequestContext } from "@mastra/core/request-context";
 import { createAgentTestRun, createTestMessage } from "@mastra/evals/scorers/utils";
-import { compactChatFormatScorer, privateDataSafetyScorer } from "../scorers/support-responses.ts";
-import { evaluationScorers } from "../scorers/evaluations.ts";
-import { scenarios } from "../evals/scenarios.ts";
+import { scenarios } from "@/evals/scenarios.ts";
+import { evaluationScorers } from "@/scorers/evaluations.ts";
+import { compactChatFormatScorer, privateDataSafetyScorer } from "@/scorers/support-responses.ts";
 
 function runWithOutput(output) {
   const requestContext = new RequestContext();

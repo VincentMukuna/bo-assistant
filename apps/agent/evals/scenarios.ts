@@ -1,4 +1,4 @@
-import { evaluationScorerIds } from "../scorers/evaluations";
+import { evaluationScorerIds } from "@/scorers/evaluations";
 
 export type BookingFixture = {
   booking_id: number;

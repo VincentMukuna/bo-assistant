@@ -37,6 +37,7 @@ services:
       - ./apps/agent/storage.ts:/workspace/apps/agent/storage.ts
       - ./apps/agent/agents:/workspace/apps/agent/agents
       - ./apps/agent/tools:/workspace/apps/agent/tools
+      - ./apps/agent/lib:/workspace/apps/agent/lib
       - ./apps/agent/scorers:/workspace/apps/agent/scorers
       - ./apps/agent/.data:/workspace/apps/agent/.data
     healthcheck:

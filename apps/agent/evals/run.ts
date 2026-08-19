@@ -3,8 +3,8 @@ import { extractToolCalls, getAssistantMessageFromRunOutput } from "@mastra/eval
 import { execFileSync } from "node:child_process";
 import { loadEnvFile } from "node:process";
 import { resolve, sep } from "node:path";
-import { evaluationDatasetId, evaluationTargetId, syncEvaluationDataset } from "./dataset";
-import { scenarios, type EvalScenario } from "./scenarios";
+import { evaluationDatasetId, evaluationTargetId, syncEvaluationDataset } from "@/evals/dataset";
+import { scenarios, type EvalScenario } from "@/evals/scenarios";
 
 function loadEnvironment() {
   try {
@@ -130,7 +130,7 @@ function printSummary(summary: ExperimentSummary, datasetVersion: number) {
 
 async function main() {
   loadEnvironment();
-  const { mastra } = await import("../index");
+  const { mastra } = await import("@/index");
 
   try {
     const synced = await syncEvaluationDataset(mastra);
