@@ -415,6 +415,10 @@ function ConversationPanel({
     if (!right.occurredAt) return 1;
     return new Date(left.occurredAt).getTime() - new Date(right.occurredAt).getTime();
   });
+  const hasOutcome = Boolean(
+    conversation.outcomeSummary && conversation.outcomeStatus !== "active"
+  );
+  const timelineIsEmpty = !timeline.length && !conversation.attention && !hasOutcome;
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-white">
       <header className="flex min-h-[73px] shrink-0 items-center gap-3 px-4 py-3 sm:px-5">
@@ -475,6 +479,18 @@ function ConversationPanel({
       ) : null}
       <ScrollArea ref={scrollRef} className="min-h-0 flex-1 bg-zinc-50/35">
         <div className="mx-auto w-full max-w-[720px] px-4 py-7 sm:px-7">
+          {timelineIsEmpty ? (
+            <div className="py-20 text-center sm:py-24">
+              <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-white ring-1 ring-zinc-200/70">
+                <MessageSquare className="size-4 text-zinc-400" />
+              </div>
+              <h3 className="mt-4 text-sm font-medium text-zinc-900">No messages yet</h3>
+              <p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-zinc-500">
+                Messages with {conversation.customer.name.split(" ")[0]} will appear here once the
+                conversation starts.
+              </p>
+            </div>
+          ) : null}
           {timeline.map((entry) => {
             if (entry.type === "annotation") {
               return <Annotation key={entry.id} {...entry.value} time={entry.value.createdAt} />;
@@ -521,7 +537,7 @@ function ConversationPanel({
               onDecide={(decision) => decisionMutation.mutate(decision)}
             />
           ) : null}
-          {conversation.outcomeSummary && conversation.outcomeStatus !== "active" ? (
+          {hasOutcome ? (
             <div
               className={cn(
                 "my-5 rounded-xl p-4 text-sm",
