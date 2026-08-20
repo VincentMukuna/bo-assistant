@@ -10,7 +10,7 @@
     "paths": {
       "@/*": ["./*"]
     },
-    "types": ["node"],
+    "types": ["bun"],
     "noEmit": true
   },
   "include": [

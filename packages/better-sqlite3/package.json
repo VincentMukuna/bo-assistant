@@ -1,0 +1,13 @@
+{
+  "name": "better-sqlite3",
+  "version": "13.0.3-bun.1",
+  "private": true,
+  "main": "index.cjs",
+  "types": "index.d.ts",
+  "engines": {
+    "bun": ">=1.4.0 <1.5.0"
+  },
+  "scripts": {
+    "test": "bun test"
+  }
+}

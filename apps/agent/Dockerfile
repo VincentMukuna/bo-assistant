@@ -1,13 +1,15 @@
-FROM node:24-slim
+FROM oven/bun:1.4.0-slim
 
 WORKDIR /workspace
 
-COPY package.json package-lock.json ./
+COPY package.json bun.lock bunfig.toml ./
 COPY apps/agent/package.json apps/agent/package.json
 COPY apps/api/package.json apps/api/package.json
 COPY apps/app/package.json apps/app/package.json
+COPY apps/demo/package.json apps/demo/package.json
+COPY packages/better-sqlite3 packages/better-sqlite3
 
-RUN npm ci --workspace=agent
+RUN bun ci
 
 COPY apps/agent apps/agent
 
@@ -18,4 +20,4 @@ WORKDIR /workspace/apps/agent
 
 EXPOSE 4111
 
-CMD ["npm", "run", "dev"]
+CMD ["bun", "run", "dev"]

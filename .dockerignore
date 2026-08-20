@@ -14,4 +14,4 @@ node_modules
 **/.data
 coverage
 **/coverage
-npm-debug.log*
+bun-debug.log*
