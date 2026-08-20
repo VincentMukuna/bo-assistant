@@ -59,7 +59,7 @@ export function useSupportConversations() {
 
   const sessionQuery = useQuery({
     queryKey: supportQueryKeys.session(),
-    queryFn: bootstrapCustomerSession,
+    queryFn: async () => leaveSupportResult(await bootstrapCustomerSession()),
     staleTime: Infinity,
   });
   const conversationsQuery = useQuery({
@@ -71,12 +71,12 @@ export function useSupportConversations() {
   const activeId = selectedId ?? threads[0]?.id;
   const conversationQuery = useQuery({
     queryKey: supportQueryKeys.conversation(activeId ?? "none"),
-    queryFn: () => readConversation(activeId!),
+    queryFn: async () => leaveSupportResult(await readConversation(activeId!)),
     enabled: Boolean(activeId),
   });
   const approvalQuery = useQuery({
     queryKey: supportQueryKeys.approval(activeId ?? "none"),
-    queryFn: () => readApprovalRequest(activeId!),
+    queryFn: async () => leaveSupportResult(await readApprovalRequest(activeId!)),
     enabled: Boolean(activeId),
   });
 
@@ -88,12 +88,14 @@ export function useSupportConversations() {
 
   async function consume(response: Response, conversationId: string) {
     let assistantText = "";
-    await readBusinessSupportStream(response, (delta) => {
-      assistantText += delta;
-      setPendingExchange((current) =>
-        current?.conversationId === conversationId ? { ...current, assistantText } : current
-      );
-    });
+    leaveSupportResult(
+      await readBusinessSupportStream(response, (delta) => {
+        assistantText += delta;
+        setPendingExchange((current) =>
+          current?.conversationId === conversationId ? { ...current, assistantText } : current
+        );
+      })
+    );
   }
 
   async function reconcile(conversationId: string) {
@@ -106,10 +108,12 @@ export function useSupportConversations() {
 
   const messageMutation = useMutation({
     mutationFn: async (variables: MessageMutation) => {
-      const response = await sendCustomerReply(
-        variables.conversationId,
-        variables.message,
-        variables.hasPendingApproval
+      const response = leaveSupportResult(
+        await sendCustomerReply(
+          variables.conversationId,
+          variables.message,
+          variables.hasPendingApproval
+        )
       );
       await consume(response, variables.conversationId);
     },
@@ -135,7 +139,9 @@ export function useSupportConversations() {
 
   const decisionMutation = useMutation({
     mutationFn: async (variables: DecisionMutation) => {
-      const response = await decideApproval(variables.conversationId, variables.decision);
+      const response = leaveSupportResult(
+        await decideApproval(variables.conversationId, variables.decision)
+      );
       await consume(response, variables.conversationId);
     },
     onMutate: (variables) => {
@@ -159,7 +165,7 @@ export function useSupportConversations() {
   });
 
   const createConversationMutation = useMutation({
-    mutationFn: createConversation,
+    mutationFn: async () => leaveSupportResult(await createConversation()),
     onSuccess: (created) => {
       queryClient.setQueryData<ConversationSummary[]>(
         supportQueryKeys.conversations(),
@@ -279,9 +285,17 @@ export function useSupportConversations() {
 }
 
 async function listOrCreateConversations() {
-  const conversations = await listConversations();
+  const conversations = leaveSupportResult(await listConversations());
   if (conversations.length) return conversations;
-  return [await createConversation()];
+  return [leaveSupportResult(await createConversation())];
+}
+
+function leaveSupportResult<T>(
+  result: { status: "ok"; value: T } | { status: "error"; error: Error }
+): T {
+  if (result.status === "ok") return result.value;
+  // TanStack Query and mutation state use rejected promises as their framework boundary.
+  throw result.error;
 }
 
 function firstErrorMessage(...causes: unknown[]) {
