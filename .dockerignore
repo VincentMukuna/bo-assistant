@@ -10,6 +10,8 @@ node_modules
 **/.turbo
 .mastra
 **/.mastra
+.data
+**/.data
 coverage
 **/coverage
 npm-debug.log*

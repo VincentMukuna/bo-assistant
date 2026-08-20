@@ -4,10 +4,10 @@ import { getBackendUrl } from "./lib/backend-url";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["luna"],
+  output: "standalone",
+  outputFileTracingRoot: new URL("../..", import.meta.url).pathname,
   reactStrictMode: true,
   async rewrites() {
-    if (process.env.NODE_ENV === "production") return [];
-
     return [
       {
         source: "/api/:path*",

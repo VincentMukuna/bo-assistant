@@ -1,0 +1,152 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mastra
+      POSTGRES_USER: ${SERVICE_USER_POSTGRES}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_POSTGRES}
+    volumes:
+      - mastra-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: agent
+    environment:
+      NODE_ENV: production
+      PORT: 4111
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?}
+      API_URL: http://api:3333
+      MASTRA_DATABASE_URL: postgresql://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/mastra
+      MASTRA_INTERNAL_TOKEN: ${SERVICE_PASSWORD_64_MASTRA}
+      MASTRA_LOG_LEVEL: info
+      MASTRA_OBSERVABILITY_DATABASE_PATH: /data/observability.duckdb
+      MASTRA_EVALUATION_DATABASE_URL: file:/data/evaluations.db
+    volumes:
+      - agent-data:/data
+    expose:
+      - "4111"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4111/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    environment:
+      TZ: ${TZ:-UTC}
+      PORT: 3333
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      LOG_LEVEL: info
+      APP_KEY: ${SERVICE_BASE64_64_API}
+      APP_URL: ${SERVICE_URL_APP_3000}
+      MASTRA_URL: http://agent:4111
+      MASTRA_INTERNAL_TOKEN: ${SERVICE_PASSWORD_64_MASTRA}
+      CUSTOMER_APP_ORIGIN: ${SERVICE_URL_DEMO_3100}
+      SESSION_DRIVER: cookie
+    volumes:
+      - api-data:/workspace/apps/api/tmp
+    expose:
+      - "3333"
+    depends_on:
+      agent:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3333/').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+      args:
+        ADONIS_URL: http://api:3333
+    environment:
+      ADONIS_URL: http://api:3333
+      SERVICE_URL_APP_3000: /
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: demo
+      args:
+        ADONIS_URL: http://api:3333
+    environment:
+      ADONIS_URL: http://api:3333
+      SERVICE_URL_DEMO_3100: /
+    expose:
+      - "3100"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3100/').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  mastra-db-data:
+  agent-data:
+  api-data:
