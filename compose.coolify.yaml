@@ -62,10 +62,10 @@ services:
       NODE_ENV: production
       LOG_LEVEL: info
       APP_KEY: ${SERVICE_BASE64_64_API}
-      APP_URL: ${SERVICE_URL_APP_3000}
+      APP_URL: https://bo.builtby.vin
       MASTRA_URL: http://agent:4111
       MASTRA_INTERNAL_TOKEN: ${SERVICE_PASSWORD_64_MASTRA}
-      CUSTOMER_APP_ORIGIN: ${SERVICE_URL_DEMO_3100}
+      CUSTOMER_APP_ORIGIN: https://oak.builtby.vin
       SESSION_DRIVER: cookie
     volumes:
       - api-data:/workspace/apps/api/tmp
