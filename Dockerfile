@@ -14,21 +14,60 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/app/package.json apps/app/package.json
 COPY apps/demo/package.json apps/demo/package.json
 
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,id=bo-assistant-npm,target=/root/.npm,sharing=locked npm ci
 
 
-FROM dependencies AS builder
+FROM dependencies AS api-builder
+
+ARG ADONIS_URL=http://api:3333
+
+ENV ADONIS_URL=${ADONIS_URL}
+
+COPY turbo.json ./
+COPY apps/api ./apps/api
+
+RUN --mount=type=cache,id=bo-assistant-turbo,target=/workspace/.turbo,sharing=locked \
+    npm run build -- --filter=api --concurrency=1
+
+
+FROM dependencies AS agent-builder
+
+COPY turbo.json ./
+COPY apps/agent ./apps/agent
+
+RUN --mount=type=cache,id=bo-assistant-turbo,target=/workspace/.turbo,sharing=locked \
+    npm run build -- --filter=agent --concurrency=1
+
+
+FROM dependencies AS app-builder
 
 ARG ADONIS_URL=http://api:3333
 
 ENV ADONIS_URL=${ADONIS_URL} \
     NEXT_TELEMETRY_DISABLED=1
 
-COPY . .
+COPY turbo.json ./
+COPY apps/api ./apps/api
+COPY apps/app ./apps/app
 
-# The server only has two CPU cores. Serial builds avoid memory spikes while
-# still producing every target from one cacheable builder layer.
-RUN npm run build -- --concurrency=1
+RUN --mount=type=cache,id=bo-assistant-turbo,target=/workspace/.turbo,sharing=locked \
+    --mount=type=cache,id=bo-assistant-next-app,target=/workspace/apps/app/.next/cache,sharing=locked \
+    npm run build -- --filter=app --concurrency=1
+
+
+FROM dependencies AS demo-builder
+
+ARG ADONIS_URL=http://api:3333
+
+ENV ADONIS_URL=${ADONIS_URL} \
+    NEXT_TELEMETRY_DISABLED=1
+
+COPY turbo.json ./
+COPY apps/demo ./apps/demo
+
+RUN --mount=type=cache,id=bo-assistant-turbo,target=/workspace/.turbo,sharing=locked \
+    --mount=type=cache,id=bo-assistant-next-demo,target=/workspace/apps/demo/.next/cache,sharing=locked \
+    npm run build -- --filter=demo --concurrency=1
 
 
 FROM node:24-slim AS api-dependencies
@@ -45,7 +84,8 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/app/package.json apps/app/package.json
 COPY apps/demo/package.json apps/demo/package.json
 
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --workspace=api
+RUN --mount=type=cache,id=bo-assistant-npm,target=/root/.npm,sharing=locked \
+    npm ci --omit=dev --workspace=api
 
 
 FROM node:24-slim AS api
@@ -55,7 +95,7 @@ ENV NODE_ENV=production
 WORKDIR /workspace
 
 COPY --from=api-dependencies /workspace/node_modules ./node_modules
-COPY --from=builder /workspace/apps/api/build ./apps/api
+COPY --from=api-builder /workspace/apps/api/build ./apps/api
 
 WORKDIR /workspace/apps/api
 
@@ -71,7 +111,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY --from=builder /workspace/apps/agent/.mastra/output ./
+COPY --from=agent-builder /workspace/apps/agent/.mastra/output ./
 
 EXPOSE 4111
 
@@ -87,9 +127,9 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY --from=builder /workspace/apps/app/.next/standalone ./
-COPY --from=builder /workspace/apps/app/public ./apps/app/public
-COPY --from=builder /workspace/apps/app/.next/static ./apps/app/.next/static
+COPY --from=app-builder /workspace/apps/app/.next/standalone ./
+COPY --from=app-builder /workspace/apps/app/public ./apps/app/public
+COPY --from=app-builder /workspace/apps/app/.next/static ./apps/app/.next/static
 
 WORKDIR /app/apps/app
 
@@ -107,8 +147,8 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY --from=builder /workspace/apps/demo/.next/standalone ./
-COPY --from=builder /workspace/apps/demo/.next/static ./apps/demo/.next/static
+COPY --from=demo-builder /workspace/apps/demo/.next/standalone ./
+COPY --from=demo-builder /workspace/apps/demo/.next/static ./apps/demo/.next/static
 
 WORKDIR /app/apps/demo
 
