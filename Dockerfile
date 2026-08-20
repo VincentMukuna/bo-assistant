@@ -1,20 +1,17 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-slim AS dependencies
+FROM oven/bun:1.4.0-slim AS dependencies
 
 WORKDIR /workspace
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends g++ make python3 \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY package.json package-lock.json ./
+COPY package.json bun.lock bunfig.toml ./
 COPY apps/agent/package.json apps/agent/package.json
 COPY apps/api/package.json apps/api/package.json
 COPY apps/app/package.json apps/app/package.json
 COPY apps/demo/package.json apps/demo/package.json
+COPY packages/better-sqlite3 packages/better-sqlite3
 
-RUN --mount=type=cache,id=bo-assistant-npm,target=/root/.npm,sharing=locked npm ci
+RUN --mount=type=cache,id=bo-assistant-bun,target=/root/.bun/install/cache,sharing=locked bun ci
 
 
 FROM dependencies AS api-builder
@@ -23,20 +20,16 @@ ARG ADONIS_URL=http://api:3333
 
 ENV ADONIS_URL=${ADONIS_URL}
 
-COPY turbo.json ./
 COPY apps/api ./apps/api
 
-RUN --mount=type=cache,id=bo-assistant-turbo,target=/workspace/.turbo,sharing=locked \
-    npm run build -- --filter=api --concurrency=1
+RUN bun run --filter api build
 
 
 FROM dependencies AS agent-builder
 
-COPY turbo.json ./
 COPY apps/agent ./apps/agent
 
-RUN --mount=type=cache,id=bo-assistant-turbo,target=/workspace/.turbo,sharing=locked \
-    npm run build -- --filter=agent --concurrency=1
+RUN bun run --filter agent build
 
 
 FROM dependencies AS app-builder
@@ -46,13 +39,11 @@ ARG ADONIS_URL=http://api:3333
 ENV ADONIS_URL=${ADONIS_URL} \
     NEXT_TELEMETRY_DISABLED=1
 
-COPY turbo.json ./
 COPY apps/api ./apps/api
 COPY apps/app ./apps/app
 
-RUN --mount=type=cache,id=bo-assistant-turbo,target=/workspace/.turbo,sharing=locked \
-    --mount=type=cache,id=bo-assistant-next-app,target=/workspace/apps/app/.next/cache,sharing=locked \
-    npm run build -- --filter=app --concurrency=1
+RUN --mount=type=cache,id=bo-assistant-next-app,target=/workspace/apps/app/.next/cache,sharing=locked \
+    bun run --filter app build
 
 
 FROM dependencies AS demo-builder
@@ -62,49 +53,45 @@ ARG ADONIS_URL=http://api:3333
 ENV ADONIS_URL=${ADONIS_URL} \
     NEXT_TELEMETRY_DISABLED=1
 
-COPY turbo.json ./
 COPY apps/demo ./apps/demo
 
-RUN --mount=type=cache,id=bo-assistant-turbo,target=/workspace/.turbo,sharing=locked \
-    --mount=type=cache,id=bo-assistant-next-demo,target=/workspace/apps/demo/.next/cache,sharing=locked \
-    npm run build -- --filter=demo --concurrency=1
+RUN --mount=type=cache,id=bo-assistant-next-demo,target=/workspace/apps/demo/.next/cache,sharing=locked \
+    bun run --filter demo build
 
 
-FROM node:24-slim AS api-dependencies
+FROM oven/bun:1.4.0-slim AS api-dependencies
 
 WORKDIR /workspace
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends g++ make python3 \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY package.json package-lock.json ./
+COPY package.json bun.lock bunfig.toml ./
 COPY apps/agent/package.json apps/agent/package.json
 COPY apps/api/package.json apps/api/package.json
 COPY apps/app/package.json apps/app/package.json
 COPY apps/demo/package.json apps/demo/package.json
+COPY packages/better-sqlite3 packages/better-sqlite3
 
-RUN --mount=type=cache,id=bo-assistant-npm,target=/root/.npm,sharing=locked \
-    npm ci --omit=dev --workspace=api
+RUN --mount=type=cache,id=bo-assistant-bun,target=/root/.bun/install/cache,sharing=locked \
+    bun install --frozen-lockfile --production --filter api
 
 
-FROM node:24-slim AS api
+FROM oven/bun:1.4.0-slim AS api
 
 ENV NODE_ENV=production
 
 WORKDIR /workspace
 
 COPY --from=api-dependencies /workspace/node_modules ./node_modules
+COPY --from=api-dependencies /workspace/packages ./packages
 COPY --from=api-builder /workspace/apps/api/build ./apps/api
 
 WORKDIR /workspace/apps/api
 
 EXPOSE 3333
 
-CMD ["sh", "-c", "node ace migration:run --force && node ace db:seed && exec node bin/server.js"]
+CMD ["sh", "-c", "bun run ace.js migration:run --force && bun run ace.js db:seed && exec bun run bin/server.js"]
 
 
-FROM node:24-slim AS agent
+FROM oven/bun:1.4.0-slim AS agent
 
 ENV NODE_ENV=production \
     PORT=4111
@@ -115,10 +102,10 @@ COPY --from=agent-builder /workspace/apps/agent/.mastra/output ./
 
 EXPOSE 4111
 
-CMD ["node", "index.mjs"]
+CMD ["bun", "run", "index.mjs"]
 
 
-FROM node:24-slim AS app
+FROM oven/bun:1.4.0-slim AS app
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -135,10 +122,10 @@ WORKDIR /app/apps/app
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["bun", "run", "server.js"]
 
 
-FROM node:24-slim AS demo
+FROM oven/bun:1.4.0-slim AS demo
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -154,4 +141,4 @@ WORKDIR /app/apps/demo
 
 EXPOSE 3100
 
-CMD ["node", "server.js"]
+CMD ["bun", "run", "server.js"]

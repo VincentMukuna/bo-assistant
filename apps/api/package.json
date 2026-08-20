@@ -4,44 +4,108 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "bun": ">=1.4.0 <1.5.0"
+  },
   "exports": {
     "./data": "./.adonisjs/client/data.d.ts",
     "./registry": "./.adonisjs/client/registry/index.ts"
   },
   "scripts": {
-    "start": "node bin/server.js",
-    "build": "node ace build",
-    "dev": "HOST=0.0.0.0 node ace serve --hmr",
-    "test": "node ace test",
+    "start": "bun run bin/server.js",
+    "build": "bun --conditions=development run ace.js build",
+    "dev": "HOST=0.0.0.0 bun --conditions=development run ace.js serve --hmr",
+    "test": "NODE_ENV=test bun --conditions=development --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "db:migrate": "node ace migration:run",
-    "db:seed": "node ace db:seed",
-    "db:fresh": "node ace migration:fresh && node ace db:seed"
+    "key:generate": "bun --conditions=development run ace.js generate:key",
+    "db:migrate": "bun --conditions=development run ace.js migration:run",
+    "db:seed": "bun --conditions=development run ace.js db:seed",
+    "db:fresh": "bun --conditions=development run ace.js migration:fresh && bun --conditions=development run ace.js db:seed"
   },
   "imports": {
-    "#controllers/*": "./app/controllers/*.js",
-    "#contracts/*": "./app/contracts/*.js",
-    "#actions/*": "./app/actions/*.js",
-    "#exceptions/*": "./app/exceptions/*.js",
-    "#models/*": "./app/models/*.js",
-    "#mails/*": "./app/mails/*.js",
-    "#services/*": "./app/services/*.js",
-    "#listeners/*": "./app/listeners/*.js",
-    "#events/*": "./app/events/*.js",
-    "#generated/*": "./.adonisjs/server/*.js",
-    "#middleware/*": "./app/middleware/*.js",
-    "#transformers/*": "./app/transformers/*.js",
-    "#validators/*": "./app/validators/*.js",
-    "#providers/*": "./providers/*.js",
-    "#policies/*": "./app/policies/*.js",
-    "#abilities/*": "./app/abilities/*.js",
-    "#database/*": "./database/*.js",
-    "#tests/*": "./tests/*.js",
-    "#start/*": "./start/*.js",
-    "#config/*": "./config/*.js"
+    "#controllers/*": {
+      "development": "./app/controllers/*.ts",
+      "default": "./app/controllers/*.js"
+    },
+    "#contracts/*": {
+      "development": "./app/contracts/*.ts",
+      "default": "./app/contracts/*.js"
+    },
+    "#actions/*": {
+      "development": "./app/actions/*.ts",
+      "default": "./app/actions/*.js"
+    },
+    "#exceptions/*": {
+      "development": "./app/exceptions/*.ts",
+      "default": "./app/exceptions/*.js"
+    },
+    "#models/*": {
+      "development": "./app/models/*.ts",
+      "default": "./app/models/*.js"
+    },
+    "#mails/*": {
+      "development": "./app/mails/*.ts",
+      "default": "./app/mails/*.js"
+    },
+    "#services/*": {
+      "development": "./app/services/*.ts",
+      "default": "./app/services/*.js"
+    },
+    "#listeners/*": {
+      "development": "./app/listeners/*.ts",
+      "default": "./app/listeners/*.js"
+    },
+    "#events/*": {
+      "development": "./app/events/*.ts",
+      "default": "./app/events/*.js"
+    },
+    "#generated/*": {
+      "development": "./.adonisjs/server/*.ts",
+      "default": "./.adonisjs/server/*.js"
+    },
+    "#middleware/*": {
+      "development": "./app/middleware/*.ts",
+      "default": "./app/middleware/*.js"
+    },
+    "#transformers/*": {
+      "development": "./app/transformers/*.ts",
+      "default": "./app/transformers/*.js"
+    },
+    "#validators/*": {
+      "development": "./app/validators/*.ts",
+      "default": "./app/validators/*.js"
+    },
+    "#providers/*": {
+      "development": "./providers/*.ts",
+      "default": "./providers/*.js"
+    },
+    "#policies/*": {
+      "development": "./app/policies/*.ts",
+      "default": "./app/policies/*.js"
+    },
+    "#abilities/*": {
+      "development": "./app/abilities/*.ts",
+      "default": "./app/abilities/*.js"
+    },
+    "#database/*": {
+      "development": "./database/*.ts",
+      "default": "./database/*.js"
+    },
+    "#tests/*": {
+      "development": "./tests/*.ts",
+      "default": "./tests/*.js"
+    },
+    "#start/*": {
+      "development": "./start/*.ts",
+      "default": "./start/*.js"
+    },
+    "#config/*": {
+      "development": "./config/*.ts",
+      "default": "./config/*.js"
+    }
   },
   "devDependencies": {
     "@adonisjs/assembler": "^8.4.0",
@@ -72,7 +136,7 @@
     "@tuyau/core": "^1.2.2",
     "@vinejs/vine": "^4.4.0",
     "better-result": "^3.0.1",
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "workspace:*",
     "luxon": "^3.7.2",
     "reflect-metadata": "^0.2.2",
     "zod": "^4.1.12"
@@ -82,11 +146,5 @@
       "./app/controllers/**/*.ts",
       "./app/middleware/*.ts"
     ]
-  },
-  "allowScripts": {
-    "@swc/core": true,
-    "better-sqlite3": true,
-    "esbuild": true,
-    "fsevents": true
   }
 }

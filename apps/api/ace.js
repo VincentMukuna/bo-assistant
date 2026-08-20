@@ -8,11 +8,11 @@
 |
 | See docs.adonisjs.com/guides/typescript-build-process#creating-production-build
 |
-| Since, we cannot run TypeScript source code using "node" binary, we need
-| a JavaScript entrypoint to run ace commands.
+| This JavaScript entrypoint lets Bun run the TypeScript Ace commands through
+| AdonisJS's TypeScript compatibility hook.
 |
-| This file registers the "ts-node/esm" hook with the Node.js module system
-| and then imports the "bin/console.ts" file.
+| The hook maps the generated JavaScript specifier to "bin/console.ts" during
+| local development.
 |
 */
 

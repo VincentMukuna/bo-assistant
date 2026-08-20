@@ -1,6 +1,6 @@
 # Oak & Pine Operations
 
-Turborepo monorepo containing:
+Bun workspace monorepo containing:
 
 - `apps/app` — Business Workspace
 - `apps/api` — API server
@@ -11,19 +11,21 @@ Customers and bookings are persisted with Lucid. The Oak & Pine demo site connec
 agent for public support questions and customer-scoped appointment rescheduling; Inbox and Agent
 Activity remain demo-backed.
 
+Lucid keeps its Knex-compatible `better-sqlite3` boundary, backed in this workspace by Bun's native
+`bun:sqlite` driver instead of a Node N-API addon.
+
 ## Local setup
 
-Requires Node.js 24+ and npm 11+.
+Requires Bun 1.4.x.
 
 ```bash
-npm install
+bun install --frozen-lockfile
 cp apps/api/.env.example apps/api/.env
-cd apps/api
-node ace generate:key
-cd ../..
-npm run db:migrate
-npm run db:seed
-npm run dev
+cp apps/agent/.env.example apps/agent/.env
+bun run key:generate
+bun run db:migrate
+bun run db:seed
+bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and sign in with:
@@ -31,7 +33,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with:
 - Email: `owner@oakandpine.test`
 - Password: `password123`
 
-`npm run dev` starts the CRM frontend on port 3000, the customer demo on port 3100, the API server on port 3333, and Mastra Studio on port 4111. All four reload as you edit their source. Set `ADONIS_URL` when the backend is hosted elsewhere.
+`bun run dev` starts the CRM frontend on port 3000, the customer demo on port 3100, the API server on port 3333, and Mastra Studio on port 4111. All four reload as you edit their source. Set `ADONIS_URL` when the backend is hosted elsewhere.
 
 ## Appointment assistant demo
 
@@ -53,10 +55,10 @@ examples show how to override them for separate deployments.
 
 ## Agent development
 
-The agent runs alongside the app and API through the root Turbo development command.
+The agent runs alongside the app and API through Bun's root workspace development command.
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:4111](http://localhost:4111) for Mastra Studio. Changes to agent instructions, scorers, and other Mastra code reload automatically.
@@ -68,8 +70,8 @@ See the [agent quickstart](apps/agent/RUNBOOK.md) for background start, logs, st
 ## Checks
 
 ```bash
-npm run lint
-npm run typecheck
-npm run test:api
-npm run build
+bun run lint
+bun run typecheck
+bun run test
+bun run build
 ```

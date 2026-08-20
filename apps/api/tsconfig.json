@@ -3,6 +3,9 @@
   "compilerOptions": {
     "rootDir": "./",
     "jsx": "react",
-    "outDir": "./build"
+    "outDir": "./build",
+    "customConditions": ["development"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
 }

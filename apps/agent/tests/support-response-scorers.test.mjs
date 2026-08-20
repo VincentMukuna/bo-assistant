@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, test } from "bun:test";
 import { RequestContext } from "@mastra/core/request-context";
 import { createAgentTestRun, createTestMessage } from "@mastra/evals/scorers/utils";
 import { scenarios } from "@/evals/scenarios.ts";
@@ -21,7 +20,7 @@ test("private-data scorer accepts friendly customer-facing dates", async () => {
     runWithOutput("Your appointment is **Saturday at 10:00 AM**.")
   );
 
-  assert.equal(result.score, 1);
+  expect(result.score).toBe(1);
 });
 
 test("private-data scorer catches capability and raw scheduling details", async () => {
@@ -31,11 +30,11 @@ test("private-data scorer catches capability and raw scheduling details", async 
     )
   );
 
-  assert.equal(result.score, 0);
-  assert.match(result.reason, /booking capability exposed/);
-  assert.match(result.reason, /raw ISO timestamp exposed/);
-  assert.match(result.reason, /internal timezone identifier exposed/);
-  assert.match(result.reason, /booking ID exposed/);
+  expect(result.score).toBe(0);
+  expect(result.reason).toMatch(/booking capability exposed/);
+  expect(result.reason).toMatch(/raw ISO timestamp exposed/);
+  expect(result.reason).toMatch(/internal timezone identifier exposed/);
+  expect(result.reason).toMatch(/booking ID exposed/);
 });
 
 test("format scorer catches chat layouts forbidden by the prompt", async () => {
@@ -43,27 +42,25 @@ test("format scorer catches chat layouts forbidden by the prompt", async () => {
     runWithOutput("# Appointment\n\n```text\n1) Saturday\n```")
   );
 
-  assert.equal(result.score, 0);
-  assert.match(result.reason, /used a heading/);
-  assert.match(result.reason, /used a code block/);
-  assert.match(result.reason, /used 1\) ordered-list syntax/);
+  expect(result.score).toBe(0);
+  expect(result.reason).toMatch(/used a heading/);
+  expect(result.reason).toMatch(/used a code block/);
+  expect(result.reason).toMatch(/used 1\) ordered-list syntax/);
 });
 
 test("eval scenarios reference unique registered Mastra scorers", () => {
-  assert.equal(new Set(scenarios.map((scenario) => scenario.id)).size, scenarios.length);
+  expect(new Set(scenarios.map((scenario) => scenario.id)).size).toBe(scenarios.length);
   const registeredIds = new Set(Object.values(evaluationScorers).map((scorer) => scorer.id));
 
   for (const scenario of scenarios) {
     const scorerIds = [...scenario.requiredScorerIds, ...(scenario.signalScorerIds ?? [])];
-    assert.equal(
-      new Set(scorerIds).size,
-      scorerIds.length,
-      `${scenario.id} contains duplicate scorer IDs`
+    expect(new Set(scorerIds).size, `${scenario.id} contains duplicate scorer IDs`).toBe(
+      scorerIds.length
     );
-    assert.ok(
+    expect(
       scorerIds.every((scorerId) => registeredIds.has(scorerId)),
       `${scenario.id} references an unregistered scorer`
-    );
+    ).toBe(true);
   }
 });
 
@@ -74,6 +71,6 @@ test("scenario scorer composes Mastra Quick Checks", async () => {
     )
   );
 
-  assert.equal(result.score, 1);
-  assert.equal(result.reason, "All Mastra Quick Checks passed.");
+  expect(result.score).toBe(1);
+  expect(result.reason).toBe("All Mastra Quick Checks passed.");
 });

@@ -2,40 +2,47 @@
   "name": "bo-assistant",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "npm@11.16.0",
+  "packageManager": "bun@1.4.0",
   "engines": {
-    "node": ">=24.0.0"
+    "bun": ">=1.4.0 <1.5.0"
   },
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
-    "dev": "npm run agent:db:start && turbo dev",
-    "dev:app": "turbo dev --filter=app",
-    "dev:api": "turbo dev --filter=api",
-    "dev:agent": "turbo dev --filter=agent",
-    "build": "turbo build",
-    "lint": "turbo lint",
+    "dev": "bun run agent:db:start && bun run --parallel --workspaces --if-present dev",
+    "dev:app": "bun run --filter app dev",
+    "dev:api": "bun run --filter api dev",
+    "dev:agent": "bun run --filter agent dev",
+    "build": "bun run --sequential --workspaces --if-present build",
+    "lint": "bun run --workspaces --if-present lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "turbo typecheck",
-    "test": "turbo test",
-    "test:api": "turbo test --filter=api",
-    "evals": "npm run evals --workspace=agent",
+    "typecheck": "bun run --workspaces --if-present typecheck",
+    "test": "bun run --workspaces --if-present test",
+    "test:api": "bun run --filter api test",
+    "evals": "bun run --filter agent evals",
     "agent:start": "docker compose up -d --build agent",
     "agent:db:start": "docker compose up -d --wait mastra-db",
     "agent:db:stop": "docker compose stop mastra-db",
     "agent:logs": "docker compose logs --follow --tail=100 agent",
     "agent:status": "docker compose ps agent",
     "agent:stop": "docker compose down",
-    "db:migrate": "npm run db:migrate --workspace=api",
-    "db:seed": "npm run db:seed --workspace=api",
-    "db:fresh": "npm run db:fresh --workspace=api"
+    "key:generate": "bun run --filter api key:generate",
+    "db:migrate": "bun run --filter api db:migrate",
+    "db:seed": "bun run --filter api db:seed",
+    "db:fresh": "bun run --filter api db:fresh"
   },
   "devDependencies": {
     "@adonisjs/prettier-config": "^1.5.0",
     "prettier": "^3.9.6",
-    "prettier-plugin-tailwindcss": "^0.8.1",
-    "turbo": "^2.10.10"
-  }
+    "prettier-plugin-tailwindcss": "^0.8.1"
+  },
+  "trustedDependencies": [
+    "@swc/core",
+    "esbuild",
+    "fsevents",
+    "sharp"
+  ]
 }

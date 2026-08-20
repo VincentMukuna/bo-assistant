@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, test } from "bun:test";
 import { businessSupportAgent } from "@/agents/business-support.ts";
 import {
   BookingApiRejected,
@@ -21,14 +20,14 @@ const context = {
 };
 
 test("requires explicit approval only for the reschedule mutation", () => {
-  assert.notEqual(findBookingsForCustomer.requireApproval, true);
-  assert.equal(rescheduleBooking.requireApproval, true);
+  expect(findBookingsForCustomer.requireApproval).not.toBe(true);
+  expect(rescheduleBooking.requireApproval).toBe(true);
 });
 
 test("documents the API's 90-day booking search boundary for the model", () => {
-  assert.match(findBookingsForCustomer.description, /no more than 90 days/i);
+  expect(findBookingsForCustomer.description).toMatch(/no more than 90 days/i);
   const toDescription = findBookingsForCustomer.inputSchema.shape.to.description;
-  assert.match(toDescription, /no more than 90 days/i);
+  expect(toDescription).toMatch(/no more than 90 days/i);
 });
 
 test("accepts only authoritative reschedule identifiers and timestamps", () => {
@@ -40,7 +39,7 @@ test("accepts only authoritative reschedule identifiers and timestamps", () => {
     staff: "browser-controlled staff",
   });
 
-  assert.deepEqual(parsed, {
+  expect(parsed).toEqual({
     booking_id: 6,
     expected_start_time: "2026-08-21T18:30:00Z",
     new_start_time: "2026-08-24T10:00:00-07:00",
@@ -50,9 +49,9 @@ test("accepts only authoritative reschedule identifiers and timestamps", () => {
 test("sends the approved mutation to the focused internal booking resource", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
-    assert.equal(String(input), "http://localhost:3333/api/v1/agent/booking-reschedules");
-    assert.equal(new Headers(init.headers).get("authorization"), "Bearer read-capability");
-    assert.deepEqual(JSON.parse(String(init.body)), {
+    expect(String(input)).toBe("http://localhost:3333/api/v1/agent/booking-reschedules");
+    expect(new Headers(init.headers).get("authorization")).toBe("Bearer read-capability");
+    expect(JSON.parse(String(init.body))).toEqual({
       booking_id: 6,
       new_start_time: "2026-08-24T10:00:00-07:00",
       tool_call_id: "approved-tool-call",
@@ -78,8 +77,8 @@ test("sends the approved mutation to the focused internal booking resource", asy
       },
       context
     );
-    assert.equal(result.booking.booking_id, 6);
-    assert.equal(result.booking.start_time_display, "Monday at 10:00 AM");
+    expect(result.booking.booking_id).toBe(6);
+    expect(result.booking.start_time_display).toBe("Monday at 10:00 AM");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -100,23 +99,19 @@ test("preserves a typed booking rejection at the Mastra execution boundary", asy
     );
 
   try {
-    await assert.rejects(
-      () =>
-        rescheduleBooking.execute(
-          {
-            booking_id: 6,
-            expected_start_time: "2026-08-21T18:30:00Z",
-            new_start_time: "2026-08-24T10:00:00-07:00",
-          },
-          context
-        ),
-      (error) => {
-        assert.ok(BookingApiRejected.is(error));
-        assert.equal(error.code, "STAFF_UNAVAILABLE");
-        assert.equal(error.status, 409);
-        return true;
-      }
+    const error = await rejectionOf(() =>
+      rescheduleBooking.execute(
+        {
+          booking_id: 6,
+          expected_start_time: "2026-08-21T18:30:00Z",
+          new_start_time: "2026-08-24T10:00:00-07:00",
+        },
+        context
+      )
     );
+    expect(BookingApiRejected.is(error)).toBe(true);
+    expect(error.code).toBe("STAFF_UNAVAILABLE");
+    expect(error.status).toBe(409);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -126,18 +121,17 @@ test("rejects malformed booking success payloads as typed contract failures", as
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => Response.json({ booking: { booking_id: "wrong" } });
   try {
-    await assert.rejects(
-      () =>
-        rescheduleBooking.execute(
-          {
-            booking_id: 6,
-            expected_start_time: "2026-08-21T18:30:00Z",
-            new_start_time: "2026-08-24T10:00:00-07:00",
-          },
-          context
-        ),
-      (error) => InvalidBookingApiResponse.is(error)
+    const error = await rejectionOf(() =>
+      rescheduleBooking.execute(
+        {
+          booking_id: 6,
+          expected_start_time: "2026-08-21T18:30:00Z",
+          new_start_time: "2026-08-24T10:00:00-07:00",
+        },
+        context
+      )
     );
+    expect(InvalidBookingApiResponse.is(error)).toBe(true);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -149,23 +143,31 @@ test("turns booking network rejection into a typed availability failure", async 
     throw new Error("connection refused");
   };
   try {
-    await assert.rejects(
-      () =>
-        rescheduleBooking.execute(
-          {
-            booking_id: 6,
-            expected_start_time: "2026-08-21T18:30:00Z",
-            new_start_time: "2026-08-24T10:00:00-07:00",
-          },
-          context
-        ),
-      (error) => BookingApiUnavailable.is(error)
+    const error = await rejectionOf(() =>
+      rescheduleBooking.execute(
+        {
+          booking_id: 6,
+          expected_start_time: "2026-08-21T18:30:00Z",
+          new_start_time: "2026-08-24T10:00:00-07:00",
+        },
+        context
+      )
     );
+    expect(BookingApiUnavailable.is(error)).toBe(true);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
 test("configures persistent memory on the business support agent", async () => {
-  assert.ok(await businessSupportAgent.getMemory());
+  expect(await businessSupportAgent.getMemory()).toBeTruthy();
 });
+
+async function rejectionOf(operation) {
+  try {
+    await operation();
+  } catch (error) {
+    return error;
+  }
+  throw new Error("Expected operation to reject");
+}

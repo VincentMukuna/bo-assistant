@@ -1,23 +1,13 @@
 import type { ExperimentSummary, ItemWithScores } from "@mastra/core/datasets";
 import { extractToolCalls, getAssistantMessageFromRunOutput } from "@mastra/evals/scorers/utils";
-import { execFileSync } from "node:child_process";
-import { loadEnvFile } from "node:process";
 import { resolve, sep } from "node:path";
 import { evaluationDatasetId, evaluationTargetId, syncEvaluationDataset } from "@/evals/dataset";
 import { scenarios, type EvalScenario } from "@/evals/scenarios";
 
 function loadEnvironment() {
-  try {
-    loadEnvFile();
-  } catch (error: unknown) {
-    if (!error || typeof error !== "object" || !("code" in error) || error.code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
+  if (!Bun.env.OPENAI_API_KEY) {
     throw new Error(
-      "OPENAI_API_KEY is required. Add it to apps/agent/.env, then run npm run evals."
+      "OPENAI_API_KEY is required. Add it to apps/agent/.env, then run bun run evals."
     );
   }
 
@@ -34,16 +24,21 @@ function loadEnvironment() {
 
 function currentAgentVersion() {
   try {
-    const revision = execFileSync("git", ["rev-parse", "--short", "HEAD"], {
-      encoding: "utf8",
-    }).trim();
-    const dirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], {
-      encoding: "utf8",
-    }).trim();
+    const revision = gitOutput(["rev-parse", "--short", "HEAD"]);
+    const dirty = gitOutput(["status", "--porcelain", "--untracked-files=no"]);
     return `${revision}${dirty ? "-dirty" : ""}`;
   } catch {
     return "unknown";
   }
+}
+
+function gitOutput(args: string[]) {
+  const result = Bun.spawnSync(["git", ...args], {
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  if (!result.success) throw new Error(`git ${args.join(" ")} failed`);
+  return result.stdout.toString().trim();
 }
 
 function scenarioFor(result: ItemWithScores): EvalScenario | undefined {
@@ -144,7 +139,7 @@ async function main() {
     const agentVersion = currentAgentVersion();
     const summary = await synced.dataset.startExperiment({
       name: `Business support ${agentVersion}`,
-      description: "Local regression run started by npm run evals.",
+      description: "Local regression run started by bun run evals.",
       targetType: "agent",
       targetId: evaluationTargetId,
       version: synced.version,
@@ -152,7 +147,7 @@ async function main() {
       itemTimeout: 60_000,
       unmockedToolPolicy: "deny",
       metadata: {
-        command: "npm run evals",
+        command: "bun run evals",
         datasetId: evaluationDatasetId,
         gitRevision: agentVersion,
       },

@@ -9,7 +9,7 @@ Internal imports use the `@/` root alias, and there is no additional `src/mastra
 ## Fastest loop
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 This starts Postgres, the app, API, demo, and agent together. Open [http://localhost:4111](http://localhost:4111), edit the agent, and test it in Studio. Source changes reload automatically. Press `Ctrl+C` when you are done.
@@ -27,7 +27,7 @@ apps/agent/agents/business-support.ts
 With `OPENAI_API_KEY` in `apps/agent/.env`, run the full eval suite from the repository root:
 
 ```bash
-npm run evals
+bun run evals
 ```
 
 The command synchronizes a versioned **Business support regression** dataset and starts a persisted
@@ -44,8 +44,8 @@ versions. Ordinary agent runs also record the zero-cost private-data and compact
 To run only the agent and Studio, start its database first:
 
 ```bash
-npm run agent:db:start
-npm run dev:agent
+bun run agent:db:start
+bun run dev:agent
 ```
 
 ## Inspect the database from Hermes
@@ -73,8 +73,8 @@ Use your normal Luna SSH key or SSH config. Postgres listens only on Luna's loop
 ## Run in the background
 
 ```bash
-npm run agent:start
-npm run agent:logs
+bun run agent:start
+bun run agent:logs
 ```
 
 Pressing `Ctrl+C` exits the logs while the agent keeps running.
@@ -82,6 +82,6 @@ Pressing `Ctrl+C` exits the logs while the agent keeps running.
 Useful commands:
 
 ```bash
-npm run agent:status
-npm run agent:stop
+bun run agent:status
+bun run agent:stop
 ```
