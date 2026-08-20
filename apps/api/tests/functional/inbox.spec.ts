@@ -164,6 +164,40 @@ test.group("Workspace Inbox", (group) => {
     assert.equal(conversation.nextStepOwner, "agent");
   });
 
+  test("fails closed when persisted attention context is corrupt", async ({ assert, client }) => {
+    const owner = await createOwner();
+    const customer = await createCustomer("Invalid Context Customer");
+    const conversation = await createConversation(customer, "Invalid attention context");
+    conversation.nextStepOwner = "owner";
+    await conversation.save();
+    const attention = await InboxAttentionItem.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      cause: "authority",
+      actionType: "booking_reschedule",
+      status: "pending",
+      externalKey: crypto.randomUUID(),
+      summary: "Invalid context",
+      contextJson: "{not-json",
+    });
+
+    const index = await client.get("/api/v1/inbox/conversations").withGuard("web").loginAs(owner);
+    index.assertStatus(500);
+    assert.deepEqual(index.body(), {
+      error: "The Inbox contains an attention item that needs repair.",
+    });
+
+    const decision = await client
+      .post(`/api/v1/inbox/conversations/${conversation.id}/attention/${attention.id}/decisions`)
+      .withGuard("web")
+      .loginAs(owner)
+      .json({ decision: "approve" });
+    decision.assertStatus(422);
+    assert.deepEqual(decision.body(), {
+      error: "This action contains invalid decision context and needs review.",
+    });
+  });
+
   test("publishes a conversation-scoped live update for workspace reconciliation", ({ assert }) => {
     let received: unknown;
     const unsubscribe = inboxEventStream.subscribe((event) => {

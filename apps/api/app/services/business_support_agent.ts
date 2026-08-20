@@ -2,7 +2,9 @@ import type Customer from "#models/customer";
 import { issueBookingReadCapability } from "#services/booking_capability";
 import env from "#start/env";
 import app from "@adonisjs/core/services/app";
+import { Result, TaggedError, panic, type Result as ResultType } from "better-result";
 import { DateTime } from "luxon";
+import { z } from "zod";
 
 const AGENT_ID = "business-support-agent";
 const TITLE_AGENT_ID = "conversation-title-agent";
@@ -30,17 +32,56 @@ export type PendingRescheduleCall = {
   proposedStartTime: string;
 };
 
-type SuspendedRunsResponse = {
-  runs?: Array<{
-    runId?: unknown;
-    toolCalls?: Array<{
-      toolCallId?: unknown;
-      toolName?: unknown;
-      args?: unknown;
-      requiresApproval?: unknown;
-    }>;
-  }>;
-};
+export class AgentUnavailable extends TaggedError("AgentUnavailable")<{
+  operation: string;
+  cause: unknown;
+  message: string;
+}> {}
+
+export class AgentRequestRejected extends TaggedError("AgentRequestRejected")<{
+  operation: string;
+  status: number;
+  message: string;
+}> {}
+
+export class InvalidAgentResponse extends TaggedError("InvalidAgentResponse")<{
+  operation: string;
+  cause: unknown;
+  message: string;
+}> {}
+
+export class EmptyAgentStream extends TaggedError("EmptyAgentStream")<{
+  operation: string;
+  message: string;
+}> {}
+
+export type BusinessSupportAgentError =
+  AgentUnavailable | AgentRequestRejected | InvalidAgentResponse | EmptyAgentStream;
+
+const titleResponseSchema = z.object({ text: z.unknown() });
+const messagesResponseSchema = z.object({
+  messages: z.array(z.unknown()).optional(),
+  uiMessages: z.array(z.unknown()).nullable().optional(),
+});
+const suspendedRunsResponseSchema = z.object({
+  runs: z
+    .array(
+      z.object({
+        runId: z.unknown().optional(),
+        toolCalls: z
+          .array(
+            z.object({
+              toolCallId: z.unknown().optional(),
+              toolName: z.unknown().optional(),
+              args: z.unknown().optional(),
+              requiresApproval: z.unknown().optional(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .optional(),
+});
 
 function resourceId(customerId: number) {
   return `customer:${customerId}`;
@@ -113,7 +154,7 @@ export class BusinessSupportAgentClient {
   private headers(accept = "application/json") {
     const configuredToken = env.get("MASTRA_INTERNAL_TOKEN");
     if (!configuredToken && app.inProduction) {
-      throw new Error("MASTRA_INTERNAL_TOKEN is required in production");
+      return panic("MASTRA_INTERNAL_TOKEN is required in production before calling Mastra");
     }
     const token = configuredToken ?? "development-internal-token";
     return {
@@ -135,32 +176,97 @@ export class BusinessSupportAgentClient {
     };
   }
 
-  private async request(path: string, init: RequestInit = {}, timeoutMs = 45_000) {
-    const response = await fetch(`${this.baseUrl}/api${path}`, {
-      ...init,
-      headers: { ...this.headers(), ...init.headers },
-      signal: init.signal ?? AbortSignal.timeout(timeoutMs),
+  private async request(
+    path: string,
+    init: RequestInit = {},
+    timeoutMs = 45_000
+  ): Promise<ResultType<Response, AgentUnavailable | AgentRequestRejected>> {
+    const response = await Result.tryPromise({
+      try: () =>
+        fetch(`${this.baseUrl}/api${path}`, {
+          ...init,
+          headers: { ...this.headers(), ...init.headers },
+          signal: init.signal ?? AbortSignal.timeout(timeoutMs),
+        }),
+      catch: (cause) =>
+        new AgentUnavailable({
+          operation: path,
+          cause,
+          message: `The Mastra operation ${path} did not complete.`,
+        }),
     });
+    if (response.status === "error") return Result.err(response.error);
 
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "");
-      throw new Error(`Mastra rejected ${path} with status ${response.status}: ${detail}`);
+    if (!response.value.ok) {
+      // Drain the body without retaining or logging potentially sensitive upstream content.
+      await Result.tryPromise(() => response.value.arrayBuffer());
+      return Result.err(
+        new AgentRequestRejected({
+          operation: path,
+          status: response.value.status,
+          message: `Mastra rejected ${path} with status ${response.value.status}.`,
+        })
+      );
     }
     return response;
   }
 
-  private async stream(path: string, body: Record<string, unknown>): Promise<AgentStream> {
-    const response = await this.request(path, {
-      method: "POST",
-      headers: this.headers("text/event-stream"),
-      body: JSON.stringify(body),
+  private async json<T>(
+    response: Response,
+    operation: string,
+    schema: z.ZodType<T>
+  ): Promise<ResultType<T, InvalidAgentResponse>> {
+    const payload = await Result.tryPromise({
+      try: () => response.json(),
+      catch: (cause) =>
+        new InvalidAgentResponse({
+          operation,
+          cause,
+          message: `Mastra returned non-JSON data for ${operation}.`,
+        }),
     });
-    if (!response.body) throw new Error(`Mastra returned an empty stream for ${path}`);
+    if (payload.status === "error") return Result.err(payload.error);
 
-    return {
-      body: response.body,
-      contentType: response.headers.get("content-type") ?? "text/event-stream; charset=utf-8",
-    };
+    const parsed = schema.safeParse(payload.value);
+    return parsed.success
+      ? Result.ok(parsed.data)
+      : Result.err(
+          new InvalidAgentResponse({
+            operation,
+            cause: parsed.error,
+            message: `Mastra returned an invalid payload for ${operation}.`,
+          })
+        );
+  }
+
+  private async stream(
+    path: string,
+    body: Record<string, unknown>
+  ): Promise<ResultType<AgentStream, BusinessSupportAgentError>> {
+    return Result.gen(
+      async function* (this: BusinessSupportAgentClient) {
+        const response = yield* Result.await(
+          this.request(path, {
+            method: "POST",
+            headers: this.headers("text/event-stream"),
+            body: JSON.stringify(body),
+          })
+        );
+        if (!response.body) {
+          return Result.err(
+            new EmptyAgentStream({
+              operation: path,
+              message: `Mastra returned an empty stream for ${path}.`,
+            })
+          );
+        }
+
+        return Result.ok({
+          body: response.body,
+          contentType: response.headers.get("content-type") ?? "text/event-stream; charset=utf-8",
+        });
+      }.bind(this)
+    );
   }
 
   streamMessage(customer: Customer, threadId: string, message: string) {
@@ -181,12 +287,17 @@ export class BusinessSupportAgentClient {
       },
       TITLE_TIMEOUT_MS
     );
-    const result = (await response.json()) as { text?: unknown };
-    return presentTitle(result.text);
+    if (response.status === "error") return Result.err(response.error);
+    const result = await this.json(
+      response.value,
+      "generate-conversation-title",
+      titleResponseSchema
+    );
+    return result.map((payload) => presentTitle(payload.text));
   }
 
   async createThread(customer: Customer, threadId: string, title: string) {
-    await this.request(`/memory/threads?agentId=${encodeURIComponent(AGENT_ID)}`, {
+    const response = await this.request(`/memory/threads?agentId=${encodeURIComponent(AGENT_ID)}`, {
       method: "POST",
       body: JSON.stringify({
         threadId,
@@ -194,6 +305,7 @@ export class BusinessSupportAgentClient {
         title,
       }),
     });
+    return response.map(() => undefined);
   }
 
   async deleteThread(customer: Customer, threadId: string) {
@@ -201,20 +313,28 @@ export class BusinessSupportAgentClient {
       agentId: AGENT_ID,
       resourceId: resourceId(customer.id),
     });
-    await this.request(`/memory/threads/${encodeURIComponent(threadId)}?${query}`, {
-      method: "DELETE",
-    });
+    const response = await this.request(
+      `/memory/threads/${encodeURIComponent(threadId)}?${query}`,
+      {
+        method: "DELETE",
+      }
+    );
+    return response.map(() => undefined);
   }
 
   async updateThreadTitle(customer: Customer, threadId: string, title: string) {
     const query = new URLSearchParams({ agentId: AGENT_ID });
-    await this.request(`/memory/threads/${encodeURIComponent(threadId)}?${query}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        resourceId: resourceId(customer.id),
-        title,
-      }),
-    });
+    const response = await this.request(
+      `/memory/threads/${encodeURIComponent(threadId)}?${query}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          resourceId: resourceId(customer.id),
+          title,
+        }),
+      }
+    );
+    return response.map(() => undefined);
   }
 
   async listMessages(customer: Customer, threadId: string) {
@@ -227,33 +347,37 @@ export class BusinessSupportAgentClient {
     const response = await this.request(
       `/memory/threads/${encodeURIComponent(threadId)}/messages?${query}`
     );
-    const result = (await response.json()) as {
-      messages?: unknown[];
-      uiMessages?: unknown[] | null;
-    };
-    const source = result.uiMessages ?? result.messages ?? [];
-    return source
-      .map(presentMessage)
-      .filter((message): message is AgentMessage => Boolean(message));
+    if (response.status === "error") return Result.err(response.error);
+    const result = await this.json(response.value, "list-messages", messagesResponseSchema);
+    return result.map((payload) => {
+      const source = payload.uiMessages ?? payload.messages ?? [];
+      return source
+        .map(presentMessage)
+        .filter((message): message is AgentMessage => Boolean(message));
+    });
   }
 
   async appendOwnerMessage(customer: Customer, threadId: string, message: string) {
-    await this.request(`/memory/save-messages?agentId=${encodeURIComponent(AGENT_ID)}`, {
-      method: "POST",
-      body: JSON.stringify({
-        messages: [
-          {
-            id: crypto.randomUUID(),
-            threadId,
-            resourceId: resourceId(customer.id),
-            role: "assistant",
-            content: message,
-            createdAt: new Date().toISOString(),
-            metadata: { author: "owner" },
-          },
-        ],
-      }),
-    });
+    const response = await this.request(
+      `/memory/save-messages?agentId=${encodeURIComponent(AGENT_ID)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          messages: [
+            {
+              id: crypto.randomUUID(),
+              threadId,
+              resourceId: resourceId(customer.id),
+              role: "assistant",
+              content: message,
+              createdAt: new Date().toISOString(),
+              metadata: { author: "owner" },
+            },
+          ],
+        }),
+      }
+    );
+    return response.map(() => undefined);
   }
 
   async listPendingReschedules(customer: Customer, threadId: string) {
@@ -263,10 +387,16 @@ export class BusinessSupportAgentClient {
       perPage: "20",
     });
     const response = await this.request(`/agents/${AGENT_ID}/suspended-runs?${query}`);
-    const result = (await response.json()) as SuspendedRunsResponse;
+    if (response.status === "error") return Result.err(response.error);
+    const result = await this.json(
+      response.value,
+      "list-pending-reschedules",
+      suspendedRunsResponseSchema
+    );
+    if (result.status === "error") return Result.err(result.error);
     const pending: PendingRescheduleCall[] = [];
 
-    for (const run of result.runs ?? []) {
+    for (const run of result.value.runs ?? []) {
       if (typeof run.runId !== "string") continue;
       for (const toolCall of run.toolCalls ?? []) {
         const isReschedule =
@@ -289,7 +419,7 @@ export class BusinessSupportAgentClient {
         }
       }
     }
-    return pending;
+    return Result.ok(pending);
   }
 
   decideToolCall(input: {

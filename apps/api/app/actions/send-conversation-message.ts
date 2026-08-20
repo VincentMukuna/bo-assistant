@@ -1,13 +1,26 @@
 import SupportConversation from "#models/support_conversation";
 import syncRescheduleAttention from "#actions/sync-reschedule-attention";
+import { reportBusinessSupportAgentError } from "#contracts/business_support_agent_failure";
 import InboxAnnotation from "#models/inbox_annotation";
-import { businessSupportAgent, type AgentStream } from "#services/business_support_agent";
+import {
+  businessSupportAgent,
+  type AgentStream,
+  type BusinessSupportAgentError,
+} from "#services/business_support_agent";
 import { inboxEventStream } from "#services/inbox_event_stream";
 import type Customer from "#models/customer";
 import type { HttpContext } from "@adonisjs/core/http";
 import { DateTime } from "luxon";
+import { Result, TaggedError, type Result as ResultType } from "better-result";
 
 const PREVIEW_LENGTH = 280;
+
+export class ConversationStoreUnavailable extends TaggedError("ConversationStoreUnavailable")<{
+  conversationId: string;
+  operation: "claim-first-message";
+  cause: unknown;
+  message: string;
+}> {}
 
 export function conversationPreview(value: string) {
   const plainText = value
@@ -49,13 +62,29 @@ async function generateAndStoreTitle(
   message: string,
   logger: HttpContext["logger"]
 ) {
-  const title = await businessSupportAgent.generateConversationTitle(message);
+  const titleResult = await businessSupportAgent.generateConversationTitle(message);
+  if (titleResult.status === "error") {
+    logger.warn(
+      { err: titleResult.error, conversationId },
+      "Unable to generate conversation title"
+    );
+    return;
+  }
+  const title = titleResult.value;
   if (!title) return;
 
   await SupportConversation.query().where("id", conversationId).update({ title });
-  void businessSupportAgent.updateThreadTitle(customer, conversationId, title).catch((error) => {
-    logger.warn({ err: error, conversationId }, "Unable to synchronize conversation title");
-  });
+  const synchronized = await businessSupportAgent.updateThreadTitle(
+    customer,
+    conversationId,
+    title
+  );
+  if (synchronized.status === "error") {
+    logger.warn(
+      { err: synchronized.error, conversationId },
+      "Unable to synchronize conversation title"
+    );
+  }
 }
 
 async function textFromAgentStream(body: ReadableStream<Uint8Array>) {
@@ -153,37 +182,62 @@ export default async function sendConversationMessage(input: {
   conversation: SupportConversation;
   message: string;
   logger: HttpContext["logger"];
-}) {
+}): Promise<ResultType<AgentStream, BusinessSupportAgentError | ConversationStoreUnavailable>> {
   const agentStream = await businessSupportAgent.streamMessage(
     input.customer,
     input.conversation.id,
     input.message
   );
-  const isFirstMessage = await claimFirstMessage(input.conversation.id, input.message);
+  if (agentStream.status === "error") return Result.err(agentStream.error);
+
+  const claimed = await Result.tryPromise({
+    try: () => claimFirstMessage(input.conversation.id, input.message),
+    catch: (cause) =>
+      new ConversationStoreUnavailable({
+        conversationId: input.conversation.id,
+        operation: "claim-first-message",
+        cause,
+        message: `Unable to record the incoming message for conversation ${input.conversation.id}.`,
+      }),
+  });
+  if (claimed.status === "error") return claimed;
+
+  const isFirstMessage = claimed.value;
   const tasks = isFirstMessage
     ? [generateAndStoreTitle(input.customer, input.conversation.id, input.message, input.logger)]
     : [];
 
-  return trackConversationStream(
-    agentStream,
-    input.conversation.id,
-    tasks,
-    input.logger,
-    async () => {
-      await input.conversation.refresh();
-      await syncRescheduleAttention(input.conversation);
-      if (input.conversation.nextStepOwner !== "owner") {
-        await InboxAnnotation.create({
-          id: crypto.randomUUID(),
-          conversationId: input.conversation.id,
-          kind: "milestone",
-          summary: "Agent handled the latest customer request",
-          detail: "No owner decision is currently required.",
-        });
-        input.conversation.nextStepOwner = "customer";
-        await input.conversation.save();
-        inboxEventStream.publish(input.conversation.id);
+  return Result.ok(
+    trackConversationStream(
+      agentStream.value,
+      input.conversation.id,
+      tasks,
+      input.logger,
+      async () => {
+        await input.conversation.refresh();
+        const synchronized = await syncRescheduleAttention(input.conversation);
+        if (synchronized.status === "error") {
+          reportBusinessSupportAgentError(
+            synchronized.error,
+            input.logger,
+            { conversationId: input.conversation.id },
+            "Unable to synchronize booking attention"
+          );
+          return;
+        }
+        if (input.conversation.nextStepOwner !== "owner") {
+          await InboxAnnotation.create({
+            id: crypto.randomUUID(),
+            conversationId: input.conversation.id,
+            kind: "milestone",
+            summary: "Agent handled the latest customer request",
+            detail: "No owner decision is currently required.",
+          });
+          input.conversation.nextStepOwner = "customer";
+          await input.conversation.save();
+          inboxEventStream.publish(input.conversation.id);
+        }
       }
-    }
+    )
   );
 }
