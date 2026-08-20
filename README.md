@@ -2,9 +2,9 @@
 
 Turborepo monorepo containing:
 
-- `apps/app` — Next.js CRM frontend
+- `apps/app` — Business Workspace
 - `apps/api` — API server
-- `apps/agent` — Independent Mastra business-support agent service
+- `apps/agent` — business-support agent
 - `apps/demo` — Customer-facing service business demo site
 
 Customers and bookings are persisted with Lucid. The Oak & Pine demo site connects to the Mastra
