@@ -8,7 +8,6 @@ import {
   Check,
   Circle,
   Clock3,
-  List,
   MessageCircle,
   MailCheck,
   Plus,
@@ -19,7 +18,6 @@ import {
 import type {
   ApprovalRequest,
   ConversationSummary,
-  SupportConversation,
 } from "@/lib/business-support-agent";
 import { useSupportConversations, type DecisionState } from "@/lib/use-support-conversations";
 
@@ -46,16 +44,25 @@ export function SupportStudio() {
   const support = useSupportConversations();
   const [view, setView] = useState<ChatView>("conversation");
   const [isOpen, setIsOpen] = useState(false);
+  const headerTitle =
+    view === "conversation"
+      ? (support.conversation?.title ?? "New conversation")
+      : view === "threads"
+        ? "Your conversations"
+        : view === "new"
+          ? "How can we help?"
+          : "Your account";
+  const hasHeaderBack = view !== "threads";
+
+  function navigateBack() {
+    setView(view === "conversation" ? "threads" : "conversation");
+  }
 
   function submitReply(message: string) {
     support.sendReply(message);
   }
 
-  async function submitNewRequest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const message = String(form.get("message") ?? "").trim();
-    if (!message) return;
+  async function submitNewRequest(message: string) {
     setView("conversation");
     await support.createRequest(message);
   }
@@ -99,33 +106,45 @@ export function SupportStudio() {
           aria-labelledby="support-chat-title"
         >
           <header className="chat-header">
-            <span className="chat-brand-mark">
-              <MessageCircle size={18} />
-            </span>
-            <div>
-              <strong id="support-chat-title">Oak & Pine</strong>
+            {hasHeaderBack ? (
+              <button
+                className="chat-header-back"
+                type="button"
+                onClick={navigateBack}
+                aria-label={view === "conversation" ? "View conversations" : "Back to conversation"}
+              >
+                <ArrowLeft size={18} />
+              </button>
+            ) : (
+              <span className="chat-brand-mark">
+                <MessageCircle size={18} />
+              </span>
+            )}
+            <div className="chat-header-copy">
+              <strong id="support-chat-title">{headerTitle}</strong>
               <span>
-                <span className="chat-online-dot" /> Support is online
+                <span className="chat-online-dot" /> Oak &amp; Pine is online
               </span>
             </div>
             <div className="chat-header-actions">
-              <button
-                type="button"
-                onClick={() => setView("account")}
-                aria-label={support.session?.isVerified ? "View account" : "Verify email"}
-              >
-                {support.session?.isVerified ? <Check size={17} /> : <UserRound size={17} />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("threads")}
-                aria-label="View conversations"
-              >
-                <List size={17} />
-              </button>
-              <button type="button" onClick={() => setView("new")} aria-label="Create new request">
-                <Plus size={17} />
-              </button>
+              {view === "conversation" || view === "threads" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setView("account")}
+                    aria-label={support.session?.isVerified ? "View account" : "Verify email"}
+                  >
+                    {support.session?.isVerified ? <Check size={17} /> : <UserRound size={17} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("new")}
+                    aria-label="Create new request"
+                  >
+                    <Plus size={17} />
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -144,7 +163,6 @@ export function SupportStudio() {
                 setView("conversation");
                 void support.selectConversation(id);
               }}
-              onNew={() => setView("new")}
             />
           ) : null}
           {view === "account" ? (
@@ -154,7 +172,6 @@ export function SupportStudio() {
               error={support.error}
               isSending={support.isRequestingVerification}
               isVerifying={support.isVerifyingEmail}
-              onBack={() => setView("conversation")}
               onSubmit={submitAccount}
               onSubmitCode={submitVerificationCode}
               onResend={() => void support.resendVerification().catch(() => undefined)}
@@ -164,21 +181,18 @@ export function SupportStudio() {
           {view === "new" ? (
             <NewRequestForm
               customerName={support.session?.name ?? null}
-              onCancel={() => setView("conversation")}
-              onSubmit={submitNewRequest}
+              onStart={submitNewRequest}
             />
           ) : null}
           {view === "conversation" ? (
             <ConversationView
               key={support.activeId ?? "new"}
-              conversation={support.conversation}
               messages={support.messages}
               approval={support.approval}
               error={support.error}
               isSending={support.isSending}
               decisionState={support.decisionState}
               onSend={submitReply}
-              onBack={() => setView("threads")}
               onDecision={support.submitDecision}
               isVerified={Boolean(support.session?.isVerified)}
               onVerify={() => setView("account")}
@@ -219,21 +233,13 @@ function ThreadList({
   threads,
   activeId,
   onSelect,
-  onNew,
 }: {
   threads: ConversationSummary[];
   activeId?: string;
   onSelect: (id: string) => void;
-  onNew: () => void;
 }) {
   return (
     <div className="chat-view chat-thread-view">
-      <div className="chat-view-heading">
-        <h3>Your conversations</h3>
-        <button type="button" onClick={onNew}>
-          <Plus size={15} /> New
-        </button>
-      </div>
       <div className="chat-thread-list">
         {threads.map((thread) => (
           <button
@@ -264,26 +270,22 @@ function ThreadList({
 }
 
 function ConversationView({
-  conversation,
   messages,
   approval,
   error,
   isSending,
   decisionState,
   onSend,
-  onBack,
   onDecision,
   isVerified,
   onVerify,
 }: {
-  conversation: SupportConversation | null;
   messages: Array<{ id: string; sender: "customer" | "business"; body: string }>;
   approval: ApprovalRequest | null;
   error: string;
   isSending: boolean;
   decisionState: DecisionState;
   onSend: (message: string) => void;
-  onBack: () => void;
   onDecision: (decision: "approve" | "decline") => void;
   isVerified: boolean;
   onVerify: () => void;
@@ -307,14 +309,6 @@ function ConversationView({
 
   return (
     <div className="chat-view chat-conversation-view">
-      <div className="chat-conversation-heading">
-        <button type="button" onClick={onBack} aria-label="Back to conversations">
-          <ArrowLeft size={17} />
-        </button>
-        <div>
-          <h3>{conversation?.title ?? "New conversation"}</h3>
-        </div>
-      </div>
       <div className="chat-messages" ref={messagesRef}>
         <div className="chat-status chat-status--open">Open</div>
         {messages.map((message) => (
@@ -374,11 +368,7 @@ function ConversationView({
               readOnly={replyUnavailable}
               aria-disabled={replyUnavailable}
             />
-            <button
-              type="submit"
-              disabled={replyUnavailable}
-              aria-label="Send message"
-            >
+            <button type="submit" disabled={replyUnavailable} aria-label="Send message">
               <Send size={17} />
             </button>
           </form>
@@ -475,54 +465,61 @@ function ApprovalCard({
 
 function NewRequestForm({
   customerName,
-  onCancel,
-  onSubmit,
+  onStart,
 }: {
   customerName: string | null;
-  onCancel: () => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onStart: (message: string) => void;
 }) {
+  const suggestions = [
+    "I need to reschedule my appointment.",
+    "I’d like to book an appointment.",
+    "I have a question about your services.",
+  ];
+
+  function submitMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const message = String(new FormData(event.currentTarget).get("message") ?? "").trim();
+    if (message) onStart(message);
+  }
+
   return (
     <div className="chat-view chat-new-view">
-      <div className="chat-conversation-heading">
-        <button type="button" onClick={onCancel} aria-label="Cancel new request">
-          <ArrowLeft size={17} />
-        </button>
-        <div>
-          <h3>How can we help?</h3>
-        </div>
-      </div>
-      <form className="chat-request-form" onSubmit={onSubmit}>
-        <div className="chat-customer">
-          <span>
-            {customerName ? customerName.slice(0, 2).toUpperCase() : <UserRound size={15} />}
-          </span>
+      <div className="chat-messages chat-new-messages">
+        <div className="chat-message chat-message--business">
+          <span>O&amp;P</span>
           <div>
-            <small>Requesting as</small>
-            <strong>{customerName || "Guest"}</strong>
+            <div className="chat-message-body">
+              <p>
+                Hi{customerName ? ` ${customerName.split(" ")[0]}` : ""}! How can we help today?
+              </p>
+            </div>
           </div>
         </div>
-        <label>
-          <span>Message</span>
-          <input
-            name="message"
-            type="text"
-            required
-            defaultValue="I need to reschedule my next appointment."
-            placeholder="Share the details…"
-          />
-        </label>
-        <p>
-          <Clock3 size={14} /> We usually reply in a few moments.
-        </p>
-        <div className="chat-request-actions">
-          <button type="button" onClick={onCancel}>
-            Cancel
-          </button>
-          <button type="submit">
-            Start conversation <Send size={14} />
-          </button>
+        <div className="chat-starter-replies" aria-label="Suggested messages">
+          {suggestions.map((suggestion) => (
+            <button key={suggestion} type="button" onClick={() => onStart(suggestion)}>
+              {suggestion}
+            </button>
+          ))}
         </div>
+      </div>
+      <form className="chat-reply" onSubmit={submitMessage}>
+        <label className="sr-only" htmlFor="chat-new-reply-input">
+          Write a message
+        </label>
+        <input
+          id="chat-new-reply-input"
+          name="message"
+          type="text"
+          placeholder="Write a message…"
+          autoComplete="off"
+          enterKeyHint="send"
+          required
+          autoFocus
+        />
+        <button type="submit" aria-label="Start conversation">
+          <Send size={17} />
+        </button>
       </form>
     </div>
   );
@@ -534,7 +531,6 @@ function AccountView({
   error,
   isSending,
   isVerifying,
-  onBack,
   onSubmit,
   onSubmitCode,
   onResend,
@@ -545,7 +541,6 @@ function AccountView({
   error: string;
   isSending: boolean;
   isVerifying: boolean;
-  onBack: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onSubmitCode: (event: FormEvent<HTMLFormElement>) => void;
   onResend: () => void;
@@ -553,14 +548,6 @@ function AccountView({
 }) {
   return (
     <div className="chat-view chat-account-view">
-      <div className="chat-conversation-heading">
-        <button type="button" onClick={onBack} aria-label="Back to conversation">
-          <ArrowLeft size={17} />
-        </button>
-        <div>
-          <h3>Your account</h3>
-        </div>
-      </div>
       <div className="chat-account-body">
         {session?.isVerified ? (
           <div className="chat-account-state">
