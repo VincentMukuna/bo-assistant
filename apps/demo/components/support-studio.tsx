@@ -289,6 +289,7 @@ function ConversationView({
   onVerify: () => void;
 }) {
   const messagesRef = useRef<HTMLDivElement>(null);
+  const replyUnavailable = isSending || decisionState !== "idle";
   useEffect(() => {
     const pane = messagesRef.current;
     if (pane) pane.scrollTop = pane.scrollHeight;
@@ -296,6 +297,7 @@ function ConversationView({
 
   function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (replyUnavailable) return;
     const form = event.currentTarget;
     const message = String(new FormData(form).get("message") ?? "").trim();
     if (!message) return;
@@ -357,7 +359,7 @@ function ConversationView({
               Verify email to manage appointments
             </button>
           ) : null}
-          <form className="chat-reply" onSubmit={submitMessage}>
+          <form className="chat-reply" onSubmit={submitMessage} aria-busy={isSending}>
             <label className="sr-only" htmlFor="chat-reply-input">
               Write a message
             </label>
@@ -369,11 +371,12 @@ function ConversationView({
               autoComplete="off"
               enterKeyHint="send"
               required
-              disabled={isSending || decisionState !== "idle"}
+              readOnly={replyUnavailable}
+              aria-disabled={replyUnavailable}
             />
             <button
               type="submit"
-              disabled={isSending || decisionState !== "idle"}
+              disabled={replyUnavailable}
               aria-label="Send message"
             >
               <Send size={17} />
