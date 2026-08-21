@@ -10,9 +10,10 @@ export default class OwnerAssistantMessagesController {
       message,
       surface = "overview",
       customerId,
+      conversationId,
     } = await request.validateUsing(createOwnerAssistantMessageValidator);
     const brief = await buildOwnerBrief();
-    const pageContext = await buildOwnerAssistantPageContext(surface, customerId);
+    const pageContext = await buildOwnerAssistantPageContext(surface, customerId, conversationId);
 
     try {
       const answer = await ownerOperationsAgent.answer(

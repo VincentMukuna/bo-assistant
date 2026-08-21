@@ -18,6 +18,8 @@ test("keeps operations guidance read-only and grounded in server-built context",
 
   expect(instructions).toContain("only factual sources");
   expect(instructions).toContain("server-built, read-only snapshots");
+  expect(instructions).toContain("stay focused on that selected conversation or customer");
+  expect(instructions).toContain("never show a raw timestamp");
   expect(instructions).toContain("Never claim you changed a booking");
   expect(instructions).toContain("Do not infer revenue, profit, payments");
 });

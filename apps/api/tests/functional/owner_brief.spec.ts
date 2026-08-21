@@ -123,6 +123,50 @@ test.group("Owner brief", (group) => {
     assert.equal(recentWin?.summary, "Booking details verified");
   });
 
+  test("includes visitor conversations without requiring a customer record", async ({
+    assert,
+    client,
+  }) => {
+    const { owner } = await setupOwnerOperation();
+    const conversation = await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: null,
+      visitorId: crypto.randomUUID(),
+      title: "Website repair question",
+      status: "open",
+      nextStepOwner: "owner",
+      outcomeStatus: "failed",
+    });
+    await InboxAnnotation.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      kind: "outcome",
+      summary: "Visitor follow-up recorded",
+    });
+
+    const response = await client.get("/api/v1/owner-briefs").withGuard("web").loginAs(owner);
+
+    response.assertStatus(200);
+    const body = response.body() as {
+      attentionItems: Array<{ id: string; customerName: string }>;
+      watchItems: Array<{ id: string; detail: string }>;
+      recentWins: Array<{ summary: string; customerName: string }>;
+    };
+    assert.equal(
+      body.attentionItems.find((item) => item.id === `conversation:${conversation.id}`)
+        ?.customerName,
+      "Website visitor"
+    );
+    assert.include(
+      body.watchItems.find((item) => item.id === `failed-conversation:${conversation.id}`)?.detail,
+      "Website visitor"
+    );
+    assert.equal(
+      body.recentWins.find((item) => item.summary === "Visitor follow-up recorded")?.customerName,
+      "Website visitor"
+    );
+  });
+
   test("routes suggested questions through the operations model", async ({ assert, client }) => {
     const { owner, customer } = await setupOwnerOperation();
     const now = DateTime.now().setZone("America/Los_Angeles");
@@ -217,6 +261,91 @@ test.group("Owner brief", (group) => {
       response.assertStatus(200);
       assert.equal(response.body().mode, "agent");
       assert.equal(response.body().answer, "The operation is quiet. No action is required.");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("gives the model the selected Inbox conversation", async ({ assert, client }) => {
+    const { owner, customer } = await setupOwnerOperation();
+    const conversation = await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: customer.id,
+      title: "Move Friday's appointment",
+      status: "open",
+      nextStepOwner: "owner",
+    });
+    await InboxAttentionItem.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      cause: "authority",
+      actionType: "booking_confirmation",
+      status: "pending",
+      externalKey: crypto.randomUUID(),
+      summary: "Confirm the requested appointment",
+      contextJson: JSON.stringify({ scheduledAt: "2026-08-18T14:30:00-07:00" }),
+    });
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname.includes(`/memory/threads/${conversation.id}/messages`)) {
+        return Response.json({
+          uiMessages: [
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              content: "Could we move the appointment to Monday?",
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        });
+      }
+
+      assert.equal(url.pathname, "/api/agents/owner-operations-agent/generate");
+      const body = JSON.parse(String(init?.body)) as {
+        messages: Array<{ content: string }>;
+        requestContext: { pageContextJson: string };
+      };
+      assert.equal(body.messages[0].content, "What should I reply?");
+      const pageContext = JSON.parse(body.requestContext.pageContextJson) as {
+        surface: string;
+        conversation: {
+          id: string;
+          contact: string;
+          messages: Array<{ sender: string; body: string }>;
+          attentionItems: Array<{ context: Record<string, unknown> }>;
+        };
+      };
+      assert.equal(pageContext.surface, "inbox");
+      assert.equal(pageContext.conversation.id, conversation.id);
+      assert.equal(pageContext.conversation.contact, "Alice Morgan");
+      assert.deepInclude(pageContext.conversation.messages[0], {
+        sender: "customer",
+        body: "Could we move the appointment to Monday?",
+      });
+      assert.deepEqual(pageContext.conversation.attentionItems[0]?.context, {
+        scheduledAtDisplay: "Tue, Aug 18 at 2:30 PM PDT",
+      });
+      return Response.json({ text: "Confirm whether Monday morning or afternoon works best." });
+    };
+
+    try {
+      const response = await client
+        .post("/api/v1/owner-assistant/messages")
+        .withGuard("web")
+        .loginAs(owner)
+        .json({
+          message: "What should I reply?",
+          surface: "inbox",
+          conversationId: conversation.id,
+        });
+
+      response.assertStatus(200);
+      assert.equal(
+        response.body().answer,
+        "Confirm whether Monday morning or afternoon works best."
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }

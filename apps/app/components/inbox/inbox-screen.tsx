@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { AgentMessageMarkdown } from "@/components/inbox/agent-message-markdown";
+import { AskOakPanel, useAskOakWorkspaceState } from "@/components/operations/ask-oak-panel";
 import { StatusBadge } from "@/components/status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -352,11 +353,13 @@ function ConversationPanel({
   id,
   onOpenList,
   showContext,
+  askOakOpen,
   onToggleContext,
 }: {
   id: string;
   onOpenList: () => void;
   showContext: boolean;
+  askOakOpen: boolean;
   onToggleContext: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -480,17 +483,29 @@ function ConversationPanel({
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="hidden xl:inline-flex"
-            onClick={onToggleContext}
-            aria-label={showContext ? "Hide contact context" : "Show contact context"}
-            aria-pressed={showContext}
-            title={showContext ? "Hide contact context" : "Show contact context"}
-          >
-            {showContext ? <PanelRightClose /> : <PanelRightOpen />}
-          </Button>
+          <AskOakPanel
+            surface="inbox"
+            conversationId={conversation.id}
+            contextLabel={`this conversation with ${conversation.contact.name}`}
+            suggestions={[
+              "Summarize this conversation.",
+              "What needs my attention here?",
+              "What should I reply next?",
+            ]}
+          />
+          {!askOakOpen ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="hidden xl:inline-flex"
+              onClick={onToggleContext}
+              aria-label={showContext ? "Hide contact context" : "Show contact context"}
+              aria-pressed={showContext}
+              title={showContext ? "Hide contact context" : "Show contact context"}
+            >
+              {showContext ? <PanelRightClose /> : <PanelRightOpen />}
+            </Button>
+          ) : null}
           <Button
             variant={ownerHasControl ? "outline" : "default"}
             size="sm"
@@ -765,6 +780,7 @@ function ContactContext({ conversation }: { conversation: InboxConversationSumma
 
 export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }) {
   const router = useRouter();
+  const { closePanel, panelOpen: askOakOpen } = useAskOakWorkspaceState();
   const conversationsQuery = useQuery(inboxQueryOptions);
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
@@ -918,13 +934,17 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
       </div>
     );
 
-  const select = (id: string) => router.replace(`/inbox?conversation=${id}`, { scroll: false });
+  const select = (id: string) => {
+    closePanel();
+    router.replace(`/inbox?conversation=${id}`, { scroll: false });
+  };
   return (
     <div
       ref={layoutRef}
       className={cn(
         "grid h-full min-h-0 grid-cols-1 [--inbox-list-width:350px] md:grid-cols-[var(--inbox-list-width)_minmax(0,1fr)]",
         contextOpen &&
+          !askOakOpen &&
           "xl:grid-cols-[var(--inbox-list-width)_minmax(480px,1fr)_var(--inbox-context-width)] 2xl:grid-cols-[var(--inbox-list-width)_minmax(520px,1fr)_var(--inbox-context-width)]",
         "[--inbox-context-width:300px]"
       )}
@@ -980,10 +1000,11 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
       <ConversationPanel
         id={selectedId}
         onOpenList={() => setMobileListOpen(true)}
-        showContext={contextOpen}
+        showContext={contextOpen && !askOakOpen}
+        askOakOpen={askOakOpen}
         onToggleContext={() => setContextOpen((open) => !open)}
       />
-      {contextOpen ? (
+      {contextOpen && !askOakOpen ? (
         <div className="relative hidden min-h-0 xl:block">
           <div
             ref={contextResizeHandleRef}

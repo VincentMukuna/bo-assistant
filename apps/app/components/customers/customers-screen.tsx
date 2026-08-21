@@ -17,7 +17,7 @@ import {
 
 import { NewBookingDialog } from "@/components/bookings/new-booking-dialog";
 import { CustomerDialog } from "@/components/customers/customer-dialog";
-import { AskOakDialog } from "@/components/operations/ask-oak-dialog";
+import { AskOakPanel } from "@/components/operations/ask-oak-panel";
 import { StatusBadge } from "@/components/status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -198,7 +198,7 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                     <h2 className="text-xl font-semibold tracking-[-0.02em]">{selected.name}</h2>
                     <p className="text-muted-foreground mt-1 text-sm">{customerSince(selected)}</p>
                   </div>
-                  <AskOakDialog
+                  <AskOakPanel
                     surface="customer"
                     customerId={selected.id}
                     contextLabel={selected.name}

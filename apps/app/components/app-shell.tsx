@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { AskOakWorkspace } from "@/components/operations/ask-oak-panel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,6 @@ const navItems: NavItem[] = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/customers", label: "Customers", icon: Users },
-  { href: "/agent-activity", label: "Agent Activity", icon: Activity },
 ];
 
 function Brand() {
@@ -171,6 +171,13 @@ function AccountMenu() {
             {user?.email}
           </span>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="px-2 py-2">
+          <Link href="/agent-activity">
+            <Activity className="size-4" />
+            Agent activity
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="px-2 py-2" disabled={loggingOut} onSelect={() => logout()}>
           <LogOut className="size-4" />
@@ -336,7 +343,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <AccountMenu />
         </div>
       </header>
-      <main className="min-h-0 flex-1">{children}</main>
+      <AskOakWorkspace key={pathname}>{children}</AskOakWorkspace>
     </div>
   );
 }

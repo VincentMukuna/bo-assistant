@@ -84,6 +84,10 @@ function customerInitials(name: string) {
     .toUpperCase();
 }
 
+function conversationContactName(conversation: SupportConversation) {
+  return conversation.customer?.name ?? "Website visitor";
+}
+
 function relevantVisitNote(notes: string | null) {
   if (!notes) return null;
   const useful = notes
@@ -166,7 +170,7 @@ export async function buildOwnerBrief(now = DateTime.now().setZone(OWNER_TIMEZON
               : "Judgment needed",
       title: conversation.title,
       detail,
-      customerName: conversation.customer.name,
+      customerName: conversationContactName(conversation),
       createdAt: (
         attention?.createdAt ??
         conversation.updatedAt ??
@@ -262,7 +266,8 @@ export async function buildOwnerBrief(now = DateTime.now().setZone(OWNER_TIMEZON
       tone: "risk",
       title: conversation.title,
       detail:
-        conversation.outcomeSummary ?? `${conversation.customer.name}'s request did not complete.`,
+        conversation.outcomeSummary ??
+        `${conversationContactName(conversation)}'s request did not complete.`,
       link: {
         label: "Recover conversation",
         href: `/inbox?conversation=${encodeURIComponent(conversation.id)}`,
@@ -274,7 +279,7 @@ export async function buildOwnerBrief(now = DateTime.now().setZone(OWNER_TIMEZON
     id: annotation.id,
     summary: annotation.summary,
     detail: annotation.detail,
-    customerName: annotation.conversation.customer.name,
+    customerName: conversationContactName(annotation.conversation),
     createdAt: annotation.createdAt.toISO()!,
     link: {
       label: "View outcome",

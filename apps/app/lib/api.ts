@@ -173,7 +173,7 @@ export type OwnerAssistantAnswer = {
   generatedAt: string;
 };
 
-export type OwnerAssistantSurface = "overview" | "bookings" | "customer";
+export type OwnerAssistantSurface = "overview" | "bookings" | "customer" | "inbox";
 
 export class ApiError extends Error {
   constructor(
@@ -356,7 +356,11 @@ export function createApi({ baseUrl = "/", cache, headers }: CreateApiOptions = 
       },
       async ask(
         message: string,
-        context: { surface?: OwnerAssistantSurface; customerId?: number } = {}
+        context: {
+          surface?: OwnerAssistantSurface;
+          customerId?: number;
+          conversationId?: string;
+        } = {}
       ) {
         return jsonRequest<OwnerAssistantAnswer>("/api/v1/owner-assistant/messages", {
           method: "POST",

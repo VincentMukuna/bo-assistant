@@ -1,5 +1,8 @@
 import Booking from "#models/booking";
 import Customer from "#models/customer";
+import SupportConversation from "#models/support_conversation";
+import { businessSupportAgent } from "#services/business_support_agent";
+import { DateTime } from "luxon";
 
 const BUSINESS_TIME_ZONE = "America/Los_Angeles";
 
@@ -7,11 +10,26 @@ function scheduledAtDisplay(value: Booking["scheduledAt"]) {
   return value.setZone(BUSINESS_TIME_ZONE).toFormat("ccc, LLL d 'at' h:mm a ZZZZ");
 }
 
-export type OwnerAssistantSurface = "overview" | "bookings" | "customer";
+function displayAttentionContext(context: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(context).map(([key, value]) => {
+      if (typeof value !== "string" || !/(?:at|date|time)$/i.test(key)) return [key, value];
+      const date = DateTime.fromISO(value);
+      if (!date.isValid) return [key, value];
+      return [
+        `${key}Display`,
+        date.setZone(BUSINESS_TIME_ZONE).toFormat("ccc, LLL d 'at' h:mm a ZZZZ"),
+      ];
+    })
+  );
+}
+
+export type OwnerAssistantSurface = "overview" | "bookings" | "customer" | "inbox";
 
 export async function buildOwnerAssistantPageContext(
   surface: OwnerAssistantSurface,
-  customerId?: number
+  customerId?: number,
+  conversationId?: string
 ) {
   if (surface === "bookings") {
     const bookings = await Booking.query()
@@ -74,6 +92,52 @@ export async function buildOwnerAssistantPageContext(
           updatedAt: (conversation.updatedAt ?? conversation.createdAt).toISO(),
           href: `/inbox?conversation=${conversation.id}`,
         })),
+      },
+    };
+  }
+
+  if (surface === "inbox" && conversationId) {
+    const conversation = await SupportConversation.query()
+      .where("id", conversationId)
+      .preload("customer")
+      .preload("attentionItems", (query) => query.orderBy("createdAt", "desc"))
+      .preload("annotations", (query) => query.orderBy("createdAt", "asc"))
+      .first();
+
+    if (!conversation) return { surface, conversation: null };
+
+    const messages = await businessSupportAgent.listMessages(conversation);
+    return {
+      surface,
+      conversation: {
+        id: conversation.id,
+        title: conversation.title,
+        contact: conversation.customer?.name ?? "Website visitor",
+        status: conversation.status,
+        nextStep: conversation.nextStepOwner,
+        handlingMode: conversation.handlingMode,
+        outcome: conversation.outcomeStatus,
+        outcomeSummary: conversation.outcomeSummary,
+        attentionItems: conversation.attentionItems.map((attention) => ({
+          cause: attention.cause,
+          status: attention.status,
+          summary: attention.summary,
+          context: displayAttentionContext(attention.context),
+          outcomeSummary: attention.outcomeSummary,
+        })),
+        annotations: conversation.annotations.map((annotation) => ({
+          kind: annotation.kind,
+          summary: annotation.summary,
+          detail: annotation.detail,
+          createdAt: annotation.createdAt.toISO(),
+        })),
+        messages: messages.map((message) => ({
+          sender: message.sender,
+          author: message.author,
+          body: message.body,
+          createdAt: message.createdAt,
+        })),
+        href: `/inbox?conversation=${conversation.id}`,
       },
     };
   }
