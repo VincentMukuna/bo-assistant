@@ -3,6 +3,7 @@ import { BaseSerializer } from "@adonisjs/core/transformers";
 import { type SimplePaginatorMetaKeys } from "@adonisjs/lucid/types/querybuilder";
 import type Customer from "#models/customer";
 import type { BookingCapability } from "#services/booking_capability";
+import type { OwnerOperationsCapability } from "#services/owner_operations_capability";
 
 /**
  * Custom serializer for API responses that ensures consistent JSON structure
@@ -70,5 +71,6 @@ declare module "@adonisjs/core/http" {
     customer: Customer | null;
     visitorId: string;
     bookingCapability: BookingCapability;
+    ownerOperationsCapability: OwnerOperationsCapability;
   }
 }

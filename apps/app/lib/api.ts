@@ -73,6 +73,7 @@ export type InboxConversation = InboxConversationSummary & {
     service: string;
     staff: string;
     scheduledAt: string;
+    scheduledAtDisplay: string;
     durationMinutes: number;
     status: BookingStatus;
     serviceAddress: string;
@@ -107,6 +108,73 @@ export type AgentActivityFeed = {
   };
   activities: AgentActivity[];
 };
+
+export type OwnerBriefLink = {
+  label: string;
+  href: string;
+};
+
+export type OwnerBrief = {
+  generatedAt: string;
+  businessDate: string;
+  greeting: string;
+  headline: string;
+  summary: string;
+  metrics: {
+    needsDecision: number;
+    bookingsToday: number;
+    operationalRisks: number;
+    handledRecently: number;
+  };
+  attentionItems: Array<{
+    id: string;
+    kind: "conversation" | "booking";
+    priority: "urgent" | "important" | "watch";
+    eyebrow: string;
+    title: string;
+    detail: string;
+    customerName: string;
+    createdAt: string;
+    link: OwnerBriefLink;
+  }>;
+  todaySchedule: Array<{
+    id: number;
+    time: string;
+    scheduledAt: string;
+    service: string;
+    customerName: string;
+    customerInitials: string;
+    staff: string;
+    durationMinutes: number;
+    status: string;
+    note: string | null;
+    link: OwnerBriefLink;
+  }>;
+  watchItems: Array<{
+    id: string;
+    tone: "risk" | "notice";
+    title: string;
+    detail: string;
+    link: OwnerBriefLink;
+  }>;
+  recentWins: Array<{
+    id: string;
+    summary: string;
+    detail: string | null;
+    customerName: string;
+    createdAt: string;
+    link: OwnerBriefLink;
+  }>;
+  suggestedQuestions: string[];
+};
+
+export type OwnerAssistantAnswer = {
+  answer: string;
+  mode: "agent" | "brief" | "fallback";
+  generatedAt: string;
+};
+
+export type OwnerAssistantSurface = "overview" | "bookings" | "customer" | "inbox";
 
 export class ApiError extends Error {
   constructor(
@@ -281,6 +349,24 @@ export function createApi({ baseUrl = "/", cache, headers }: CreateApiOptions = 
     agentActivity: {
       async index() {
         return jsonRequest<AgentActivityFeed>("/api/v1/agent-activities");
+      },
+    },
+    ownerBrief: {
+      async index() {
+        return jsonRequest<OwnerBrief>("/api/v1/owner-briefs");
+      },
+      async ask(
+        message: string,
+        context: {
+          surface?: OwnerAssistantSurface;
+          customerId?: number;
+          conversationId?: string;
+        } = {}
+      ) {
+        return jsonRequest<OwnerAssistantAnswer>("/api/v1/owner-assistant/messages", {
+          method: "POST",
+          body: JSON.stringify({ message, ...context }),
+        });
       },
     },
   };

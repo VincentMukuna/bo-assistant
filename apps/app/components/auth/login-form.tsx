@@ -14,7 +14,7 @@ export function LoginForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, loading } = useAuth();
-  const [email, setEmail] = useState("owner@oakandpine.test");
+  const [email, setEmail] = useState("kim@oakandpine.test");
   const [password, setPassword] = useState("password123");
   const loginMutation = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>
@@ -23,12 +23,13 @@ export function LoginForm() {
       queryClient.setQueryData(queryKeys.profile, profile);
       queryClient.removeQueries({ queryKey: queryKeys.customers });
       queryClient.removeQueries({ queryKey: queryKeys.bookings });
-      router.replace("/customers");
+      queryClient.removeQueries({ queryKey: queryKeys.ownerBrief });
+      router.replace("/overview");
     },
   });
 
   useEffect(() => {
-    if (!loading && user) router.replace("/customers");
+    if (!loading && user) router.replace("/overview");
   }, [loading, router, user]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {

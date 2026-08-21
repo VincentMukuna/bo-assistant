@@ -19,6 +19,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/demo_sessions_controller').default['store']>>>
     }
   }
+  'customer_accounts.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/demo/account'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/customer_account').requestCustomerEmailVerificationValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/customer_account').requestCustomerEmailVerificationValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/customer_accounts_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/customer_accounts_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'customer_email_verifications.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/demo/email-verifications'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/customer_account').verifyCustomerEmailValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/customer_account').verifyCustomerEmailValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/customer_email_verifications_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/customer_email_verifications_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'conversations.index': {
     methods: ["GET","HEAD"]
     pattern: '/api/v1/support/conversations'
@@ -125,6 +149,30 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_booking_creations_controller').default['store']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_booking_creations_controller').default['store']>>>
+    }
+  }
+  'agent_operations_conversations.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/agent/operations/conversations/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_operations_conversations_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_operations_conversations_controller').default['show']>>>
+    }
+  }
+  'agent_operations_bookings.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/agent/operations/bookings/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_operations_bookings_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_operations_bookings_controller').default['show']>>>
     }
   }
   'auth.sessions.store': {
@@ -307,6 +355,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workspace_conversations_controller').default['show']>>>
     }
   }
+  'inbox_conversations.destroy': {
+    methods: ["DELETE"]
+    pattern: '/api/v1/inbox/conversations/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workspace_conversations_controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workspace_conversations_controller').default['destroy']>>>
+    }
+  }
   'conversation_ownerships.update': {
     methods: ["PUT"]
     pattern: '/api/v1/inbox/conversations/:id/ownership'
@@ -365,6 +425,30 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_activities_controller').default['index']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_activities_controller').default['index']>>>
+    }
+  }
+  'owner_briefs.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/owner-briefs'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/owner_briefs_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/owner_briefs_controller').default['index']>>>
+    }
+  }
+  'owner_assistant_messages.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/owner-assistant/messages'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/owner_assistant').createOwnerAssistantMessageValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/owner_assistant').createOwnerAssistantMessageValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/owner_assistant_messages_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/owner_assistant_messages_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
 }

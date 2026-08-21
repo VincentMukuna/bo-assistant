@@ -6,9 +6,9 @@ import { DateTime } from "luxon";
 
 export default class extends BaseSeeder {
   async run() {
-    await User.firstOrCreate(
-      { email: "owner@oakandpine.test" },
-      { fullName: "Kim Lewis", email: "owner@oakandpine.test", password: "password123" }
+    await User.updateOrCreate(
+      { fullName: "Kim Lewis" },
+      { fullName: "Kim Lewis", email: "kim@oakandpine.test", password: "password123" }
     );
 
     const customers = await Promise.all([

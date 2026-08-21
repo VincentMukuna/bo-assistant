@@ -30,7 +30,7 @@ bun run dev
 
 Open [http://localhost:3000](http://localhost:3000) and sign in with:
 
-- Email: `owner@oakandpine.test`
+- Email: `kim@oakandpine.test`
 - Password: `password123`
 
 `bun run dev` starts the CRM frontend on port 3000, the customer demo on port 3100, the API server on port 3333, and Mastra Studio on port 4111. All four reload as you edit their source. Set `ADONIS_URL` when the backend is hosted elsewhere.

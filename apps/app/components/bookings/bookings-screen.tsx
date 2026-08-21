@@ -7,10 +7,12 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { BookingDetailsDialog } from "@/components/bookings/booking-details-sheet";
 import { NewBookingDialog } from "@/components/bookings/new-booking-dialog";
+import { AskOakPanel } from "@/components/operations/ask-oak-panel";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Booking } from "@/lib/api";
+import { businessDateKey, formatBusinessDate, formatBusinessTime } from "@/lib/business-time";
 import { bookingsQueryOptions, customersQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -46,16 +48,14 @@ function bookingDate(booking: Booking) {
 }
 
 function displayDate(booking: Booking) {
-  const date = bookingDate(booking);
   return {
-    weekday: date.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }),
-    month: date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }),
-    day: date.toLocaleDateString("en-US", { day: "numeric", timeZone: "UTC" }),
-    time: date.toLocaleTimeString("en-US", {
+    weekday: formatBusinessDate(booking.scheduledAt, { weekday: "short" }),
+    month: formatBusinessDate(booking.scheduledAt, { month: "short" }),
+    day: formatBusinessDate(booking.scheduledAt, { day: "numeric" }),
+    time: `${formatBusinessTime(booking.scheduledAt, {
       hour: "numeric",
       minute: "2-digit",
-      timeZone: "UTC",
-    }),
+    })} PT`,
   };
 }
 
@@ -123,22 +123,24 @@ function BookingRow({ booking, onOpen }: { booking: Booking; onOpen: (booking: B
   );
 }
 
-export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
+export function BookingsScreen({
+  view,
+  initialBookingId,
+}: {
+  view: "week" | "agenda";
+  initialBookingId?: number;
+}) {
   const router = useRouter();
   const bookingsQuery = useQuery(bookingsQueryOptions);
   const customersQuery = useQuery(customersQueryOptions);
   const bookings = bookingsQuery.data ?? emptyBookings;
   const customers = customersQuery.data ?? [];
-  const today = useMemo(() => {
-    const date = new Date();
-    date.setUTCHours(0, 0, 0, 0);
-    return date;
-  }, []);
-  const [weekStart, setWeekStart] = useState(() => startOfUtcWeek(new Date()));
-  const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date()));
+  const today = useMemo(() => new Date(`${businessDateKey(new Date())}T00:00:00Z`), []);
+  const [weekStart, setWeekStart] = useState(() => startOfUtcWeek(today));
+  const [selectedDate, setSelectedDate] = useState(() => businessDateKey(new Date()));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Booking>();
-  const [selectedBookingId, setSelectedBookingId] = useState<number>();
+  const [selectedBookingId, setSelectedBookingId] = useState<number | undefined>(initialBookingId);
 
   const weekDates = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addUtcDays(weekStart, index)),
@@ -149,7 +151,7 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
     [bookings]
   );
   const selectedBookings = sortedBookings.filter(
-    (booking) => dateKey(bookingDate(booking)) === selectedDate
+    (booking) => businessDateKey(booking.scheduledAt) === selectedDate
   );
   const upcomingBookings = sortedBookings.filter((booking) => booking.status !== "completed");
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId);
@@ -209,6 +211,15 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <AskOakPanel
+              surface="bookings"
+              contextLabel="bookings"
+              suggestions={[
+                "Which bookings need attention?",
+                "What should I prepare for today?",
+                "What is overdue?",
+              ]}
+            />
             <div className="bg-secondary flex rounded-lg p-1">
               {(["week", "agenda"] as const).map((option) => (
                 <button
@@ -257,7 +268,7 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
                     const key = dateKey(date);
                     const selected = key === selectedDate;
                     const count = bookings.filter(
-                      (booking) => dateKey(bookingDate(booking)) === key
+                      (booking) => businessDateKey(booking.scheduledAt) === key
                     ).length;
                     return (
                       <button
@@ -414,7 +425,10 @@ export function BookingsScreen({ view }: { view: "week" | "agenda" }) {
           key={selectedBooking.id}
           booking={selectedBooking}
           onOpenChange={(open) => {
-            if (!open) setSelectedBookingId(undefined);
+            if (!open) {
+              setSelectedBookingId(undefined);
+              router.replace(`/bookings?view=${view}`, { scroll: false });
+            }
           }}
         />
       ) : null}

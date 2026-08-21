@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       queryClient.setQueryData(queryKeys.profile, null);
       queryClient.removeQueries({ queryKey: queryKeys.customers });
       queryClient.removeQueries({ queryKey: queryKeys.bookings });
+      queryClient.removeQueries({ queryKey: queryKeys.ownerBrief });
       router.replace("/login");
     },
   });

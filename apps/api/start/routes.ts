@@ -27,6 +27,10 @@ const AgentBookingReschedulesController = () =>
   import("#controllers/agent_booking_reschedules_controller");
 const AgentBookingCreationsController = () =>
   import("#controllers/agent_booking_creations_controller");
+const AgentOperationsConversationsController = () =>
+  import("#controllers/agent_operations_conversations_controller");
+const AgentOperationsBookingsController = () =>
+  import("#controllers/agent_operations_bookings_controller");
 const WorkspaceConversationsController = () =>
   import("#controllers/workspace_conversations_controller");
 const ConversationOwnershipsController = () =>
@@ -36,6 +40,9 @@ const OwnerConversationMessagesController = () =>
 const AttentionDecisionsController = () => import("#controllers/attention_decisions_controller");
 const InboxEventsController = () => import("#controllers/inbox_events_controller");
 const AgentActivitiesController = () => import("#controllers/agent_activities_controller");
+const OwnerBriefsController = () => import("#controllers/owner_briefs_controller");
+const OwnerAssistantMessagesController = () =>
+  import("#controllers/owner_assistant_messages_controller");
 
 router.get("/", () => {
   return { hello: "world" };
@@ -79,6 +86,16 @@ router
   .prefix("/api/v1/agent");
 
 router
+  .get("/api/v1/agent/operations/conversations/:id", [
+    AgentOperationsConversationsController,
+    "show",
+  ])
+  .use(middleware.ownerOperationsCapability({ scope: "read_conversation" }));
+router
+  .get("/api/v1/agent/operations/bookings/:id", [AgentOperationsBookingsController, "show"])
+  .use(middleware.ownerOperationsCapability({ scope: "read_booking" }));
+
+router
   .group(() => {
     router
       .group(() => {
@@ -110,6 +127,8 @@ router
         ]);
         router.get("inbox/events", [InboxEventsController, "index"]);
         router.get("agent-activities", [AgentActivitiesController, "index"]);
+        router.get("owner-briefs", [OwnerBriefsController, "index"]);
+        router.post("owner-assistant/messages", [OwnerAssistantMessagesController, "store"]);
       })
       .use(middleware.auth({ guards: ["web"] }));
   })

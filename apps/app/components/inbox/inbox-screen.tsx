@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { AgentMessageMarkdown } from "@/components/inbox/agent-message-markdown";
+import { AskOakPanel, useAskOakWorkspaceState } from "@/components/operations/ask-oak-panel";
 import { StatusBadge } from "@/components/status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { api, type InboxAttention, type InboxConversationSummary } from "@/lib/api";
+import {
+  api,
+  type InboxAttention,
+  type InboxConversation,
+  type InboxConversationSummary,
+} from "@/lib/api";
 import {
   errorMessage,
   inboxConversationQueryOptions,
@@ -46,6 +52,7 @@ import {
   queryKeys,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { formatBusinessDate, formatBusinessTime } from "@/lib/business-time";
 
 const inboxListWidth = {
   default: 350,
@@ -75,6 +82,15 @@ const causeLabels = {
   failure: "Needs recovery",
 } as const;
 
+function directOperationalText(value: string | null) {
+  return (value ?? "")
+    .replace(/owner attention needed/gi, "Needs your attention")
+    .replace(/business approval needed/gi, "Your approval is needed")
+    .replace(/owner confirmation/gi, "your confirmation")
+    .replace(/owner decision/gi, "your decision")
+    .replace(/owner input/gi, "your input");
+}
+
 function relativeTime(value: string) {
   const delta = Date.now() - new Date(value).getTime();
   const minutes = Math.max(0, Math.floor(delta / 60_000));
@@ -87,13 +103,12 @@ function relativeTime(value: string) {
 
 function dateTime(value: unknown) {
   if (typeof value !== "string") return "Unknown time";
-  return new Date(value).toLocaleString("en-US", {
+  const date = formatBusinessDate(value, {
     weekday: "short",
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
+  return `${date} at ${formatBusinessTime(value)}`;
 }
 
 function clampInboxListWidth(width: number) {
@@ -244,15 +259,17 @@ function Annotation({
   time: string;
 }) {
   const Icon = kind === "outcome" ? CheckCircle2 : kind === "failure" ? AlertTriangle : Bot;
+  const displaySummary = directOperationalText(summary);
+  const displayDetail = detail ? directOperationalText(detail) : null;
   return (
     <div
       className="my-4 flex min-w-0 items-center justify-center gap-1.5 px-4 text-zinc-400"
-      title={detail ?? summary}
-      aria-label={detail ? `${summary}. ${detail}` : summary}
+      title={displayDetail ?? displaySummary}
+      aria-label={displayDetail ? `${displaySummary}. ${displayDetail}` : displaySummary}
     >
       <Icon className="size-3 shrink-0" />
       <span className="max-w-[70%] overflow-hidden text-[11px] text-ellipsis whitespace-nowrap">
-        {summary}
+        {displaySummary}
       </span>
       <span aria-hidden="true">·</span>
       <time className="shrink-0 text-[10px]">{relativeTime(time)}</time>
@@ -262,16 +279,21 @@ function Annotation({
 
 function AttentionCard({
   attention,
+  booking,
   deciding,
   onDecide,
 }: {
   attention: InboxAttention;
+  booking: InboxConversation["bookings"][number] | undefined;
   deciding: boolean;
   onDecide: (decision: "approve" | "decline") => void;
 }) {
   const context = attention.context;
   const awaitingCustomer = attention.status === "approved";
   const bookingConfirmation = attention.actionType === "booking_confirmation";
+  const bookingService = booking?.service ?? String(context.service ?? "Booking");
+  const bookingStaff = booking?.staff ?? String(context.staff ?? "Staff unassigned");
+  const bookingDuration = booking?.durationMinutes ?? Number(context.durationMinutes);
   return (
     <div className="my-5 overflow-hidden rounded-xl border border-zinc-200 bg-white">
       <div className="p-4 sm:p-5">
@@ -287,7 +309,9 @@ function AttentionCard({
                 : causeLabels[attention.cause]}
           </span>
         </div>
-        <p className="mt-3 text-sm font-medium text-zinc-900">{attention.summary}</p>
+        <p className="mt-3 text-sm font-medium text-zinc-900">
+          {directOperationalText(attention.summary)}
+        </p>
         {attention.actionType === "booking_reschedule" ? (
           <div className="mt-4 grid gap-3 rounded-lg bg-zinc-50 p-3.5 text-xs text-zinc-600 sm:grid-cols-2">
             <div>
@@ -311,15 +335,22 @@ function AttentionCard({
         ) : null}
         {bookingConfirmation ? (
           <div className="mt-4 grid gap-2 rounded-lg bg-zinc-50 p-3.5 text-xs text-zinc-600">
-            <span className="font-medium text-zinc-900">{dateTime(context.scheduledAt)}</span>
-            <span>
-              {String(context.service ?? "Booking")} · {String(context.staff ?? "Staff unassigned")}
+            <span className="font-medium text-zinc-900">
+              {booking?.scheduledAtDisplay ?? dateTime(context.scheduledAt)}
             </span>
-            <span>{Number(context.durationMinutes) || 0} minutes · Pending</span>
+            <span>
+              {bookingService} · {bookingStaff}
+            </span>
+            <span>
+              {bookingDuration > 0 ? `${bookingDuration} minutes` : "Duration not available"} ·{" "}
+              {booking?.status === "needs_approval" ? "Pending" : (booking?.status ?? "Pending")}
+            </span>
           </div>
         ) : null}
         {attention.outcomeSummary ? (
-          <p className="mt-3 text-xs leading-5 text-zinc-600">{attention.outcomeSummary}</p>
+          <p className="mt-3 text-xs leading-5 text-zinc-600">
+            {directOperationalText(attention.outcomeSummary)}
+          </p>
         ) : null}
       </div>
       {attention.status === "pending" || (bookingConfirmation && awaitingCustomer) ? (
@@ -352,11 +383,13 @@ function ConversationPanel({
   id,
   onOpenList,
   showContext,
+  askOakOpen,
   onToggleContext,
 }: {
   id: string;
   onOpenList: () => void;
   showContext: boolean;
+  askOakOpen: boolean;
   onToggleContext: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -480,17 +513,29 @@ function ConversationPanel({
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="hidden xl:inline-flex"
-            onClick={onToggleContext}
-            aria-label={showContext ? "Hide contact context" : "Show contact context"}
-            aria-pressed={showContext}
-            title={showContext ? "Hide contact context" : "Show contact context"}
-          >
-            {showContext ? <PanelRightClose /> : <PanelRightOpen />}
-          </Button>
+          <AskOakPanel
+            surface="inbox"
+            conversationId={conversation.id}
+            contextLabel={`this conversation with ${conversation.contact.name}`}
+            suggestions={[
+              "Summarize this conversation.",
+              "What needs my attention here?",
+              "What should I reply next?",
+            ]}
+          />
+          {!askOakOpen ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="hidden xl:inline-flex"
+              onClick={onToggleContext}
+              aria-label={showContext ? "Hide contact context" : "Show contact context"}
+              aria-pressed={showContext}
+              title={showContext ? "Hide contact context" : "Show contact context"}
+            >
+              {showContext ? <PanelRightClose /> : <PanelRightOpen />}
+            </Button>
+          ) : null}
           <Button
             variant={ownerHasControl ? "outline" : "default"}
             size="sm"
@@ -613,6 +658,9 @@ function ConversationPanel({
           {conversation.attention ? (
             <AttentionCard
               attention={conversation.attention}
+              booking={conversation.bookings.find(
+                (booking) => booking.id === Number(conversation.attention?.context.bookingId)
+              )}
               deciding={decisionMutation.isPending}
               onDecide={(decision) => decisionMutation.mutate(decision)}
             />
@@ -636,7 +684,9 @@ function ConversationPanel({
                   ? "Outcome incomplete"
                   : "Outcome completed"}
               </div>
-              <p className="mt-1.5 text-xs leading-5">{conversation.outcomeSummary}</p>
+              <p className="mt-1.5 text-xs leading-5">
+                {directOperationalText(conversation.outcomeSummary)}
+              </p>
             </div>
           ) : null}
         </div>
@@ -699,12 +749,12 @@ function ContactContext({ conversation }: { conversation: InboxConversationSumma
               <p className="text-sm font-semibold">{ownerLabels[conversation.nextStepOwner]}</p>
               <p className="mt-1 text-xs leading-5">
                 {conversation.nextStepOwner === "owner"
-                  ? "The agent is waiting for a business decision or human intervention."
+                  ? "Oak is waiting for your decision or response."
                   : conversation.nextStepOwner === "agent"
-                    ? "The agent can continue without owner input."
+                    ? "Oak can continue handling this conversation."
                     : conversation.nextStepOwner === "customer"
-                      ? "No owner action is needed while the customer decides."
-                      : "There is no remaining responsibility."}
+                      ? "The next step depends on the customer’s response."
+                      : "Nothing else needs your attention in this conversation."}
               </p>
             </div>
           </section>
@@ -765,6 +815,7 @@ function ContactContext({ conversation }: { conversation: InboxConversationSumma
 
 export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }) {
   const router = useRouter();
+  const { closePanel, panelOpen: askOakOpen } = useAskOakWorkspaceState();
   const conversationsQuery = useQuery(inboxQueryOptions);
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
@@ -918,13 +969,17 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
       </div>
     );
 
-  const select = (id: string) => router.replace(`/inbox?conversation=${id}`, { scroll: false });
+  const select = (id: string) => {
+    closePanel();
+    router.replace(`/inbox?conversation=${id}`, { scroll: false });
+  };
   return (
     <div
       ref={layoutRef}
       className={cn(
         "grid h-full min-h-0 grid-cols-1 [--inbox-list-width:350px] md:grid-cols-[var(--inbox-list-width)_minmax(0,1fr)]",
         contextOpen &&
+          !askOakOpen &&
           "xl:grid-cols-[var(--inbox-list-width)_minmax(480px,1fr)_var(--inbox-context-width)] 2xl:grid-cols-[var(--inbox-list-width)_minmax(520px,1fr)_var(--inbox-context-width)]",
         "[--inbox-context-width:300px]"
       )}
@@ -980,10 +1035,11 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
       <ConversationPanel
         id={selectedId}
         onOpenList={() => setMobileListOpen(true)}
-        showContext={contextOpen}
+        showContext={contextOpen && !askOakOpen}
+        askOakOpen={askOakOpen}
         onToggleContext={() => setContextOpen((open) => !open)}
       />
-      {contextOpen ? (
+      {contextOpen && !askOakOpen ? (
         <div className="relative hidden min-h-0 xl:block">
           <div
             ref={contextResizeHandleRef}

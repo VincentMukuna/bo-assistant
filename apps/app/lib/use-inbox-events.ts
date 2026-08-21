@@ -13,6 +13,7 @@ export function useInboxEvents() {
     const reconcile = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.inbox });
       queryClient.invalidateQueries({ queryKey: queryKeys.agentActivity });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ownerBrief });
     };
     const handleChange = (event: MessageEvent<string>) => {
       reconcile();

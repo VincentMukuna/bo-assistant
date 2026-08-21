@@ -30,7 +30,7 @@ const filters: Array<{ value: AgentActivityFilter; label: string }> = [
 
 const categoryLabels: Record<AgentActivityCategory, string> = {
   attention: "Needs attention",
-  decision: "Owner decision",
+  decision: "Your decision",
   handoff: "Handoff",
   completed: "Handled",
   activity: "Activity",
