@@ -228,8 +228,8 @@ export default function Home() {
           </div>
           <div className="support-copy">
             <p>
-              This demo securely recognizes Alice Morgan behind the scenes. Ask a public question or
-              reschedule one of her seeded appointments with the Oak & Pine assistant.
+              Ask a question without an account. When you want to book or manage an appointment,
+              verify your email with one quick link.
             </p>
             <SupportStudio />
           </div>
