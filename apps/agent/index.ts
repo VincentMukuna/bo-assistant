@@ -1,11 +1,6 @@
-import { mkdirSync } from "node:fs";
-import { dirname, resolve, sep } from "node:path";
 import { Mastra } from "@mastra/core/mastra";
 import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability";
 import { SimpleAuth } from "@mastra/core/server";
-import { MastraCompositeStore } from "@mastra/core/storage";
-import { DuckDBStore } from "@mastra/duckdb";
-import { LibSQLStore } from "@mastra/libsql";
 import { PinoLogger } from "@mastra/loggers";
 import { MastraStorageExporter, Observability } from "@mastra/observability";
 import { businessSupportAgent } from "@/agents/business-support";
@@ -14,16 +9,6 @@ import { evaluationScorers } from "@/scorers/evaluations";
 import { compactChatFormatScorer, privateDataSafetyScorer } from "@/scorers/support-responses";
 import { postgresStore } from "@/storage";
 
-const initialDirectory = process.env.INIT_CWD ?? process.cwd();
-const agentDirectory = initialDirectory.endsWith(`${sep}apps${sep}agent`)
-  ? initialDirectory
-  : resolve(initialDirectory, "apps/agent");
-const observabilityDatabasePath =
-  process.env.MASTRA_OBSERVABILITY_DATABASE_PATH ??
-  resolve(agentDirectory, ".data/observability.duckdb");
-const evaluationDatabaseUrl =
-  process.env.MASTRA_EVALUATION_DATABASE_URL ??
-  `file:${resolve(agentDirectory, ".data/evaluations.db")}`;
 const logLevel =
   process.env.MASTRA_LOG_LEVEL === "error" ||
   process.env.MASTRA_LOG_LEVEL === "warn" ||
@@ -31,20 +16,6 @@ const logLevel =
   process.env.MASTRA_LOG_LEVEL === "debug"
     ? process.env.MASTRA_LOG_LEVEL
     : "debug";
-
-mkdirSync(dirname(observabilityDatabasePath), { recursive: true });
-
-const observabilityStore = new DuckDBStore({
-  id: "agent-observability",
-  path: observabilityDatabasePath,
-  memoryLimit: "512MB",
-  threads: 2,
-});
-
-const evaluationStore = new LibSQLStore({
-  id: "agent-evaluations",
-  url: evaluationDatabaseUrl,
-});
 
 function redactBookingCapabilities(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redactBookingCapabilities);
@@ -87,16 +58,7 @@ export const mastra = new Mastra({
     name: "business-support-agent",
     level: logLevel,
   }),
-  storage: new MastraCompositeStore({
-    id: "agent-storage",
-    default: postgresStore,
-    domains: {
-      observability: observabilityStore.observability,
-      datasets: evaluationStore.stores.datasets,
-      experiments: evaluationStore.stores.experiments,
-      scores: evaluationStore.stores.scores,
-    },
-  }),
+  storage: postgresStore,
   observability: new Observability({
     configs: {
       default: {
