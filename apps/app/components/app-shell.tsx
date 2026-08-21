@@ -251,8 +251,7 @@ function BookingNotifications() {
                       {attention.summary}
                     </span>
                     <span className="text-muted-foreground mt-1 block text-xs leading-5">
-                      {String(attention.context.service ?? "Booking")} ·{" "}
-                      {conversation.customer.name}
+                      {String(attention.context.service ?? "Booking")} · {conversation.contact.name}
                       <br />
                       {notificationTime(attention.context.scheduledAt)}
                     </span>

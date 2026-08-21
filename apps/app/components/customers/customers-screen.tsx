@@ -103,7 +103,7 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
     : [];
   const customerConversation = selected
     ? conversationsQuery.data
-        ?.filter((conversation) => conversation.customer.id === selected.id)
+        ?.filter((conversation) => conversation.contact.id === selected.id)
         .sort(
           (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
         )[0]

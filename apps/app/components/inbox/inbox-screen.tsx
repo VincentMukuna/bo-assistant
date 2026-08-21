@@ -96,13 +96,6 @@ function dateTime(value: unknown) {
   });
 }
 
-function nextStepTone(owner: InboxConversationSummary["nextStepOwner"]) {
-  if (owner === "owner") return "bg-amber-100/80 text-amber-900";
-  if (owner === "agent") return "bg-sky-100/80 text-sky-800";
-  if (owner === "customer") return "bg-zinc-200/70 text-zinc-700";
-  return "bg-emerald-100/80 text-emerald-800";
-}
-
 function clampInboxListWidth(width: number) {
   return Math.min(inboxListWidth.max, Math.max(inboxListWidth.min, width));
 }
@@ -115,48 +108,48 @@ function ConversationList({
   conversations,
   selectedId,
   onSelect,
+  filter,
+  onFilterChange,
 }: {
   conversations: InboxConversationSummary[];
   selectedId: string;
   onSelect: (id: string) => void;
+  filter: "needs" | "all";
+  onFilterChange: (filter: "needs" | "all") => void;
 }) {
   const [search, setSearch] = useState("");
-  const groups = useMemo(() => {
+  const needsCount = conversations.filter((item) => item.nextStepOwner === "owner").length;
+
+  const visibleConversations = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const grouped = new Map<
-      number,
-      { customer: InboxConversationSummary["customer"]; conversations: InboxConversationSummary[] }
-    >();
-
-    for (const conversation of conversations) {
-      const customerMatches = conversation.customer.name.toLowerCase().includes(query);
-      const conversationMatches = `${conversation.title} ${conversation.preview ?? ""}`
-        .toLowerCase()
-        .includes(query);
-
-      if (query && !customerMatches && !conversationMatches) continue;
-
-      const group = grouped.get(conversation.customer.id);
-      if (group) group.conversations.push(conversation);
-      else {
-        grouped.set(conversation.customer.id, {
-          customer: conversation.customer,
-          conversations: [conversation],
-        });
-      }
-    }
-
-    return [...grouped.values()];
-  }, [conversations, search]);
+    return conversations.filter((conversation) => {
+      if (filter === "needs" && conversation.nextStepOwner !== "owner") return false;
+      const matches =
+        `${conversation.title} ${conversation.preview ?? ""} ${conversation.contact.name}`
+          .toLowerCase()
+          .includes(query);
+      return !query || matches;
+    });
+  }, [conversations, filter, search]);
 
   return (
     <section className="flex h-full min-h-0 flex-col border-r border-zinc-200/60 bg-zinc-50/70">
       <div className="px-4 pt-3 pb-2">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2">
           <h1 className="text-base font-semibold">Inbox</h1>
-          <p className="text-xs text-zinc-400">
-            {conversations.filter((item) => item.nextStepOwner === "owner").length} need you
-          </p>
+          <button
+            type="button"
+            aria-pressed={filter === "needs"}
+            onClick={() => onFilterChange(filter === "needs" ? "all" : "needs")}
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+              filter === "needs"
+                ? "border-zinc-300 bg-zinc-200/70 text-zinc-800"
+                : "border-zinc-200 bg-white text-zinc-500 hover:text-zinc-900"
+            )}
+          >
+            Needs you {needsCount}
+          </button>
         </div>
         <div className="relative mt-2.5">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400" />
@@ -170,73 +163,67 @@ function ConversationList({
       </div>
       <div className="scrollbar-subtle min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className="w-full min-w-0 overflow-hidden p-2">
-          {groups.map((group) => (
-            <section key={group.customer.id} className="mb-3 overflow-hidden">
-              <div className="flex min-w-0 items-center gap-2.5 px-3 pt-2.5 pb-1.5">
-                <Avatar className="size-8 shrink-0">
-                  <AvatarFallback className="bg-zinc-200/60 text-[11px]">
-                    {group.customer.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-sm font-semibold" title={group.customer.name}>
-                    {group.customer.name}
-                  </h2>
-                  <p className="text-[11px] text-zinc-400">
-                    {group.conversations.length}{" "}
-                    {group.conversations.length === 1 ? "conversation" : "conversations"}
-                  </p>
-                </div>
-              </div>
-              <div className="ml-[50px] min-w-0 pl-2">
-                {group.conversations.map((conversation) => (
-                  <button
-                    type="button"
-                    key={conversation.id}
-                    onClick={() => onSelect(conversation.id)}
-                    className={cn(
-                      "mb-0.5 block w-full min-w-0 overflow-hidden rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-white/70",
-                      selectedId === conversation.id && "bg-white hover:bg-white"
-                    )}
-                  >
-                    <span
-                      className="block overflow-hidden text-xs font-semibold text-ellipsis whitespace-nowrap text-zinc-800"
-                      title={conversation.title}
-                    >
-                      {conversation.title}
+          {visibleConversations.map((conversation) => (
+            <button
+              type="button"
+              key={conversation.id}
+              onClick={() => onSelect(conversation.id)}
+              className={cn(
+                "mb-1 flex w-full min-w-0 gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/70",
+                selectedId === conversation.id && "bg-white shadow-sm hover:bg-white"
+              )}
+            >
+              <Avatar className="size-8 shrink-0">
+                <AvatarFallback className="bg-zinc-200/60 text-[11px]">
+                  {conversation.contact.initials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2">
+                  <span className="truncate text-xs font-semibold text-zinc-900">
+                    {conversation.title}
+                  </span>
+                  <span className="ml-auto flex shrink-0 items-center gap-2">
+                    <span className="text-[10px] text-zinc-400">
+                      {relativeTime(conversation.updatedAt)}
                     </span>
-                    {conversation.preview ? (
+                    {conversation.nextStepOwner === "owner" ? (
                       <span
-                        className="mt-0.5 block overflow-hidden text-[11px] leading-4 text-ellipsis whitespace-nowrap text-zinc-500"
-                        title={conversation.preview}
-                      >
-                        {conversation.preview}
-                      </span>
+                        className="size-1.5 rounded-full bg-zinc-700"
+                        title="Needs you"
+                        aria-label="Needs you"
+                      />
                     ) : null}
-                    <span className="mt-1.5 flex min-w-0 items-center gap-1.5">
-                      <span
-                        className={cn(
-                          "max-w-full shrink overflow-hidden rounded-full px-2 py-0.5 text-[10px] font-medium text-ellipsis whitespace-nowrap",
-                          nextStepTone(conversation.nextStepOwner)
-                        )}
-                      >
-                        {ownerLabels[conversation.nextStepOwner]}
-                      </span>
-                      {conversation.attention ? (
-                        <span className="min-w-0 overflow-hidden text-[10px] text-ellipsis whitespace-nowrap text-zinc-400">
-                          {causeLabels[conversation.attention.cause]}
-                        </span>
-                      ) : null}
-                      <span className="ml-auto shrink-0 text-[10px] text-zinc-400">
-                        {relativeTime(conversation.updatedAt)}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
+                  </span>
+                </span>
+                <span className="mt-0.5 block truncate text-[11px] text-zinc-500">
+                  {conversation.contact.name} · Website chat
+                </span>
+                {conversation.preview ? (
+                  <span className="mt-1 block truncate text-[11px] text-zinc-400">
+                    {conversation.preview}
+                  </span>
+                ) : null}
+              </span>
+            </button>
           ))}
-          {!groups.length ? (
+          {!visibleConversations.length && filter === "needs" && !search ? (
+            <div className="px-5 py-12 text-center">
+              <CheckCircle2 className="mx-auto size-6 text-emerald-700" />
+              <p className="mt-3 text-sm font-medium text-zinc-800">You’re caught up.</p>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                The agent is handling everything else.
+              </p>
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-2"
+                onClick={() => onFilterChange("all")}
+              >
+                View all
+              </Button>
+            </div>
+          ) : !visibleConversations.length ? (
             <p className="px-4 py-10 text-center text-sm text-zinc-500">No conversations match.</p>
           ) : null}
         </div>
@@ -286,9 +273,9 @@ function AttentionCard({
   const awaitingCustomer = attention.status === "approved";
   const bookingConfirmation = attention.actionType === "booking_confirmation";
   return (
-    <div className="my-5 overflow-hidden rounded-xl bg-amber-50/90">
+    <div className="my-5 overflow-hidden rounded-xl border border-zinc-200 bg-white">
       <div className="p-4 sm:p-5">
-        <div className="flex items-center gap-2 text-amber-900">
+        <div className="flex items-center gap-2 text-zinc-700">
           <ShieldCheck className="size-4" />
           <span className="text-sm font-semibold">
             {bookingConfirmation
@@ -302,7 +289,7 @@ function AttentionCard({
         </div>
         <p className="mt-3 text-sm font-medium text-zinc-900">{attention.summary}</p>
         {attention.actionType === "booking_reschedule" ? (
-          <div className="mt-4 grid gap-3 rounded-lg bg-white/70 p-3.5 text-xs text-zinc-600 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 rounded-lg bg-zinc-50 p-3.5 text-xs text-zinc-600 sm:grid-cols-2">
             <div>
               <span className="block text-[10px] font-medium tracking-wide text-zinc-400 uppercase">
                 Current
@@ -323,7 +310,7 @@ function AttentionCard({
           </div>
         ) : null}
         {bookingConfirmation ? (
-          <div className="mt-4 grid gap-2 rounded-lg bg-white/70 p-3.5 text-xs text-zinc-600">
+          <div className="mt-4 grid gap-2 rounded-lg bg-zinc-50 p-3.5 text-xs text-zinc-600">
             <span className="font-medium text-zinc-900">{dateTime(context.scheduledAt)}</span>
             <span>
               {String(context.service ?? "Booking")} · {String(context.staff ?? "Staff unassigned")}
@@ -336,7 +323,7 @@ function AttentionCard({
         ) : null}
       </div>
       {attention.status === "pending" || (bookingConfirmation && awaitingCustomer) ? (
-        <div className="flex gap-2 bg-amber-100/50 p-3 sm:px-5">
+        <div className="flex gap-2 border-t border-zinc-200 bg-zinc-50 p-3 sm:px-5">
           <Button size="sm" onClick={() => onDecide("approve")} disabled={deciding}>
             <Check className="size-4" />
             {bookingConfirmation
@@ -481,11 +468,11 @@ function ConversationPanel({
         </Button>
         <Avatar className="size-9">
           <AvatarFallback className="bg-zinc-100 text-xs">
-            {conversation.customer.initials}
+            {conversation.contact.initials}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold">{conversation.customer.name}</h2>
+          <h2 className="truncate text-sm font-semibold">{conversation.contact.name}</h2>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500">
             <MessageSquare className="size-3" /> Website chat
             <span>·</span>
@@ -498,9 +485,9 @@ function ConversationPanel({
             size="icon-sm"
             className="hidden xl:inline-flex"
             onClick={onToggleContext}
-            aria-label={showContext ? "Hide customer context" : "Show customer context"}
+            aria-label={showContext ? "Hide contact context" : "Show contact context"}
             aria-pressed={showContext}
-            title={showContext ? "Hide customer context" : "Show customer context"}
+            title={showContext ? "Hide contact context" : "Show contact context"}
           >
             {showContext ? <PanelRightClose /> : <PanelRightOpen />}
           </Button>
@@ -533,8 +520,8 @@ function ConversationPanel({
           <DialogHeader>
             <DialogTitle>Delete this conversation?</DialogTitle>
             <DialogDescription>
-              Messages and Inbox activity for {conversation.customer.name} will be permanently
-              deleted. Their customer record and bookings will be kept.
+              Messages and Inbox activity for {conversation.contact.name} will be permanently
+              deleted. Any customer record and bookings will be kept.
             </DialogDescription>
           </DialogHeader>
           {deleteMutation.isError ? (
@@ -579,7 +566,7 @@ function ConversationPanel({
               </div>
               <h3 className="mt-4 text-sm font-medium text-zinc-900">No messages yet</h3>
               <p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-zinc-500">
-                Messages with {conversation.customer.name.split(" ")[0]} will appear here once the
+                Messages with {conversation.contact.name.split(" ")[0]} will appear here once the
                 conversation starts.
               </p>
             </div>
@@ -616,7 +603,7 @@ function ConversationPanel({
                       ? message.author === "owner"
                         ? "You"
                         : "Agent"
-                      : conversation.customer.name.split(" ")[0]}
+                      : conversation.contact.name.split(" ")[0]}
                     {message.createdAt ? ` · ${relativeTime(message.createdAt)}` : ""}
                   </div>
                 </div>
@@ -666,7 +653,7 @@ function ConversationPanel({
                   if (draft.trim()) messageMutation.mutate(draft.trim());
                 }
               }}
-              placeholder={`Reply to ${conversation.customer.name.split(" ")[0]}…`}
+              placeholder={`Reply to ${conversation.contact.name.split(" ")[0]}…`}
               className="max-h-28 min-h-9 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
             />
             <Button
@@ -684,7 +671,7 @@ function ConversationPanel({
   );
 }
 
-function CustomerContext({ conversation }: { conversation: InboxConversationSummary }) {
+function ContactContext({ conversation }: { conversation: InboxConversationSummary }) {
   const detailQuery = useQuery(inboxConversationQueryOptions(conversation.id));
   const booking = detailQuery.data?.bookings.find((item) => item.status !== "completed");
   return (
@@ -694,19 +681,21 @@ function CustomerContext({ conversation }: { conversation: InboxConversationSumm
           <div className="flex items-center gap-3">
             <Avatar className="size-11">
               <AvatarFallback className="bg-zinc-200/60 text-sm">
-                {conversation.customer.initials}
+                {conversation.contact.initials}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{conversation.customer.name}</p>
-              <p className="mt-0.5 text-xs text-zinc-500">Customer context</p>
+              <p className="truncate text-sm font-semibold">{conversation.contact.name}</p>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                {conversation.contact.kind === "visitor" ? "Visitor context" : "Customer context"}
+              </p>
             </div>
           </div>
           <section className="mt-8">
             <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
               Next step
             </h3>
-            <div className={cn("mt-3 rounded-xl p-4", nextStepTone(conversation.nextStepOwner))}>
+            <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-4 text-zinc-700">
               <p className="text-sm font-semibold">{ownerLabels[conversation.nextStepOwner]}</p>
               <p className="mt-1 text-xs leading-5">
                 {conversation.nextStepOwner === "owner"
@@ -721,14 +710,20 @@ function CustomerContext({ conversation }: { conversation: InboxConversationSumm
           </section>
           <section className="mt-8">
             <h3 className="text-sm font-semibold">Contact</h3>
-            <div className="mt-3 space-y-2 text-xs leading-5 text-zinc-600">
-              <p>{conversation.customer.phone}</p>
-              <p className="break-all">{conversation.customer.email}</p>
-              <p>{conversation.customer.address}</p>
-            </div>
-            {conversation.customer.notes ? (
+            {conversation.contact.kind === "visitor" ? (
+              <p className="mt-3 text-xs leading-5 text-zinc-500">No contact details shared yet.</p>
+            ) : (
+              <div className="mt-3 space-y-2 text-xs leading-5 text-zinc-600">
+                {conversation.contact.phone ? <p>{conversation.contact.phone}</p> : null}
+                {conversation.contact.email ? (
+                  <p className="break-all">{conversation.contact.email}</p>
+                ) : null}
+                {conversation.contact.address ? <p>{conversation.contact.address}</p> : null}
+              </div>
+            )}
+            {conversation.contact.notes ? (
               <p className="mt-4 text-xs leading-5 text-zinc-500 italic">
-                {conversation.customer.notes}
+                {conversation.contact.notes}
               </p>
             ) : null}
           </section>
@@ -774,17 +769,32 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
   const contextResizeHandleRef = useRef<HTMLDivElement>(null);
+  const previousSelectionRef = useRef<{
+    id: string;
+    nextStepOwner: InboxConversationSummary["nextStepOwner"];
+  } | null>(null);
   const resizingRef = useRef(false);
   const contextResizingRef = useRef(false);
   const currentWidthRef = useRef<number>(inboxListWidth.default);
   const currentContextWidthRef = useRef<number>(inboxContextWidth.default);
-  const conversations = conversationsQuery.data ?? [];
-  const selectedId = conversations.some((item) => item.id === requestedId)
-    ? requestedId!
-    : (conversations[0]?.id ?? "");
+  const conversations = useMemo(() => conversationsQuery.data ?? [], [conversationsQuery.data]);
+  const requestedConversation = conversations.find((item) => item.id === requestedId);
+  const defaultConversation =
+    conversations.find((item) => item.nextStepOwner === "owner") ?? conversations[0];
+  const selectedId = requestedConversation?.id ?? defaultConversation?.id ?? "";
   const selected = conversations.find((item) => item.id === selectedId);
   const [mobileListOpen, setMobileListOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(true);
+  const [filter, setFilter] = useState<"needs" | "all">("needs");
+
+  const chooseFilter = (next: "needs" | "all") => {
+    setFilter(next);
+    try {
+      localStorage.setItem("bo-assistant:inbox-filter:v1", next);
+    } catch {
+      // The selection still works for the current visit.
+    }
+  };
 
   const applyInboxListWidth = (width: number, persist = false) => {
     const nextWidth = clampInboxListWidth(width);
@@ -830,6 +840,38 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
   }, [conversationsQuery.isPending]);
 
   useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("bo-assistant:inbox-filter:v1");
+    } catch {
+      // The default keeps the Inbox useful when browser storage is unavailable.
+    }
+    if (saved !== "all" && saved !== "needs") return;
+    const timeout = window.setTimeout(() => setFilter(saved as "all" | "needs"), 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    if (!selected) return;
+    const previous = previousSelectionRef.current;
+    if (
+      filter === "needs" &&
+      previous?.id === selected.id &&
+      previous.nextStepOwner === "owner" &&
+      selected.nextStepOwner !== "owner"
+    ) {
+      const next = conversations.find(
+        (conversation) => conversation.id !== selected.id && conversation.nextStepOwner === "owner"
+      );
+      if (next) router.replace(`/inbox?conversation=${next.id}`, { scroll: false });
+    }
+    previousSelectionRef.current = {
+      id: selected.id,
+      nextStepOwner: selected.nextStepOwner,
+    };
+  }, [conversations, filter, router, selected]);
+
+  useEffect(() => {
     if (contextOpen) applyInboxContextWidth(currentContextWidthRef.current);
   }, [contextOpen]);
 
@@ -871,7 +913,7 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
         <MessageSquare className="size-8 text-zinc-300" />
         <h1 className="mt-4 text-base font-semibold">No conversations yet</h1>
         <p className="mt-1 max-w-sm text-sm text-zinc-500">
-          Website-chat conversations will appear here as customers contact the business.
+          Website-chat conversations will appear here as people contact the business.
         </p>
       </div>
     );
@@ -888,7 +930,13 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
       )}
     >
       <div className="relative hidden min-h-0 md:block">
-        <ConversationList conversations={conversations} selectedId={selectedId} onSelect={select} />
+        <ConversationList
+          conversations={conversations}
+          selectedId={selectedId}
+          onSelect={select}
+          filter={filter}
+          onFilterChange={chooseFilter}
+        />
         <div
           ref={resizeHandleRef}
           role="separator"
@@ -941,7 +989,7 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
             ref={contextResizeHandleRef}
             role="separator"
             tabIndex={0}
-            aria-label="Resize customer context"
+            aria-label="Resize contact context"
             aria-orientation="vertical"
             aria-valuemin={inboxContextWidth.min}
             aria-valuemax={inboxContextWidth.max}
@@ -976,7 +1024,7 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
           >
             <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-zinc-300 group-focus-visible:bg-zinc-500" />
           </div>
-          <CustomerContext conversation={selected} />
+          <ContactContext conversation={selected} />
         </div>
       ) : null}
       <Sheet open={mobileListOpen} onOpenChange={setMobileListOpen}>
@@ -987,6 +1035,8 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
           <ConversationList
             conversations={conversations}
             selectedId={selectedId}
+            filter={filter}
+            onFilterChange={chooseFilter}
             onSelect={(id) => {
               select(id);
               setMobileListOpen(false);

@@ -26,14 +26,15 @@ export type InboxAttention = {
   createdAt: string;
 };
 
-export type InboxCustomer = {
-  id: number;
+export type InboxContact = {
+  kind: "customer" | "visitor";
+  id: number | null;
   name: string;
   initials: string;
-  phone: string;
-  email: string;
-  address: string;
-  notes: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
   createdAt: string;
 };
 
@@ -49,7 +50,7 @@ export type InboxConversationSummary = {
   outcomeSummary: string | null;
   attention: InboxAttention | null;
   bookingNotifications: InboxAttention[];
-  customer: InboxCustomer;
+  contact: InboxContact;
 };
 
 export type InboxConversation = InboxConversationSummary & {
@@ -94,7 +95,7 @@ export type AgentActivity = {
     nextStepOwner: InboxConversationSummary["nextStepOwner"];
     outcomeStatus: InboxConversationSummary["outcomeStatus"];
   };
-  customer: Pick<InboxCustomer, "id" | "name" | "initials">;
+  contact: Pick<InboxContact, "kind" | "id" | "name" | "initials">;
 };
 
 export type AgentActivityFeed = {

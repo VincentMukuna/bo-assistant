@@ -74,7 +74,7 @@ function ActivityRow({ activity }: { activity: AgentActivity }) {
     <article className="group flex gap-4 px-4 py-4 transition-colors hover:bg-zinc-50/70 sm:px-5">
       <Avatar className="mt-0.5 size-9 shrink-0 after:border-zinc-200/60">
         <AvatarFallback className="bg-zinc-100 text-[11px]">
-          {activity.customer.initials}
+          {activity.contact.initials}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
@@ -94,7 +94,7 @@ function ActivityRow({ activity }: { activity: AgentActivity }) {
           <p className="mt-1.5 max-w-2xl text-sm leading-5 text-zinc-600">{activity.detail}</p>
         ) : null}
         <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-          <span className="font-medium text-zinc-700">{activity.customer.name}</span>
+          <span className="font-medium text-zinc-700">{activity.contact.name}</span>
           <span aria-hidden="true">·</span>
           <span className="max-w-64 truncate">{activity.conversation.title}</span>
           <span aria-hidden="true">·</span>
@@ -104,7 +104,7 @@ function ActivityRow({ activity }: { activity: AgentActivity }) {
       <Link
         href={`/inbox?conversation=${activity.conversation.id}`}
         className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 opacity-70 transition-colors group-hover:opacity-100 hover:bg-zinc-100 hover:text-zinc-900"
-        aria-label={`Open ${activity.customer.name}'s conversation`}
+        aria-label={`Open ${activity.contact.name}'s conversation`}
       >
         <ArrowUpRight className="size-4" />
       </Link>
