@@ -46,7 +46,6 @@ export function SupportStudio() {
   const support = useSupportConversations();
   const [view, setView] = useState<ChatView>("conversation");
   const [isOpen, setIsOpen] = useState(false);
-  const [reply, setReply] = useState("");
   const handledVerificationRef = useRef(false);
 
   useEffect(() => {
@@ -64,12 +63,8 @@ export function SupportStudio() {
     return () => window.clearTimeout(timeout);
   }, [support]);
 
-  async function submitReply(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const message = reply.trim();
-    if (!message) return;
-    setReply("");
-    await support.sendReply(message);
+  function submitReply(message: string) {
+    support.sendReply(message);
   }
 
   async function submitNewRequest(event: FormEvent<HTMLFormElement>) {
@@ -154,7 +149,6 @@ export function SupportStudio() {
               threads={support.threads}
               activeId={support.activeId}
               onSelect={(id) => {
-                setReply("");
                 setView("conversation");
                 void support.selectConversation(id);
               }}
@@ -181,15 +175,14 @@ export function SupportStudio() {
           ) : null}
           {view === "conversation" ? (
             <ConversationView
+              key={support.activeId ?? "new"}
               conversation={support.conversation}
               messages={support.messages}
               approval={support.approval}
-              reply={reply}
               error={support.error}
               isSending={support.isSending}
               decisionState={support.decisionState}
-              onReplyChange={setReply}
-              onSubmit={submitReply}
+              onSend={submitReply}
               onBack={() => setView("threads")}
               onDecision={support.submitDecision}
               isVerified={Boolean(support.session?.isVerified)}
@@ -279,12 +272,10 @@ function ConversationView({
   conversation,
   messages,
   approval,
-  reply,
   error,
   isSending,
   decisionState,
-  onReplyChange,
-  onSubmit,
+  onSend,
   onBack,
   onDecision,
   isVerified,
@@ -293,21 +284,29 @@ function ConversationView({
   conversation: SupportConversation | null;
   messages: Array<{ id: string; sender: "customer" | "business"; body: string }>;
   approval: ApprovalRequest | null;
-  reply: string;
   error: string;
   isSending: boolean;
   decisionState: DecisionState;
-  onReplyChange: (value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSend: (message: string) => void;
   onBack: () => void;
   onDecision: (decision: "approve" | "decline") => void;
   isVerified: boolean;
   onVerify: () => void;
 }) {
-  const endRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    const pane = messagesRef.current;
+    if (pane) pane.scrollTop = pane.scrollHeight;
   }, [messages, isSending]);
+
+  function submitMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const message = String(new FormData(form).get("message") ?? "").trim();
+    if (!message) return;
+    form.reset();
+    onSend(message);
+  }
 
   return (
     <div className="chat-view chat-conversation-view">
@@ -319,7 +318,7 @@ function ConversationView({
           <h3>{conversation?.title ?? "New conversation"}</h3>
         </div>
       </div>
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesRef}>
         <div className="chat-status chat-status--open">Open</div>
         {messages.map((message) => (
           <div className={`chat-message chat-message--${message.sender}`} key={message.id}>
@@ -343,7 +342,6 @@ function ConversationView({
             </div>
           </div>
         ) : null}
-        <div ref={endRef} />
       </div>
       {approval ? (
         <ApprovalCard
@@ -364,21 +362,23 @@ function ConversationView({
               Verify email to manage appointments
             </button>
           ) : null}
-          <form className="chat-reply" onSubmit={onSubmit}>
+          <form className="chat-reply" onSubmit={submitMessage}>
             <label className="sr-only" htmlFor="chat-reply-input">
               Write a message
             </label>
             <input
               id="chat-reply-input"
+              name="message"
               type="text"
               placeholder="Write a message…"
-              value={reply}
-              onChange={(event) => onReplyChange(event.target.value)}
+              autoComplete="off"
+              enterKeyHint="send"
+              required
               disabled={isSending || decisionState !== "idle"}
             />
             <button
               type="submit"
-              disabled={!reply.trim() || isSending || decisionState !== "idle"}
+              disabled={isSending || decisionState !== "idle"}
               aria-label="Send message"
             >
               <Send size={17} />
