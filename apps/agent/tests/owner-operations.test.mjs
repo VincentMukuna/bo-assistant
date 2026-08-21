@@ -23,6 +23,8 @@ test("keeps operations guidance read-only and grounded in server-built context",
   expect(instructions).toContain('Speak to Kim Lewis as "you."');
   expect(instructions).toContain('Never call them "the owner,"');
   expect(instructions).toContain("Keep the useful operational detail");
+  expect(instructions).toContain("not clinical, cute, overly casual, or patronizing");
+  expect(instructions).toContain('Avoid filler such as "quick heads-up"');
   expect(instructions).toContain("Do not put names, services, dates");
   expect(instructions).toContain("Never claim you changed a booking");
   expect(instructions).toContain("Do not infer revenue, profit, payments");

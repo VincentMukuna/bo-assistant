@@ -282,11 +282,18 @@ test.group("Owner brief", (group) => {
       actionType: "booking_confirmation",
       status: "pending",
       externalKey: crypto.randomUUID(),
-      summary: "Confirm the requested appointment",
+      summary: "Business approval needed",
       contextJson: JSON.stringify({
         bookingId: 42,
         scheduledAt: "2026-08-18 21:30:00",
       }),
+    });
+    await InboxAnnotation.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      kind: "attention",
+      summary: "Owner attention needed",
+      detail: "The booking is waiting for owner confirmation.",
     });
     const originalFetch = globalThis.fetch;
 
@@ -299,6 +306,12 @@ test.group("Owner brief", (group) => {
               id: crypto.randomUUID(),
               role: "user",
               content: "Could we move the appointment to Monday?",
+              createdAt: new Date().toISOString(),
+            },
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: "I found the booking and sent it to the business for final confirmation.",
               createdAt: new Date().toISOString(),
             },
           ],
@@ -319,9 +332,11 @@ test.group("Owner brief", (group) => {
           nextStep: string;
           handling: string;
           messages: Array<{ sender: string; body: string }>;
+          annotations: Array<{ summary: string; detail: string }>;
           attentionItems: Array<{
             reason: string;
             status: string;
+            summary: string;
             context: Record<string, unknown>;
             link: { label: string; href: string };
           }>;
@@ -336,15 +351,28 @@ test.group("Owner brief", (group) => {
         sender: "customer",
         body: "Could we move the appointment to Monday?",
       });
+      assert.deepInclude(pageContext.conversation.messages[1], {
+        sender: "business",
+        body: "I found the booking and prepared it for your confirmation.",
+      });
+      assert.deepInclude(pageContext.conversation.annotations[0], {
+        summary: "Needs your attention",
+        detail: "The booking is waiting for your confirmation.",
+      });
       assert.deepEqual(pageContext.conversation.attentionItems[0]?.context, {
         scheduledAtDisplay: "Tue, Aug 18 at 2:30 PM PDT",
       });
       assert.equal(pageContext.conversation.attentionItems[0]?.reason, "Needs your approval");
       assert.equal(pageContext.conversation.attentionItems[0]?.status, "Waiting for you");
+      assert.equal(pageContext.conversation.attentionItems[0]?.summary, "Your approval is needed");
       assert.deepEqual(pageContext.conversation.attentionItems[0]?.link, {
         label: "Open booking",
         href: "/bookings?view=agenda&booking=42",
       });
+      assert.notMatch(
+        body.requestContext.pageContextJson,
+        /owner attention|owner confirmation|the business/i
+      );
       return Response.json({ text: "Confirm whether Monday morning or afternoon works best." });
     };
 

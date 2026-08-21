@@ -76,6 +76,15 @@ const causeLabels = {
   failure: "Needs recovery",
 } as const;
 
+function directOperationalText(value: string | null) {
+  return (value ?? "")
+    .replace(/owner attention needed/gi, "Needs your attention")
+    .replace(/business approval needed/gi, "Your approval is needed")
+    .replace(/owner confirmation/gi, "your confirmation")
+    .replace(/owner decision/gi, "your decision")
+    .replace(/owner input/gi, "your input");
+}
+
 function relativeTime(value: string) {
   const delta = Date.now() - new Date(value).getTime();
   const minutes = Math.max(0, Math.floor(delta / 60_000));
@@ -245,15 +254,17 @@ function Annotation({
   time: string;
 }) {
   const Icon = kind === "outcome" ? CheckCircle2 : kind === "failure" ? AlertTriangle : Bot;
+  const displaySummary = directOperationalText(summary);
+  const displayDetail = detail ? directOperationalText(detail) : null;
   return (
     <div
       className="my-4 flex min-w-0 items-center justify-center gap-1.5 px-4 text-zinc-400"
-      title={detail ?? summary}
-      aria-label={detail ? `${summary}. ${detail}` : summary}
+      title={displayDetail ?? displaySummary}
+      aria-label={displayDetail ? `${displaySummary}. ${displayDetail}` : displaySummary}
     >
       <Icon className="size-3 shrink-0" />
       <span className="max-w-[70%] overflow-hidden text-[11px] text-ellipsis whitespace-nowrap">
-        {summary}
+        {displaySummary}
       </span>
       <span aria-hidden="true">·</span>
       <time className="shrink-0 text-[10px]">{relativeTime(time)}</time>
@@ -288,7 +299,9 @@ function AttentionCard({
                 : causeLabels[attention.cause]}
           </span>
         </div>
-        <p className="mt-3 text-sm font-medium text-zinc-900">{attention.summary}</p>
+        <p className="mt-3 text-sm font-medium text-zinc-900">
+          {directOperationalText(attention.summary)}
+        </p>
         {attention.actionType === "booking_reschedule" ? (
           <div className="mt-4 grid gap-3 rounded-lg bg-zinc-50 p-3.5 text-xs text-zinc-600 sm:grid-cols-2">
             <div>
@@ -320,7 +333,9 @@ function AttentionCard({
           </div>
         ) : null}
         {attention.outcomeSummary ? (
-          <p className="mt-3 text-xs leading-5 text-zinc-600">{attention.outcomeSummary}</p>
+          <p className="mt-3 text-xs leading-5 text-zinc-600">
+            {directOperationalText(attention.outcomeSummary)}
+          </p>
         ) : null}
       </div>
       {attention.status === "pending" || (bookingConfirmation && awaitingCustomer) ? (
@@ -651,7 +666,9 @@ function ConversationPanel({
                   ? "Outcome incomplete"
                   : "Outcome completed"}
               </div>
-              <p className="mt-1.5 text-xs leading-5">{conversation.outcomeSummary}</p>
+              <p className="mt-1.5 text-xs leading-5">
+                {directOperationalText(conversation.outcomeSummary)}
+              </p>
             </div>
           ) : null}
         </div>
@@ -714,12 +731,12 @@ function ContactContext({ conversation }: { conversation: InboxConversationSumma
               <p className="text-sm font-semibold">{ownerLabels[conversation.nextStepOwner]}</p>
               <p className="mt-1 text-xs leading-5">
                 {conversation.nextStepOwner === "owner"
-                  ? "The agent is waiting for a business decision or human intervention."
+                  ? "Oak is waiting for your decision or response."
                   : conversation.nextStepOwner === "agent"
-                    ? "The agent can continue without owner input."
+                    ? "Oak can continue handling this conversation."
                     : conversation.nextStepOwner === "customer"
-                      ? "No owner action is needed while the customer decides."
-                      : "There is no remaining responsibility."}
+                      ? "The next step depends on the customer’s response."
+                      : "Nothing else needs your attention in this conversation."}
               </p>
             </div>
           </section>

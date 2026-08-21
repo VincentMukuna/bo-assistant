@@ -39,6 +39,28 @@ const attentionStatusLabels = {
   failed: "Needs follow-up",
 } as const;
 
+function directOperationalText(value: string | null) {
+  if (!value) return value;
+
+  return value
+    .replace(/owner attention needed/gi, "Needs your attention")
+    .replace(/business approval needed/gi, "Your approval is needed")
+    .replace(/owner confirmation/gi, "your confirmation")
+    .replace(/owner decision/gi, "your decision")
+    .replace(/owner input/gi, "your input")
+    .replace(/owner action/gi, "action from you")
+    .replace(/business approval/gi, "your approval")
+    .replace(/business decision/gi, "your decision")
+    .replace(
+      /sent it to the business for final confirmation/gi,
+      "prepared it for your confirmation"
+    )
+    .replace(/sent to the business for final confirmation/gi, "prepared for your confirmation")
+    .replace(/routed to the business/gi, "ready for your review")
+    .replace(/the business owner/gi, "you")
+    .replace(/the owner/gi, "you");
+}
+
 function scheduledAtDisplay(value: Booking["scheduledAt"]) {
   return value.setZone(BUSINESS_TIME_ZONE).toFormat("ccc, LLL d 'at' h:mm a ZZZZ");
 }
@@ -156,15 +178,15 @@ export async function buildOwnerAssistantPageContext(
         nextStep: nextStepLabels[conversation.nextStepOwner],
         handling: handlingLabels[conversation.handlingMode],
         outcome: outcomeLabels[conversation.outcomeStatus],
-        outcomeSummary: conversation.outcomeSummary,
+        outcomeSummary: directOperationalText(conversation.outcomeSummary),
         attentionItems: conversation.attentionItems.map((attention) => {
           const bookingId = contextNumber(attention.context, "bookingId");
           return {
             reason: attentionReasonLabels[attention.cause],
             status: attentionStatusLabels[attention.status],
-            summary: attention.summary,
+            summary: directOperationalText(attention.summary),
             context: displayAttentionContext(attention.context),
-            outcomeSummary: attention.outcomeSummary,
+            outcomeSummary: directOperationalText(attention.outcomeSummary),
             link:
               bookingId === null
                 ? {
@@ -179,14 +201,14 @@ export async function buildOwnerAssistantPageContext(
         }),
         annotations: conversation.annotations.map((annotation) => ({
           kind: annotation.kind,
-          summary: annotation.summary,
-          detail: annotation.detail,
+          summary: directOperationalText(annotation.summary),
+          detail: directOperationalText(annotation.detail),
           createdAt: annotation.createdAt.toISO(),
         })),
         messages: messages.map((message) => ({
           sender: message.sender,
           author: message.author,
-          body: message.body,
+          body: message.sender === "business" ? directOperationalText(message.body) : message.body,
           createdAt: message.createdAt,
         })),
         href: `/inbox?conversation=${conversation.id}`,
