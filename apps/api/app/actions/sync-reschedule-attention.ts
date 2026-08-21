@@ -2,19 +2,25 @@ import Booking from "#models/booking";
 import InboxAnnotation from "#models/inbox_annotation";
 import InboxAttentionItem from "#models/inbox_attention_item";
 import type SupportConversation from "#models/support_conversation";
-import { businessSupportAgent } from "#services/business_support_agent";
+import { businessSupportAgent, type PendingRescheduleCall } from "#services/business_support_agent";
 import { inboxEventStream } from "#services/inbox_event_stream";
 import { DateTime } from "luxon";
 
-export default async function syncRescheduleAttention(conversation: SupportConversation) {
+export default async function syncRescheduleAttention(
+  conversation: SupportConversation,
+  pendingCall?: PendingRescheduleCall
+) {
   await conversation.load("customer");
-  const pending = await businessSupportAgent.listPendingReschedules(
-    conversation.customer,
-    conversation.id
-  );
-  if (pending.length !== 1) return null;
-
-  const call = pending[0];
+  let call = pendingCall;
+  if (!call) {
+    const pending = await businessSupportAgent.listPendingReschedules(
+      conversation.customer,
+      conversation.id
+    );
+    if (pending.length !== 1) return null;
+    call = pending[0];
+  }
+  if (!call) return null;
   const existing = await InboxAttentionItem.findBy("externalKey", call.toolCallId);
   if (existing) return existing;
 

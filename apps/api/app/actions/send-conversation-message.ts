@@ -113,24 +113,29 @@ export function trackConversationStream(
   afterCompletion?: () => Promise<unknown>
 ): AgentStream {
   const [clientBody, observerBody] = agentStream.body.tee();
-  const previewTask = textFromAgentStream(observerBody).then(async (text) => {
+  const observedText = textFromAgentStream(observerBody);
+  const previewTask = observedText.then(async (text) => {
     const preview = conversationPreview(text);
     if (!preview) return;
     await SupportConversation.query().where("id", conversationId).update({
       lastMessagePreview: preview,
     });
   });
+  const afterCompletionTask = observedText.then(() => afterCompletion?.());
 
-  const completion = Promise.allSettled([previewTask, ...tasks]).then(async (results) => {
+  const backgroundCompletion = Promise.allSettled([
+    previewTask,
+    ...tasks,
+    afterCompletionTask,
+  ]).then((results) => {
     for (const result of results) {
       if (result.status === "rejected") {
         logger.warn(
           { err: result.reason, conversationId },
-          "Unable to update conversation summary"
+          "Unable to finish conversation background work"
         );
       }
     }
-    await afterCompletion?.();
   });
 
   return {
@@ -140,8 +145,9 @@ export function trackConversationStream(
         transform(chunk, controller) {
           controller.enqueue(chunk);
         },
-        async flush() {
-          await completion;
+        flush() {
+          // The answer is complete. Title, preview, and Inbox updates do not delay delivery.
+          void backgroundCompletion;
         },
       })
     ),
@@ -154,12 +160,10 @@ export default async function sendConversationMessage(input: {
   message: string;
   logger: HttpContext["logger"];
 }) {
-  const agentStream = await businessSupportAgent.streamMessage(
-    input.customer,
-    input.conversation.id,
-    input.message
-  );
-  const isFirstMessage = await claimFirstMessage(input.conversation.id, input.message);
+  const [agentStream, isFirstMessage] = await Promise.all([
+    businessSupportAgent.streamMessage(input.customer, input.conversation.id, input.message),
+    claimFirstMessage(input.conversation.id, input.message),
+  ]);
   const tasks = isFirstMessage
     ? [generateAndStoreTitle(input.customer, input.conversation.id, input.message, input.logger)]
     : [];

@@ -247,6 +247,62 @@ test.group("Customer support agent", (group) => {
     }
   });
 
+  test("finishes chat delivery before background title work", async ({ assert, client }) => {
+    const customer = await createCustomer("alice-background-title@example.com");
+    const conversation = await createConversation(customer);
+    const originalFetch = globalThis.fetch;
+    let releaseTitle!: (response: Response) => void;
+    const titleResponse = new Promise<Response>((resolve) => {
+      releaseTitle = resolve;
+    });
+    let finishTitleSync!: () => void;
+    const titleSynced = new Promise<void>((resolve) => {
+      finishTitleSync = resolve;
+    });
+    let finishAttentionSync!: () => void;
+    const attentionSynced = new Promise<void>((resolve) => {
+      finishAttentionSync = resolve;
+    });
+
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/suspended-runs")) {
+        finishAttentionSync();
+        return Response.json({ runs: [] });
+      }
+      if (url.pathname === "/api/agents/conversation-title-agent/generate") {
+        return titleResponse;
+      }
+      if (url.pathname === `/api/memory/threads/${conversation.id}` && init?.method === "PUT") {
+        finishTitleSync();
+        return Response.json({});
+      }
+      return agentStream([{ type: "text-delta", payload: { text: "Fast answer." } }]);
+    };
+
+    try {
+      const delivery = client
+        .post(`/api/v1/support/conversations/${conversation.id}/messages`)
+        .withSession({ customerId: customer.id })
+        .json({ message: "Help me quickly." });
+      const result = await Promise.race([
+        delivery.then((response) => ({ delivered: true as const, response })),
+        new Promise<{ delivered: false }>((resolve) =>
+          setTimeout(() => resolve({ delivered: false }), 100)
+        ),
+      ]);
+
+      releaseTitle(Response.json({ text: "Quick help" }));
+      const response = result.delivered ? result.response : await delivery;
+      assert.isTrue(result.delivered, "chat delivery waited for background title generation");
+      response.assertStatus(200);
+      assert.include(response.text(), "Fast answer.");
+      await Promise.all([titleSynced, attentionSynced]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("refuses a normal message while a reschedule approval is pending", async ({
     assert,
     client,
@@ -306,9 +362,11 @@ test.group("Customer support agent", (group) => {
       serviceAddress: customer.address,
     });
     const originalFetch = globalThis.fetch;
+    let suspendedRequests = 0;
     globalThis.fetch = async (input) => {
       const url = new URL(String(input));
       assert.equal(url.pathname, "/api/agents/business-support-agent/suspended-runs");
+      suspendedRequests += 1;
       assert.equal(url.searchParams.get("threadId"), conversation.id);
       assert.equal(url.searchParams.get("resourceId"), `customer:${customer.id}`);
       return Response.json({
@@ -342,12 +400,12 @@ test.group("Customer support agent", (group) => {
           type: "booking_reschedule",
           service: "Window track repair",
           staff: "Noah",
-          status: "pending",
-          canApprove: true,
+          status: "awaiting_owner",
         },
       });
       assert.notInclude(response.text(), "private-run");
       assert.notInclude(response.text(), "private-tool-call");
+      assert.equal(suspendedRequests, 1);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -482,6 +540,14 @@ test.group("Customer support agent", (group) => {
         .loginAs(owner)
         .json({ decision: "approve" });
       ownerDecision.assertStatus(200);
+
+      const authorizedApproval = await client
+        .get(`/api/v1/support/conversations/${conversation.id}/approval-request`)
+        .withSession({ customerId: customer.id });
+      authorizedApproval.assertStatus(200);
+      authorizedApproval.assertBodyContains({
+        approvalRequest: { status: "awaiting_customer" },
+      });
 
       const response = await client
         .post(`/api/v1/support/conversations/${conversation.id}/approval-decisions`)

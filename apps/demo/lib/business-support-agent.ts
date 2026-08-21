@@ -26,8 +26,7 @@ export type ApprovalRequest = {
   staff: string;
   currentStartTime: string;
   proposedStartTime: string;
-  status: "pending" | "stale";
-  canApprove: boolean;
+  status: "awaiting_owner" | "awaiting_customer" | "stale";
 };
 
 type StreamChunk = {
@@ -109,9 +108,9 @@ export function sendConversationMessage(conversationId: string, message: string)
 export function sendCustomerReply(
   conversationId: string,
   message: string,
-  hasPendingApproval: boolean
+  isApprovalReply: boolean
 ) {
-  return hasPendingApproval
+  return isApprovalReply
     ? decideApproval(conversationId, "decline", message)
     : sendConversationMessage(conversationId, message);
 }

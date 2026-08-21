@@ -35,7 +35,7 @@ type PendingExchange = {
 type MessageMutation = {
   conversationId: string;
   message: string;
-  hasPendingApproval: boolean;
+  isApprovalReply: boolean;
 };
 
 type DecisionMutation = {
@@ -78,6 +78,7 @@ export function useSupportConversations() {
     queryKey: supportQueryKeys.approval(activeId ?? "none"),
     queryFn: () => readApprovalRequest(activeId!),
     enabled: Boolean(activeId),
+    refetchInterval: (query) => (query.state.data?.status === "awaiting_owner" ? 2_500 : false),
   });
 
   function announce(message: string) {
@@ -109,7 +110,7 @@ export function useSupportConversations() {
       const response = await sendCustomerReply(
         variables.conversationId,
         variables.message,
-        variables.hasPendingApproval
+        variables.isApprovalReply
       );
       await consume(response, variables.conversationId);
     },
@@ -122,7 +123,7 @@ export function useSupportConversations() {
     },
     onSuccess: (_result, variables) => {
       announce(
-        variables.hasPendingApproval ? "Change declined and feedback sent" : "Oak & Pine replied"
+        variables.isApprovalReply ? "Change declined and feedback sent" : "Oak & Pine replied"
       );
     },
     onSettled: async (_result, _error, variables) => {
@@ -231,17 +232,24 @@ export function useSupportConversations() {
   }
 
   function sendReply(message: string) {
-    if (!activeId || isSending) return;
+    if (!activeId || isSending || approval?.status === "awaiting_owner") return;
     resetMutationErrors();
     messageMutation.mutate({
       conversationId: activeId,
       message,
-      hasPendingApproval: Boolean(approval),
+      isApprovalReply: Boolean(approval),
     });
   }
 
   function submitDecision(decision: "approve" | "decline") {
-    if (!activeId || isSending) return;
+    if (
+      !activeId ||
+      !approval ||
+      isSending ||
+      approval.status === "awaiting_owner" ||
+      (decision === "approve" && approval.status !== "awaiting_customer")
+    )
+      return;
     resetMutationErrors();
     decisionMutation.mutate({ conversationId: activeId, decision });
   }
@@ -254,7 +262,7 @@ export function useSupportConversations() {
       await messageMutation.mutateAsync({
         conversationId: created.id,
         message,
-        hasPendingApproval: false,
+        isApprovalReply: false,
       });
     } catch {
       // Mutation state carries the error to the UI.

@@ -250,6 +250,7 @@ function ConversationView({
   onDecision: (decision: "approve" | "decline") => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
+  const awaitingOwner = approval?.status === "awaiting_owner";
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, isSending]);
@@ -305,26 +306,28 @@ function ConversationView({
           {error}
         </p>
       ) : null}
-      <form className="chat-reply" onSubmit={onSubmit}>
-        <label className="sr-only" htmlFor="chat-reply-input">
-          Write a message
-        </label>
-        <textarea
-          id="chat-reply-input"
-          rows={2}
-          placeholder={approval ? "Decline and suggest a correction…" : "Write a message…"}
-          value={reply}
-          onChange={(event) => onReplyChange(event.target.value)}
-          disabled={isSending || decisionState !== "idle"}
-        />
-        <button
-          type="submit"
-          disabled={!reply.trim() || isSending || decisionState !== "idle"}
-          aria-label="Send message"
-        >
-          <Send size={17} />
-        </button>
-      </form>
+      {!awaitingOwner ? (
+        <form className="chat-reply" onSubmit={onSubmit}>
+          <label className="sr-only" htmlFor="chat-reply-input">
+            Write a message
+          </label>
+          <textarea
+            id="chat-reply-input"
+            rows={2}
+            placeholder={approval ? "Decline and suggest a correction…" : "Write a message…"}
+            value={reply}
+            onChange={(event) => onReplyChange(event.target.value)}
+            disabled={isSending || decisionState !== "idle"}
+          />
+          <button
+            type="submit"
+            disabled={!reply.trim() || isSending || decisionState !== "idle"}
+            aria-label="Send message"
+          >
+            <Send size={17} />
+          </button>
+        </form>
+      ) : null}
     </div>
   );
 }
@@ -341,17 +344,23 @@ function ApprovalCard({
   onDecision: (decision: "approve" | "decline") => void;
 }) {
   const busy = decisionState !== "idle";
+  const awaitingOwner = approval.status === "awaiting_owner";
+  const awaitingCustomer = approval.status === "awaiting_customer";
   return (
     <section className="chat-approval" aria-labelledby="booking-approval-heading" aria-busy={busy}>
       <span className="sr-only" aria-live="polite">
-        A booking change is waiting for your confirmation.
+        {awaitingOwner
+          ? "Oak and Pine is reviewing the booking change. No customer action is needed."
+          : "A booking change is waiting for your confirmation."}
       </span>
       <div className="chat-approval-heading">
         <span>
           <CalendarClock size={16} />
         </span>
         <div>
-          <strong id="booking-approval-heading">Confirm booking change?</strong>
+          <strong id="booking-approval-heading">
+            {awaitingOwner ? "Waiting for Oak & Pine" : "Confirm booking change?"}
+          </strong>
           <small>
             {approval.service}
             {approval.staff ? ` with ${approval.staff}` : ""}
@@ -363,6 +372,15 @@ function ApprovalCard({
         <span>→</span>
         <strong>{formatBookingTime(approval.proposedStartTime)}</strong>
       </div>
+      {awaitingOwner ? (
+        <p className="chat-approval-waiting">
+          <Clock3 size={14} aria-hidden="true" />
+          <span>
+            Oak &amp; Pine is reviewing your request. There’s nothing you need to do, and your
+            current booking stays unchanged for now.
+          </span>
+        </p>
+      ) : null}
       {approval.status === "stale" ? (
         <p className="chat-approval-error">
           This request is stale. Decline it and ask for a new time.
@@ -373,26 +391,28 @@ function ApprovalCard({
           {error}
         </p>
       ) : null}
-      <div className="chat-approval-actions">
-        <button
-          type="button"
-          className="chat-approval-decline"
-          onClick={() => onDecision("decline")}
-          disabled={busy}
-          aria-label={`Decline change for ${approval.service}`}
-        >
-          {decisionState === "declining" ? "Declining…" : "Decline"}
-        </button>
-        <button
-          type="button"
-          className="chat-approval-confirm"
-          onClick={() => onDecision("approve")}
-          disabled={busy || !approval.canApprove}
-          aria-label={`Confirm change for ${approval.service}`}
-        >
-          {decisionState === "confirming" ? "Confirming…" : "Confirm"}
-        </button>
-      </div>
+      {!awaitingOwner ? (
+        <div className="chat-approval-actions">
+          <button
+            type="button"
+            className="chat-approval-decline"
+            onClick={() => onDecision("decline")}
+            disabled={busy}
+            aria-label={`Decline change for ${approval.service}`}
+          >
+            {decisionState === "declining" ? "Declining…" : "Decline"}
+          </button>
+          <button
+            type="button"
+            className="chat-approval-confirm"
+            onClick={() => onDecision("approve")}
+            disabled={busy || !awaitingCustomer}
+            aria-label={`Confirm change for ${approval.service}`}
+          >
+            {decisionState === "confirming" ? "Confirming…" : "Confirm"}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

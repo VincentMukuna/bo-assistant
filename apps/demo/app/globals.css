@@ -452,6 +452,8 @@ button { color: inherit; }
 .chat-approval-change > span:first-child { text-align: right; }
 .chat-approval-change > span:nth-child(2) { color: #8b973d; font-weight: 800; }
 .chat-approval-change strong { color: var(--ink); font-size: 9px; overflow-wrap: anywhere; }
+.chat-approval-waiting { margin: 0; display: flex; align-items: flex-start; gap: 7px; color: #506159; font-size: 9px; line-height: 1.5; }
+.chat-approval-waiting svg { margin-top: 1px; flex: 0 0 auto; color: #74852d; }
 .chat-approval-error { margin: -2px 0 0; color: #9f3b30; font-size: 8.5px; line-height: 1.4; }
 .chat-approval-actions { display: flex; justify-content: flex-end; gap: 7px; }
 .chat-approval-actions button { min-height: 32px; padding: 0 13px; border-radius: 999px; font-size: 9px; font-weight: 750; cursor: pointer; }

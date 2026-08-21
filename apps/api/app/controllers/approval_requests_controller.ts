@@ -20,7 +20,7 @@ export default class ApprovalRequestsController {
       }
       const call = pending[0];
       if (!call) return { approvalRequest: null };
-      await syncRescheduleAttention(conversation);
+      const attention = await syncRescheduleAttention(conversation, call);
 
       const expected = DateTime.fromISO(call.expectedStartTime, { setZone: true });
       const proposed = DateTime.fromISO(call.proposedStartTime, { setZone: true });
@@ -42,7 +42,6 @@ export default class ApprovalRequestsController {
             currentStartTime: expected.toISO(),
             proposedStartTime: proposed.toISO(),
             status: "stale",
-            canApprove: false,
           },
         };
       }
@@ -50,6 +49,14 @@ export default class ApprovalRequestsController {
       const canApprove =
         proposed > DateTime.now() &&
         booking.scheduledAt.toUTC().toMillis() === expected.toUTC().toMillis();
+
+      const status = !canApprove
+        ? "stale"
+        : attention?.status === "approved"
+          ? "awaiting_customer"
+          : attention?.status === "pending"
+            ? "awaiting_owner"
+            : "stale";
 
       return {
         approvalRequest: {
@@ -59,8 +66,7 @@ export default class ApprovalRequestsController {
           staff: booking.staff,
           currentStartTime: booking.scheduledAt.toISO(),
           proposedStartTime: proposed.toISO(),
-          status: canApprove ? "pending" : "stale",
-          canApprove,
+          status,
         },
       };
     } catch (error) {
