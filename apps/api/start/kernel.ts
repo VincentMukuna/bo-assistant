@@ -49,4 +49,5 @@ export const middleware = router.named({
   supportIdentity: () => import("#middleware/support_identity_middleware"),
   customerOrigin: () => import("#middleware/customer_origin_middleware"),
   bookingCapability: () => import("#middleware/booking_capability_middleware"),
+  ownerOperationsCapability: () => import("#middleware/owner_operations_capability_middleware"),
 });

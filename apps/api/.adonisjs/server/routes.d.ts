@@ -16,6 +16,8 @@ export type ScannedRoutes = {
     'agent_booking_searches.store': { paramsTuple?: []; params?: {} }
     'agent_booking_reschedules.store': { paramsTuple?: []; params?: {} }
     'agent_booking_creations.store': { paramsTuple?: []; params?: {} }
+    'agent_operations_conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'agent_operations_bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'sessions.destroy': { paramsTuple?: []; params?: {} }
@@ -44,6 +46,8 @@ export type ScannedRoutes = {
     'conversations.index': { paramsTuple?: []; params?: {} }
     'conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'approval_requests.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'agent_operations_conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'agent_operations_bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'customers.index': { paramsTuple?: []; params?: {} }
     'customers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -59,6 +63,8 @@ export type ScannedRoutes = {
     'conversations.index': { paramsTuple?: []; params?: {} }
     'conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'approval_requests.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'agent_operations_conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'agent_operations_bookings.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'customers.index': { paramsTuple?: []; params?: {} }
     'customers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

@@ -18,6 +18,7 @@ export default class OwnerAssistantMessagesController {
     try {
       const answer = await ownerOperationsAgent.answer(
         message,
+        auth.user!.id,
         auth.user?.fullName ?? "Workspace user",
         brief,
         pageContext

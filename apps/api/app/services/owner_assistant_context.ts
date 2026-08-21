@@ -61,14 +61,20 @@ function directOperationalText(value: string | null) {
     .replace(/the owner/gi, "you");
 }
 
-function scheduledAtDisplay(value: Booking["scheduledAt"]) {
+export function formatOwnerScheduledAt(value: Booking["scheduledAt"]) {
   return value.setZone(BUSINESS_TIME_ZONE).toFormat("ccc, LLL d 'at' h:mm a ZZZZ");
 }
 
-function displayAttentionContext(context: Record<string, unknown>) {
+function displayAttentionContext(context: Record<string, unknown>, actionType: string) {
   return Object.fromEntries(
     Object.entries(context).flatMap(([key, value]) => {
       if (/(?:id$|run|tool|capability|token|external)/i.test(key)) return [];
+      if (
+        actionType === "booking_confirmation" &&
+        ["service", "staff", "scheduledAt", "durationMinutes"].includes(key)
+      ) {
+        return [];
+      }
       if (typeof value !== "string" || !/(?:at|date|time)$/i.test(key)) return [[key, value]];
       const isoDate = DateTime.fromISO(value);
       const date = isoDate.isValid ? isoDate : DateTime.fromSQL(value, { zone: "utc" });
@@ -105,7 +111,7 @@ export async function buildOwnerAssistantPageContext(
         customer: booking.customer.name,
         service: booking.service,
         staff: booking.staff,
-        scheduledAtDisplay: scheduledAtDisplay(booking.scheduledAt),
+        scheduledAtDisplay: formatOwnerScheduledAt(booking.scheduledAt),
         durationMinutes: booking.durationMinutes,
         status: booking.status,
         serviceAddress: booking.serviceAddress,
@@ -136,7 +142,7 @@ export async function buildOwnerAssistantPageContext(
           id: booking.id,
           service: booking.service,
           staff: booking.staff,
-          scheduledAtDisplay: scheduledAtDisplay(booking.scheduledAt),
+          scheduledAtDisplay: formatOwnerScheduledAt(booking.scheduledAt),
           durationMinutes: booking.durationMinutes,
           status: booking.status,
           serviceAddress: booking.serviceAddress,
@@ -185,7 +191,7 @@ export async function buildOwnerAssistantPageContext(
             reason: attentionReasonLabels[attention.cause],
             status: attentionStatusLabels[attention.status],
             summary: directOperationalText(attention.summary),
-            context: displayAttentionContext(attention.context),
+            context: displayAttentionContext(attention.context, attention.actionType),
             outcomeSummary: directOperationalText(attention.outcomeSummary),
             link:
               bookingId === null

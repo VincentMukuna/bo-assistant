@@ -151,6 +151,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_booking_creations_controller').default['store']>>>
     }
   }
+  'agent_operations_conversations.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/agent/operations/conversations/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_operations_conversations_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_operations_conversations_controller').default['show']>>>
+    }
+  }
+  'agent_operations_bookings.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/agent/operations/bookings/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_operations_bookings_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_operations_bookings_controller').default['show']>>>
+    }
+  }
   'auth.sessions.store': {
     methods: ["POST"]
     pattern: '/api/v1/auth/login'

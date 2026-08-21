@@ -7,6 +7,7 @@ import User from "#models/user";
 import testUtils from "@adonisjs/core/services/test_utils";
 import { test } from "@japa/runner";
 import { DateTime } from "luxon";
+import { readOwnerOperationsCapability } from "#services/owner_operations_capability";
 
 async function setupOwnerOperation() {
   const owner = await User.create({
@@ -321,9 +322,14 @@ test.group("Owner brief", (group) => {
       assert.equal(url.pathname, "/api/agents/owner-operations-agent/generate");
       const body = JSON.parse(String(init?.body)) as {
         messages: Array<{ content: string }>;
-        requestContext: { pageContextJson: string };
+        requestContext: { pageContextJson: string; operationsCapability: string };
       };
       assert.equal(body.messages[0].content, "What should I reply?");
+      const capability = readOwnerOperationsCapability(
+        `Bearer ${body.requestContext.operationsCapability}`
+      );
+      assert.include(capability?.conversationIds, conversation.id);
+      assert.include(capability?.bookingIds, 42);
       const pageContext = JSON.parse(body.requestContext.pageContextJson) as {
         surface: string;
         conversation: {
@@ -359,9 +365,7 @@ test.group("Owner brief", (group) => {
         summary: "Needs your attention",
         detail: "The booking is waiting for your confirmation.",
       });
-      assert.deepEqual(pageContext.conversation.attentionItems[0]?.context, {
-        scheduledAtDisplay: "Tue, Aug 18 at 2:30 PM PDT",
-      });
+      assert.deepEqual(pageContext.conversation.attentionItems[0]?.context, {});
       assert.equal(pageContext.conversation.attentionItems[0]?.reason, "Needs your approval");
       assert.equal(pageContext.conversation.attentionItems[0]?.status, "Waiting for you");
       assert.equal(pageContext.conversation.attentionItems[0]?.summary, "Your approval is needed");

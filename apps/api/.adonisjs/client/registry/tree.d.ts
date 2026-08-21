@@ -34,6 +34,12 @@ export interface ApiDefinition {
   agentBookingCreations: {
     store: typeof routes['agent_booking_creations.store']
   }
+  agentOperationsConversations: {
+    show: typeof routes['agent_operations_conversations.show']
+  }
+  agentOperationsBookings: {
+    show: typeof routes['agent_operations_bookings.show']
+  }
   auth: {
     sessions: {
       store: typeof routes['auth.sessions.store']

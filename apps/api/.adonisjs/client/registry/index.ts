@@ -78,6 +78,18 @@ const routes = {
     tokens: [{"old":"/api/v1/agent/booking-creations","type":0,"val":"api","end":""},{"old":"/api/v1/agent/booking-creations","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/booking-creations","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/booking-creations","type":0,"val":"booking-creations","end":""}],
     types: placeholder as Registry['agent_booking_creations.store']['types'],
   },
+  'agent_operations_conversations.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/agent/operations/conversations/:id',
+    tokens: [{"old":"/api/v1/agent/operations/conversations/:id","type":0,"val":"api","end":""},{"old":"/api/v1/agent/operations/conversations/:id","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/operations/conversations/:id","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/operations/conversations/:id","type":0,"val":"operations","end":""},{"old":"/api/v1/agent/operations/conversations/:id","type":0,"val":"conversations","end":""},{"old":"/api/v1/agent/operations/conversations/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['agent_operations_conversations.show']['types'],
+  },
+  'agent_operations_bookings.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/agent/operations/bookings/:id',
+    tokens: [{"old":"/api/v1/agent/operations/bookings/:id","type":0,"val":"api","end":""},{"old":"/api/v1/agent/operations/bookings/:id","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/operations/bookings/:id","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/operations/bookings/:id","type":0,"val":"operations","end":""},{"old":"/api/v1/agent/operations/bookings/:id","type":0,"val":"bookings","end":""},{"old":"/api/v1/agent/operations/bookings/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['agent_operations_bookings.show']['types'],
+  },
   'auth.sessions.store': {
     methods: ["POST"],
     pattern: '/api/v1/auth/login',

@@ -1,8 +1,37 @@
 import type { OwnerBrief } from "#services/owner_brief";
+import { issueOwnerOperationsCapability } from "#services/owner_operations_capability";
 import env from "#start/env";
 import app from "@adonisjs/core/services/app";
 
 const AGENT_ID = "owner-operations-agent";
+
+function collectOperationRecordIds(...sources: unknown[]) {
+  const conversationIds = new Set<string>();
+  const bookingIds = new Set<number>();
+
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+
+    for (const [key, child] of Object.entries(value)) {
+      if (key === "href" && typeof child === "string") {
+        const url = new URL(child, "http://workspace.local");
+        const conversationId = url.searchParams.get("conversation");
+        const bookingId = Number(url.searchParams.get("booking"));
+        if (conversationId) conversationIds.add(conversationId);
+        if (Number.isInteger(bookingId) && bookingId > 0) bookingIds.add(bookingId);
+      } else {
+        visit(child);
+      }
+    }
+  };
+
+  sources.forEach(visit);
+  return { conversationIds: [...conversationIds], bookingIds: [...bookingIds] };
+}
 
 export class OwnerOperationsAgentClient {
   private get baseUrl() {
@@ -23,10 +52,12 @@ export class OwnerOperationsAgentClient {
 
   async answer(
     question: string,
+    ownerId: number,
     ownerName: string,
     brief: OwnerBrief,
     pageContext: Record<string, unknown>
   ) {
+    const resources = collectOperationRecordIds(brief, pageContext);
     const response = await fetch(`${this.baseUrl}/api/agents/${AGENT_ID}/generate`, {
       method: "POST",
       headers: this.headers(),
@@ -39,6 +70,7 @@ export class OwnerOperationsAgentClient {
           currentDate: brief.businessDate,
           briefJson: JSON.stringify(brief),
           pageContextJson: JSON.stringify(pageContext),
+          operationsCapability: issueOwnerOperationsCapability(ownerId, resources),
         },
       }),
       signal: AbortSignal.timeout(30_000),

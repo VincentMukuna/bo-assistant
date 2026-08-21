@@ -27,6 +27,10 @@ const AgentBookingReschedulesController = () =>
   import("#controllers/agent_booking_reschedules_controller");
 const AgentBookingCreationsController = () =>
   import("#controllers/agent_booking_creations_controller");
+const AgentOperationsConversationsController = () =>
+  import("#controllers/agent_operations_conversations_controller");
+const AgentOperationsBookingsController = () =>
+  import("#controllers/agent_operations_bookings_controller");
 const WorkspaceConversationsController = () =>
   import("#controllers/workspace_conversations_controller");
 const ConversationOwnershipsController = () =>
@@ -80,6 +84,16 @@ router
       .use(middleware.bookingCapability({ scope: "create_bookings" }));
   })
   .prefix("/api/v1/agent");
+
+router
+  .get("/api/v1/agent/operations/conversations/:id", [
+    AgentOperationsConversationsController,
+    "show",
+  ])
+  .use(middleware.ownerOperationsCapability({ scope: "read_conversation" }));
+router
+  .get("/api/v1/agent/operations/bookings/:id", [AgentOperationsBookingsController, "show"])
+  .use(middleware.ownerOperationsCapability({ scope: "read_booking" }));
 
 router
   .group(() => {
