@@ -194,14 +194,25 @@ export const findBookingsForCustomer = createTool({
 export const createBooking = createTool({
   id: "create_booking",
   description:
-    "Create a new pending booking for the authenticated customer once the service, staff, exact start time, and duration are known. This executes immediately without customer or owner approval. The owner is notified separately and the conversation is updated after confirmation. The result includes start_time_display, which must be used verbatim in replies.",
+    "Create a new pending booking for the authenticated customer once the service and exact start time are known. Staff and duration are optional: omit staff when the customer has no preference, and omit duration to use the business default for that service. This executes immediately without customer or owner approval. The owner is notified separately and the conversation is updated after confirmation. The result includes start_time_display, which must be used verbatim in replies.",
   inputSchema: z.object({
     service: z.string().min(2).max(120),
-    staff: z.string().min(2).max(120),
+    staff: z
+      .string()
+      .min(2)
+      .max(120)
+      .optional()
+      .describe("Specific staff preference; omit for any available staff"),
     start_time: z
       .string()
       .describe("Exact appointment time as an ISO timestamp with timezone offset"),
-    duration_minutes: z.number().int().positive().max(1440),
+    duration_minutes: z
+      .number()
+      .int()
+      .positive()
+      .max(1440)
+      .optional()
+      .describe("Explicit requested duration; omit to use the service default"),
   }),
   outputSchema: z.object({ booking: presentedBookingSchema }),
   requestContextSchema: bookingContextSchema,

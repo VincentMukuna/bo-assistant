@@ -24,23 +24,25 @@ export default class AgentBookingCreationsController {
     const conversationId = bookingCapability.conversationId;
     const toolCallId = trimmedString(request.input("tool_call_id"), 1, 255);
     const service = trimmedString(request.input("service"), 2, 120);
-    const staff = trimmedString(request.input("staff"), 2, 120);
+    const staffInput = request.input("staff");
+    const staff =
+      staffInput === undefined ? undefined : (trimmedString(staffInput, 2, 120) ?? undefined);
     const scheduledAt = parseOffsetDate(request.input("start_time"));
-    const durationMinutes = Number(request.input("duration_minutes"));
+    const durationInput = request.input("duration_minutes");
+    const durationMinutes = durationInput === undefined ? undefined : Number(durationInput);
     if (
       !conversationId ||
       !toolCallId ||
       !service ||
-      !staff ||
       !scheduledAt ||
-      !Number.isInteger(durationMinutes) ||
-      durationMinutes <= 0 ||
-      durationMinutes > 1440
+      (staffInput !== undefined && !staff) ||
+      (durationMinutes !== undefined &&
+        (!Number.isInteger(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440))
     ) {
       return response.badRequest(
         errorBody(
           "INVALID_BOOKING_REQUEST",
-          "service, staff, an ISO start_time with a timezone offset, and a positive duration_minutes are required."
+          "service and an ISO start_time with a timezone offset are required; staff and duration_minutes must be valid when supplied."
         )
       );
     }

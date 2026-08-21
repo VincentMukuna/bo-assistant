@@ -85,10 +85,8 @@ test.group("Agent booking resources", (group) => {
     const capability = issueBookingReadCapability(customer.id, conversation.id);
     const request = {
       tool_call_id: "create-tool-1",
-      service: "Deep home clean",
-      staff: "Jamie",
+      service: "Home cleaning",
       start_time: "2026-09-15T10:00:00-07:00",
-      duration_minutes: 120,
     };
 
     const created = await client
@@ -97,7 +95,12 @@ test.group("Agent booking resources", (group) => {
       .json(request);
     created.assertStatus(200);
     created.assertBodyContains({
-      booking: { service: "Deep home clean", status: "needs_approval" },
+      booking: {
+        service: "Home cleaning",
+        staff: "Unassigned",
+        duration_minutes: 120,
+        status: "needs_approval",
+      },
     });
 
     const retried = await client

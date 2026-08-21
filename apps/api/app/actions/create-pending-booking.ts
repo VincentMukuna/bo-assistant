@@ -9,6 +9,28 @@ import { DateTime } from "luxon";
 
 const DATABASE_TIMESTAMP_FORMAT = "yyyy-LL-dd HH:mm:ss";
 const ACTIVE_BOOKING_STATUSES = ["confirmed", "needs_approval", "in_progress"];
+const UNASSIGNED_STAFF = "Unassigned";
+
+export function defaultDurationForService(service: string) {
+  const normalized = service.toLowerCase();
+  if (
+    normalized.includes("deep") ||
+    normalized.includes("whole-home") ||
+    normalized.includes("whole home") ||
+    normalized.includes("home care")
+  )
+    return 180;
+  if (normalized.includes("clean")) return 120;
+  if (normalized.includes("repair") || normalized.includes("plumb")) return 90;
+  return 60;
+}
+
+function assignedStaff(staff?: string) {
+  if (!staff || /^(?:any(?: available)?|anyone|no preference|whoever)$/i.test(staff.trim())) {
+    return UNASSIGNED_STAFF;
+  }
+  return staff.trim();
+}
 
 export class InvalidBookingTime extends TaggedError("InvalidBookingTime")<{
   scheduledAt: string;
@@ -38,9 +60,9 @@ export type CreatePendingBookingInput = {
   conversationId: string;
   toolCallId: string;
   service: string;
-  staff: string;
+  staff?: string;
   scheduledAt: DateTime;
-  durationMinutes: number;
+  durationMinutes?: number;
 };
 
 type CreatePendingBookingError =
@@ -69,6 +91,8 @@ export default async function createPendingBooking(
     );
   }
 
+  const staff = assignedStaff(input.staff);
+  const durationMinutes = input.durationMinutes ?? defaultDurationForService(input.service);
   const externalKey = `booking-creation:${input.toolCallId}`;
   const transaction = await Result.tryPromise({
     try: () =>
@@ -125,32 +149,34 @@ export default async function createPendingBooking(
             );
           }
 
-          const proposedEnd = input.scheduledAt.plus({ minutes: input.durationMinutes });
-          const staffBookings = yield* Result.await(
-            Result.tryPromise({
-              try: () =>
-                Booking.query({ client: trx })
-                  .where("staff", input.staff)
-                  .whereIn("status", ACTIVE_BOOKING_STATUSES)
-                  .where(
-                    "scheduledAt",
-                    "<",
-                    proposedEnd.toUTC().toFormat(DATABASE_TIMESTAMP_FORMAT)
-                  )
-                  .forUpdate(),
-              catch: (cause) => storeFailure("load-staff-bookings", cause),
-            })
-          );
-          const overlaps = staffBookings.some(
-            (booking) =>
-              booking.scheduledAt.plus({ minutes: booking.durationMinutes }) > input.scheduledAt
-          );
-          if (overlaps) {
-            yield* new BookingStaffUnavailable({
-              staff: input.staff,
-              scheduledAt: input.scheduledAt.toISO() ?? "invalid",
-              message: `${input.staff} is already booked at that time.`,
-            });
+          if (staff !== UNASSIGNED_STAFF) {
+            const proposedEnd = input.scheduledAt.plus({ minutes: durationMinutes });
+            const staffBookings = yield* Result.await(
+              Result.tryPromise({
+                try: () =>
+                  Booking.query({ client: trx })
+                    .where("staff", staff)
+                    .whereIn("status", ACTIVE_BOOKING_STATUSES)
+                    .where(
+                      "scheduledAt",
+                      "<",
+                      proposedEnd.toUTC().toFormat(DATABASE_TIMESTAMP_FORMAT)
+                    )
+                    .forUpdate(),
+                catch: (cause) => storeFailure("load-staff-bookings", cause),
+              })
+            );
+            const overlaps = staffBookings.some(
+              (booking) =>
+                booking.scheduledAt.plus({ minutes: booking.durationMinutes }) > input.scheduledAt
+            );
+            if (overlaps) {
+              yield* new BookingStaffUnavailable({
+                staff,
+                scheduledAt: input.scheduledAt.toISO() ?? "invalid",
+                message: `${staff} is already booked at that time.`,
+              });
+            }
           }
 
           const booking = yield* Result.await(
@@ -160,9 +186,9 @@ export default async function createPendingBooking(
                   {
                     customerId: input.customerId,
                     service: input.service,
-                    staff: input.staff,
+                    staff,
                     scheduledAt: input.scheduledAt.toUTC(),
-                    durationMinutes: input.durationMinutes,
+                    durationMinutes,
                     status: "needs_approval",
                     serviceAddress: conversation.customer.address,
                   },

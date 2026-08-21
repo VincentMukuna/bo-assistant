@@ -31,17 +31,15 @@ test("creates a pending booking immediately through the focused internal resourc
   globalThis.fetch = async (input, init) => {
     expect(String(input)).toBe("http://localhost:3333/api/v1/agent/booking-creations");
     expect(JSON.parse(String(init.body))).toEqual({
-      service: "Deep home clean",
-      staff: "Jamie",
+      service: "Home cleaning",
       start_time: "2026-08-25T10:00:00-07:00",
-      duration_minutes: 120,
       tool_call_id: "approved-tool-call",
     });
     return Response.json({
       booking: {
         booking_id: 9,
-        service: "Deep home clean",
-        staff: "Jamie",
+        service: "Home cleaning",
+        staff: "Unassigned",
         start_time: "2026-08-25T17:00:00Z",
         duration_minutes: 120,
         status: "needs_approval",
@@ -52,14 +50,14 @@ test("creates a pending booking immediately through the focused internal resourc
   try {
     const result = await createBooking.execute(
       {
-        service: "Deep home clean",
-        staff: "Jamie",
+        service: "Home cleaning",
         start_time: "2026-08-25T10:00:00-07:00",
-        duration_minutes: 120,
       },
       context
     );
     expect(result.booking.status).toBe("needs_approval");
+    expect(result.booking.staff).toBe("Unassigned");
+    expect(result.booking.duration_minutes).toBe(120);
     expect(result.booking.start_time_display).toBe("Tuesday, August 25 at 10:00 AM");
   } finally {
     globalThis.fetch = originalFetch;
