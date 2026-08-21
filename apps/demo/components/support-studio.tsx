@@ -57,8 +57,13 @@ export function SupportStudio() {
         ? "Your conversations"
         : view === "new"
           ? "How can we help?"
-          : "Your account";
+          : "Personalized support";
   const hasHeaderBack = view !== "threads";
+  const backActionLabel =
+    view === "conversation" ? "View conversations" : "Back to conversation";
+  const supportActionLabel = support.session?.isVerified
+    ? "View personalized support"
+    : "Unlock personalized support";
 
   function navigateBack() {
     setView(view === "conversation" ? "threads" : "conversation");
@@ -114,10 +119,11 @@ export function SupportStudio() {
           <header className="chat-header">
             {hasHeaderBack ? (
               <button
-                className="chat-header-back"
+                className="chat-header-back chat-icon-tooltip chat-icon-tooltip--start"
                 type="button"
                 onClick={navigateBack}
-                aria-label={view === "conversation" ? "View conversations" : "Back to conversation"}
+                aria-label={backActionLabel}
+                data-tooltip={backActionLabel}
               >
                 <ArrowLeft size={18} />
               </button>
@@ -136,27 +142,31 @@ export function SupportStudio() {
               {view === "conversation" || view === "threads" ? (
                 <>
                   <button
+                    className="chat-icon-tooltip"
                     type="button"
                     onClick={() => setView("account")}
-                    aria-label={
-                      support.session?.isVerified ? "View account" : "Unlock personalized support"
-                    }
+                    aria-label={supportActionLabel}
+                    data-tooltip={supportActionLabel}
                   >
-                    {support.session?.isVerified ? <Check size={17} /> : <UserRound size={17} />}
+                    <UserRound size={17} />
                   </button>
                   <button
+                    className="chat-icon-tooltip"
                     type="button"
                     onClick={() => setView("new")}
                     aria-label="Create new request"
+                    data-tooltip="New request"
                   >
                     <Plus size={17} />
                   </button>
                 </>
               ) : null}
               <button
+                className="chat-icon-tooltip chat-icon-tooltip--end"
                 type="button"
                 onClick={() => setIsOpen(false)}
                 aria-label="Close support chat"
+                data-tooltip="Close chat"
               >
                 <X size={18} />
               </button>
@@ -384,7 +394,13 @@ function ConversationView({
               readOnly={replyUnavailable}
               aria-disabled={replyUnavailable}
             />
-            <button type="submit" disabled={replyUnavailable} aria-label="Send message">
+            <button
+              className="chat-icon-tooltip chat-icon-tooltip--above chat-icon-tooltip--end"
+              type="submit"
+              disabled={replyUnavailable}
+              aria-label="Send message"
+              data-tooltip="Send message"
+            >
               <Send size={17} />
             </button>
           </form>
@@ -505,7 +521,12 @@ function NewRequestForm({ onStart }: { onStart: (message: string) => void }) {
           required
           autoFocus
         />
-        <button type="submit" aria-label="Start conversation">
+        <button
+          className="chat-icon-tooltip chat-icon-tooltip--above chat-icon-tooltip--end"
+          type="submit"
+          aria-label="Start conversation"
+          data-tooltip="Start conversation"
+        >
           <Send size={17} />
         </button>
       </form>
