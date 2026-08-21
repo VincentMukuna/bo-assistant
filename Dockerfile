@@ -31,7 +31,10 @@ FROM api-builder AS agent-builder
 
 COPY apps/agent ./apps/agent
 
-RUN bun run --filter agent build
+# Mastra runs its compiler through Node and otherwise sizes the heap against the
+# host. Leave enough memory for Coolify and Docker on the 4 GB deployment host.
+RUN --mount=type=cache,id=bo-assistant-bun,target=/root/.bun/install/cache,sharing=locked \
+    NODE_OPTIONS=--max-old-space-size=1024 bun run --filter agent build
 
 
 FROM agent-builder AS app-builder
