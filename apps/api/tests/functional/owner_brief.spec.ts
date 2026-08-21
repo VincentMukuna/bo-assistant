@@ -283,7 +283,10 @@ test.group("Owner brief", (group) => {
       status: "pending",
       externalKey: crypto.randomUUID(),
       summary: "Confirm the requested appointment",
-      contextJson: JSON.stringify({ scheduledAt: "2026-08-18 21:30:00" }),
+      contextJson: JSON.stringify({
+        bookingId: 42,
+        scheduledAt: "2026-08-18 21:30:00",
+      }),
     });
     const originalFetch = globalThis.fetch;
 
@@ -313,19 +316,34 @@ test.group("Owner brief", (group) => {
         conversation: {
           id: string;
           contact: string;
+          nextStep: string;
+          handling: string;
           messages: Array<{ sender: string; body: string }>;
-          attentionItems: Array<{ context: Record<string, unknown> }>;
+          attentionItems: Array<{
+            reason: string;
+            status: string;
+            context: Record<string, unknown>;
+            link: { label: string; href: string };
+          }>;
         };
       };
       assert.equal(pageContext.surface, "inbox");
       assert.equal(pageContext.conversation.id, conversation.id);
       assert.equal(pageContext.conversation.contact, "Alice Morgan");
+      assert.equal(pageContext.conversation.nextStep, "Needs your response");
+      assert.equal(pageContext.conversation.handling, "Oak is handling this conversation");
       assert.deepInclude(pageContext.conversation.messages[0], {
         sender: "customer",
         body: "Could we move the appointment to Monday?",
       });
       assert.deepEqual(pageContext.conversation.attentionItems[0]?.context, {
         scheduledAtDisplay: "Tue, Aug 18 at 2:30 PM PDT",
+      });
+      assert.equal(pageContext.conversation.attentionItems[0]?.reason, "Needs your approval");
+      assert.equal(pageContext.conversation.attentionItems[0]?.status, "Waiting for you");
+      assert.deepEqual(pageContext.conversation.attentionItems[0]?.link, {
+        label: "Open booking",
+        href: "/bookings?view=agenda&booking=42",
       });
       return Response.json({ text: "Confirm whether Monday morning or afternoon works best." });
     };

@@ -6,23 +6,61 @@ import { DateTime } from "luxon";
 
 const BUSINESS_TIME_ZONE = "America/Los_Angeles";
 
+const nextStepLabels = {
+  owner: "Needs your response",
+  agent: "Oak is handling it",
+  customer: "Waiting for the customer",
+  none: "No action needed",
+} as const;
+
+const handlingLabels = {
+  owner: "You are handling this conversation",
+  agent: "Oak is handling this conversation",
+} as const;
+
+const outcomeLabels = {
+  active: "In progress",
+  completed: "Completed",
+  failed: "Needs follow-up",
+} as const;
+
+const attentionReasonLabels = {
+  authority: "Needs your approval",
+  judgment: "Needs your judgment",
+  relationship: "Needs a personal response",
+  failure: "Needs recovery",
+} as const;
+
+const attentionStatusLabels = {
+  pending: "Waiting for you",
+  approved: "Approved",
+  declined: "Declined",
+  completed: "Completed",
+  failed: "Needs follow-up",
+} as const;
+
 function scheduledAtDisplay(value: Booking["scheduledAt"]) {
   return value.setZone(BUSINESS_TIME_ZONE).toFormat("ccc, LLL d 'at' h:mm a ZZZZ");
 }
 
 function displayAttentionContext(context: Record<string, unknown>) {
   return Object.fromEntries(
-    Object.entries(context).map(([key, value]) => {
-      if (typeof value !== "string" || !/(?:at|date|time)$/i.test(key)) return [key, value];
+    Object.entries(context).flatMap(([key, value]) => {
+      if (/(?:id$|run|tool|capability|token|external)/i.test(key)) return [];
+      if (typeof value !== "string" || !/(?:at|date|time)$/i.test(key)) return [[key, value]];
       const isoDate = DateTime.fromISO(value);
       const date = isoDate.isValid ? isoDate : DateTime.fromSQL(value, { zone: "utc" });
-      if (!date.isValid) return [key, value];
+      if (!date.isValid) return [[key, value]];
       return [
-        `${key}Display`,
-        date.setZone(BUSINESS_TIME_ZONE).toFormat("ccc, LLL d 'at' h:mm a ZZZZ"),
+        [`${key}Display`, date.setZone(BUSINESS_TIME_ZONE).toFormat("ccc, LLL d 'at' h:mm a ZZZZ")],
       ];
     })
   );
+}
+
+function contextNumber(context: Record<string, unknown>, key: string) {
+  const value = context[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 export type OwnerAssistantSurface = "overview" | "bookings" | "customer" | "inbox";
@@ -115,17 +153,30 @@ export async function buildOwnerAssistantPageContext(
         title: conversation.title,
         contact: conversation.customer?.name ?? "Website visitor",
         status: conversation.status,
-        nextStep: conversation.nextStepOwner,
-        handlingMode: conversation.handlingMode,
-        outcome: conversation.outcomeStatus,
+        nextStep: nextStepLabels[conversation.nextStepOwner],
+        handling: handlingLabels[conversation.handlingMode],
+        outcome: outcomeLabels[conversation.outcomeStatus],
         outcomeSummary: conversation.outcomeSummary,
-        attentionItems: conversation.attentionItems.map((attention) => ({
-          cause: attention.cause,
-          status: attention.status,
-          summary: attention.summary,
-          context: displayAttentionContext(attention.context),
-          outcomeSummary: attention.outcomeSummary,
-        })),
+        attentionItems: conversation.attentionItems.map((attention) => {
+          const bookingId = contextNumber(attention.context, "bookingId");
+          return {
+            reason: attentionReasonLabels[attention.cause],
+            status: attentionStatusLabels[attention.status],
+            summary: attention.summary,
+            context: displayAttentionContext(attention.context),
+            outcomeSummary: attention.outcomeSummary,
+            link:
+              bookingId === null
+                ? {
+                    label: "Open conversation",
+                    href: `/inbox?conversation=${conversation.id}`,
+                  }
+                : {
+                    label: "Open booking",
+                    href: `/bookings?view=agenda&booking=${bookingId}`,
+                  },
+          };
+        }),
         annotations: conversation.annotations.map((annotation) => ({
           kind: annotation.kind,
           summary: annotation.summary,

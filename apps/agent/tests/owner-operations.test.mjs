@@ -20,6 +20,10 @@ test("keeps operations guidance read-only and grounded in server-built context",
   expect(instructions).toContain("server-built, read-only snapshots");
   expect(instructions).toContain("stay focused on that selected conversation or customer");
   expect(instructions).toContain("never show a raw timestamp");
+  expect(instructions).toContain('Speak to Kim Lewis as "you."');
+  expect(instructions).toContain('Never call them "the owner,"');
+  expect(instructions).toContain("Keep the useful operational detail");
+  expect(instructions).toContain("Do not put names, services, dates");
   expect(instructions).toContain("Never claim you changed a booking");
   expect(instructions).toContain("Do not infer revenue, profit, payments");
 });
