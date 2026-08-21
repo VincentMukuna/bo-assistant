@@ -39,7 +39,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { api, type InboxAttention, type InboxConversationSummary } from "@/lib/api";
+import {
+  api,
+  type InboxAttention,
+  type InboxConversation,
+  type InboxConversationSummary,
+} from "@/lib/api";
 import {
   errorMessage,
   inboxConversationQueryOptions,
@@ -47,6 +52,7 @@ import {
   queryKeys,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { formatBusinessDate, formatBusinessTime } from "@/lib/business-time";
 
 const inboxListWidth = {
   default: 350,
@@ -97,13 +103,12 @@ function relativeTime(value: string) {
 
 function dateTime(value: unknown) {
   if (typeof value !== "string") return "Unknown time";
-  return new Date(value).toLocaleString("en-US", {
+  const date = formatBusinessDate(value, {
     weekday: "short",
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
+  return `${date} at ${formatBusinessTime(value)}`;
 }
 
 function clampInboxListWidth(width: number) {
@@ -274,16 +279,21 @@ function Annotation({
 
 function AttentionCard({
   attention,
+  booking,
   deciding,
   onDecide,
 }: {
   attention: InboxAttention;
+  booking: InboxConversation["bookings"][number] | undefined;
   deciding: boolean;
   onDecide: (decision: "approve" | "decline") => void;
 }) {
   const context = attention.context;
   const awaitingCustomer = attention.status === "approved";
   const bookingConfirmation = attention.actionType === "booking_confirmation";
+  const bookingService = booking?.service ?? String(context.service ?? "Booking");
+  const bookingStaff = booking?.staff ?? String(context.staff ?? "Staff unassigned");
+  const bookingDuration = booking?.durationMinutes ?? Number(context.durationMinutes);
   return (
     <div className="my-5 overflow-hidden rounded-xl border border-zinc-200 bg-white">
       <div className="p-4 sm:p-5">
@@ -325,11 +335,16 @@ function AttentionCard({
         ) : null}
         {bookingConfirmation ? (
           <div className="mt-4 grid gap-2 rounded-lg bg-zinc-50 p-3.5 text-xs text-zinc-600">
-            <span className="font-medium text-zinc-900">{dateTime(context.scheduledAt)}</span>
-            <span>
-              {String(context.service ?? "Booking")} · {String(context.staff ?? "Staff unassigned")}
+            <span className="font-medium text-zinc-900">
+              {booking?.scheduledAtDisplay ?? dateTime(context.scheduledAt)}
             </span>
-            <span>{Number(context.durationMinutes) || 0} minutes · Pending</span>
+            <span>
+              {bookingService} · {bookingStaff}
+            </span>
+            <span>
+              {bookingDuration > 0 ? `${bookingDuration} minutes` : "Duration not available"} ·{" "}
+              {booking?.status === "needs_approval" ? "Pending" : (booking?.status ?? "Pending")}
+            </span>
           </div>
         ) : null}
         {attention.outcomeSummary ? (
@@ -643,6 +658,9 @@ function ConversationPanel({
           {conversation.attention ? (
             <AttentionCard
               attention={conversation.attention}
+              booking={conversation.bookings.find(
+                (booking) => booking.id === Number(conversation.attention?.context.bookingId)
+              )}
               deciding={decisionMutation.isPending}
               onDecide={(decision) => decisionMutation.mutate(decision)}
             />

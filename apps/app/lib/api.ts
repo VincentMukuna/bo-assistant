@@ -73,6 +73,7 @@ export type InboxConversation = InboxConversationSummary & {
     service: string;
     staff: string;
     scheduledAt: string;
+    scheduledAtDisplay: string;
     durationMinutes: number;
     status: BookingStatus;
     serviceAddress: string;

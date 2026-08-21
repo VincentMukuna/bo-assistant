@@ -2,6 +2,7 @@ import deleteSupportConversation from "#actions/delete-support-conversation";
 import SupportConversation from "#models/support_conversation";
 import type InboxAttentionItem from "#models/inbox_attention_item";
 import { businessSupportAgent } from "#services/business_support_agent";
+import { formatOwnerScheduledAt } from "#services/owner_assistant_context";
 import type { HttpContext } from "@adonisjs/core/http";
 
 function presentAttention(item: InboxAttentionItem) {
@@ -109,6 +110,7 @@ export default class WorkspaceConversationsController {
             service: booking.service,
             staff: booking.staff,
             scheduledAt: booking.scheduledAt.toISO(),
+            scheduledAtDisplay: formatOwnerScheduledAt(booking.scheduledAt),
             durationMinutes: booking.durationMinutes,
             status: booking.status,
             serviceAddress: booking.serviceAddress,
