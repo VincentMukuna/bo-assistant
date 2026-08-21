@@ -25,6 +25,9 @@ export interface ApiDefinition {
   agentBookingReschedules: {
     store: typeof routes['agent_booking_reschedules.store']
   }
+  agentBookingCreations: {
+    store: typeof routes['agent_booking_creations.store']
+  }
   auth: {
     sessions: {
       store: typeof routes['auth.sessions.store']

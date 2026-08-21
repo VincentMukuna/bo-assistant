@@ -10,7 +10,7 @@ import {
   readApprovalRequest,
   readBusinessSupportStream,
   readConversation,
-  sendCustomerReply,
+  sendConversationMessage,
   type ApprovalRequest,
   type ConversationSummary,
   type SupportConversation,
@@ -35,7 +35,6 @@ type PendingExchange = {
 type MessageMutation = {
   conversationId: string;
   message: string;
-  isApprovalReply: boolean;
 };
 
 type DecisionMutation = {
@@ -107,11 +106,7 @@ export function useSupportConversations() {
 
   const messageMutation = useMutation({
     mutationFn: async (variables: MessageMutation) => {
-      const response = await sendCustomerReply(
-        variables.conversationId,
-        variables.message,
-        variables.isApprovalReply
-      );
+      const response = await sendConversationMessage(variables.conversationId, variables.message);
       await consume(response, variables.conversationId);
     },
     onMutate: (variables) => {
@@ -121,11 +116,7 @@ export function useSupportConversations() {
         assistantText: "",
       });
     },
-    onSuccess: (_result, variables) => {
-      announce(
-        variables.isApprovalReply ? "Change declined and feedback sent" : "Oak & Pine replied"
-      );
-    },
+    onSuccess: () => announce("Oak & Pine replied"),
     onSettled: async (_result, _error, variables) => {
       await reconcile(variables.conversationId).catch(() => undefined);
       setPendingExchange((current) =>
@@ -232,12 +223,11 @@ export function useSupportConversations() {
   }
 
   function sendReply(message: string) {
-    if (!activeId || isSending || approval?.status === "awaiting_owner") return;
+    if (!activeId || isSending || approval) return;
     resetMutationErrors();
     messageMutation.mutate({
       conversationId: activeId,
       message,
-      isApprovalReply: Boolean(approval),
     });
   }
 
@@ -262,7 +252,6 @@ export function useSupportConversations() {
       await messageMutation.mutateAsync({
         conversationId: created.id,
         message,
-        isApprovalReply: false,
       });
     } catch {
       // Mutation state carries the error to the UI.

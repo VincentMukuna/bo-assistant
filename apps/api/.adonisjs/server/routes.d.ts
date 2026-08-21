@@ -13,6 +13,7 @@ export type ScannedRoutes = {
     'approval_decisions.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'agent_booking_searches.store': { paramsTuple?: []; params?: {} }
     'agent_booking_reschedules.store': { paramsTuple?: []; params?: {} }
+    'agent_booking_creations.store': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'sessions.destroy': { paramsTuple?: []; params?: {} }
@@ -69,6 +70,7 @@ export type ScannedRoutes = {
     'approval_decisions.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'agent_booking_searches.store': { paramsTuple?: []; params?: {} }
     'agent_booking_reschedules.store': { paramsTuple?: []; params?: {} }
+    'agent_booking_creations.store': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'customers.store': { paramsTuple?: []; params?: {} }
     'bookings.store': { paramsTuple?: []; params?: {} }

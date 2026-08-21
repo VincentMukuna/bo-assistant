@@ -105,16 +105,6 @@ export function sendConversationMessage(conversationId: string, message: string)
   );
 }
 
-export function sendCustomerReply(
-  conversationId: string,
-  message: string,
-  isApprovalReply: boolean
-) {
-  return isApprovalReply
-    ? decideApproval(conversationId, "decline", message)
-    : sendConversationMessage(conversationId, message);
-}
-
 export function decideApproval(
   conversationId: string,
   decision: "approve" | "decline",

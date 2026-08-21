@@ -3,7 +3,7 @@ import {
   bootstrapCustomerSession,
   decideApproval,
   readBusinessSupportStream,
-  sendCustomerReply,
+  sendConversationMessage,
 } from "../lib/business-support-agent.ts";
 
 test("bootstraps identity without sending a customer selector", async () => {
@@ -21,7 +21,7 @@ test("bootstraps identity without sending a customer selector", async () => {
   }
 });
 
-test("routes every composer reply through decline while an approval is pending", async () => {
+test("routes composer messages through the conversation resource", async () => {
   const originalFetch = globalThis.fetch;
   const requests = [];
   globalThis.fetch = async (input, init) => {
@@ -29,18 +29,8 @@ test("routes every composer reply through decline while an approval is pending",
     return new Response("data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
   };
   try {
-    await sendCustomerReply("conversation-1", "yes", true);
-    await sendCustomerReply("conversation-1", "Tuesday at 3 instead", true);
-    await sendCustomerReply("conversation-1", "Hello", false);
+    await sendConversationMessage("conversation-1", "Hello");
     expect(requests).toEqual([
-      {
-        path: "/api/v1/support/conversations/conversation-1/approval-decisions",
-        body: { decision: "decline", reason: "yes" },
-      },
-      {
-        path: "/api/v1/support/conversations/conversation-1/approval-decisions",
-        body: { decision: "decline", reason: "Tuesday at 3 instead" },
-      },
       {
         path: "/api/v1/support/conversations/conversation-1/messages",
         body: { message: "Hello" },

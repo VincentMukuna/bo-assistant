@@ -115,6 +115,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_booking_reschedules_controller').default['store']>>>
     }
   }
+  'agent_booking_creations.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/agent/booking-creations'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/agent_booking_creations_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/agent_booking_creations_controller').default['store']>>>
+    }
+  }
   'auth.sessions.store': {
     methods: ["POST"]
     pattern: '/api/v1/auth/login'

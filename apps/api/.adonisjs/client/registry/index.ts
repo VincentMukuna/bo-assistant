@@ -60,6 +60,12 @@ const routes = {
     tokens: [{"old":"/api/v1/agent/booking-reschedules","type":0,"val":"api","end":""},{"old":"/api/v1/agent/booking-reschedules","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/booking-reschedules","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/booking-reschedules","type":0,"val":"booking-reschedules","end":""}],
     types: placeholder as Registry['agent_booking_reschedules.store']['types'],
   },
+  'agent_booking_creations.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/agent/booking-creations',
+    tokens: [{"old":"/api/v1/agent/booking-creations","type":0,"val":"api","end":""},{"old":"/api/v1/agent/booking-creations","type":0,"val":"v1","end":""},{"old":"/api/v1/agent/booking-creations","type":0,"val":"agent","end":""},{"old":"/api/v1/agent/booking-creations","type":0,"val":"booking-creations","end":""}],
+    types: placeholder as Registry['agent_booking_creations.store']['types'],
+  },
   'auth.sessions.store': {
     methods: ["POST"],
     pattern: '/api/v1/auth/login',

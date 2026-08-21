@@ -50,9 +50,9 @@ current and in the future, and mints a five-minute capability bound to:
 The booking action checks the expected start again inside a transaction. This makes a replay or a
 stale approval fail closed. It also checks interval overlap using both bookings' durations.
 
-Declining needs no write capability. Any composer reply while a card is pending is sent as a
-decline reason—even the word “yes”—so corrections can guide the agent toward a new proposal without
-executing the old one.
+Declining needs no write capability. While a card is pending, the normal composer is hidden so the
+customer has one unambiguous decision prompt. After declining, the composer returns and the
+customer can request a different time.
 
 ## Recovery
 

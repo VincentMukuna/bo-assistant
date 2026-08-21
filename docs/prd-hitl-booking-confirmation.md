@@ -16,7 +16,9 @@ The customer can:
 
 - Click **Confirm** to approve the suspended tool call.
 - Click **Decline** without entering a reason.
-- Type a reply such as “No, let's do 3 PM instead.” While an approval is pending, every composer reply declines the current call and becomes the optional decline reason. The agent can then propose a new exact call and the UI renders a new card.
+
+The normal composer is hidden while an approval is pending, so the card is the customer's single,
+unambiguous decision prompt.
 
 ## Problem
 
@@ -29,7 +31,7 @@ That made consent implicit, made the UI unable to distinguish an actionable requ
 - Prevent `reschedule_booking` from executing until the customer clicks **Confirm**.
 - Use Mastra's structured approval state instead of assistant prose.
 - Show the exact proposed booking change in a compact, accessible card.
-- Support one-click decline and optional natural-language corrections.
+- Support one-click decline.
 - Resume the suspended agent stream after either decision.
 - Keep the private booking capability and fixed demo-customer identity in Adonis.
 - Preserve pending cards across page refresh in the demo's existing local thread state.
@@ -48,10 +50,8 @@ That made consent implicit, made the UI unable to distinguish an actionable requ
 - Only `reschedule_booking` requires approval.
 - The actions are **Confirm** and **Decline**.
 - A decline reason is optional.
-- The composer remains enabled while a card is pending.
-- Every typed reply while pending—including “yes”—declines the current call.
-- Typed text is forwarded verbatim as the decline reason.
-- A corrected exact time creates a new Mastra tool call and therefore a new approval identity.
+- The composer is hidden while a card is pending.
+- The card is the only place where the customer confirms or declines the pending change.
 - Success is reported only after the approved tool executes successfully.
 
 ## User experience
@@ -97,8 +97,8 @@ Requirements:
 
 ### Decline
 
-1. The customer clicks **Decline**, or sends a composer message while the card is pending.
-2. The demo sends `runId`, `toolCallId`, and the optional reason to the same Adonis approval resource.
+1. The customer clicks **Decline**.
+2. The demo sends `runId` and `toolCallId` to the same Adonis approval resource.
 3. Adonis calls Mastra's `decline-tool-call` endpoint with a fresh request context.
 4. The booking mutation does not run.
 5. The resumed agent either asks a concise question or proposes a replacement call.
@@ -180,7 +180,7 @@ The retained seam is the one the application actually needs: Adonis authenticate
 - The browser never receives the encrypted booking capability.
 - The browser cannot choose the customer ID; Adonis resolves the fixed demo customer.
 - Confirm and decline reference a Mastra-suspended tool call; they do not submit replacement mutation arguments.
-- A correction must decline the old call and produce a new tool call.
+- A correction can be sent after declining the old call.
 - The UI disables duplicate decisions while a request is active.
 - Mastra is the authority for already-resolved or missing runs.
 - This demo exposes Mastra `runId` and `toolCallId` to its own browser state. They are locators, not capabilities. This avoids inventing an opaque-ID store solely for the demo.
@@ -192,19 +192,18 @@ The retained seam is the one the application actually needs: Adonis authenticate
 3. The card appears above the composer with old and proposed booking details.
 4. Clicking **Confirm** resumes the original call and streams the result.
 5. Clicking **Decline** performs no mutation and works without a reason.
-6. Typing “No, let's do 3 PM instead” declines with that exact reason.
-7. Typing “yes” does not approve.
-8. A replacement proposal replaces the old card with a distinct native approval identity.
-9. Refresh restores the pending card from versioned local thread state.
-10. The booking capability and customer selection remain server-side.
-11. Ordinary support chat and booking lookup continue to work.
-12. The card is keyboard-accessible and fits the narrow demo widget.
+6. The composer is unavailable while approval is pending, leaving one confirmation prompt.
+7. A replacement proposal replaces the old card with a distinct native approval identity.
+8. Refresh restores the pending card from versioned local thread state.
+9. The booking capability and customer selection remain server-side.
+10. Ordinary support chat and booking lookup continue to work.
+11. The card is keyboard-accessible and fits the narrow demo widget.
 
 ## Test plan
 
 - Agent source test: only the reschedule tool has `requireApproval: true` and the gate is declared before `execute`.
 - API functional tests: native streams pass through unchanged, request context includes a valid server-issued capability, and approve/decline decisions reach the correct Mastra endpoints with the optional reason.
-- Demo tests: typed replies always decline, native chunks are parsed directly, the Adonis rewrite is used, approval identity persists, and controls retain accessible labels/focus styles.
+- Demo tests: composer messages use the normal message resource, native chunks are parsed directly, the Adonis rewrite is used, approval identity persists, and controls retain accessible labels/focus styles.
 - Full repository typecheck, lint, test, and build.
 
 ## Implementation map

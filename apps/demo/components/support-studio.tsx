@@ -250,7 +250,6 @@ function ConversationView({
   onDecision: (decision: "approve" | "decline") => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
-  const awaitingOwner = approval?.status === "awaiting_owner";
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, isSending]);
@@ -306,15 +305,15 @@ function ConversationView({
           {error}
         </p>
       ) : null}
-      {!awaitingOwner ? (
+      {!approval ? (
         <form className="chat-reply" onSubmit={onSubmit}>
           <label className="sr-only" htmlFor="chat-reply-input">
             Write a message
           </label>
-          <textarea
+          <input
             id="chat-reply-input"
-            rows={2}
-            placeholder={approval ? "Decline and suggest a correction…" : "Write a message…"}
+            type="text"
+            placeholder="Write a message…"
             value={reply}
             onChange={(event) => onReplyChange(event.target.value)}
             disabled={isSending || decisionState !== "idle"}
@@ -444,10 +443,10 @@ function NewRequestForm({
         </div>
         <label>
           <span>Message</span>
-          <textarea
+          <input
             name="message"
+            type="text"
             required
-            rows={5}
             defaultValue="I need to reschedule my next appointment."
             placeholder="Share the details…"
           />
