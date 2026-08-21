@@ -63,6 +63,10 @@ services:
       MASTRA_INTERNAL_TOKEN: ${SERVICE_PASSWORD_64_MASTRA}
       CUSTOMER_APP_ORIGIN: https://oak.builtby.vin
       SESSION_DRIVER: cookie
+      MAIL_MAILER: resend
+      MAIL_FROM_NAME: Oak & Pine
+      MAIL_FROM_ADDRESS: support@mail.builtby.vin
+      RESEND_API_KEY: ${RESEND_API_KEY:?}
     volumes:
       - api-data:/workspace/apps/api/tmp
     expose:

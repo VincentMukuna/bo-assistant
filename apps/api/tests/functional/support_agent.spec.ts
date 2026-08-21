@@ -1,11 +1,14 @@
 import Booking from "#models/booking";
 import BookingRescheduleGrant from "#models/booking_reschedule_grant";
 import Customer from "#models/customer";
+import CustomerEmailVerification from "#models/customer_email_verification";
 import InboxAttentionItem from "#models/inbox_attention_item";
 import SupportConversation from "#models/support_conversation";
 import User from "#models/user";
 import { readBookingCapability } from "#services/booking_capability";
+import { hashCustomerEmailVerificationToken } from "#actions/request-customer-email-verification";
 import testUtils from "@adonisjs/core/services/test_utils";
+import mail from "@adonisjs/mail/services/main";
 import { test } from "@japa/runner";
 import { DateTime } from "luxon";
 
@@ -25,6 +28,7 @@ async function createCustomer(email = "alice.morgan@example.com") {
       phone: "+1 555 0192",
       address: "1842 Pine Street",
       notes: "",
+      emailVerifiedAt: DateTime.now(),
     }
   );
 }
@@ -41,15 +45,105 @@ async function createConversation(customer: Customer) {
 test.group("Customer support agent", (group) => {
   group.each.setup(() => testUtils.db().wrapInGlobalTransaction());
 
-  test("bootstraps the fixed demo customer without accepting a browser-selected identity", async ({
-    client,
-  }) => {
-    const customer = await createCustomer();
+  test("bootstraps an isolated anonymous customer", async ({ assert, client }) => {
     const response = await client.post("/api/v1/demo/session").json({ customerId: 999 });
 
     response.assertStatus(200);
-    response.assertBody({ customer: { name: "Alice Morgan" } });
+    response.assertBody({ customer: { name: null, email: null, isVerified: false } });
+    const customer = await Customer.query()
+      .whereLike("email", "anonymous-%@invalid.local")
+      .firstOrFail();
     response.assertSession("customerId", customer.id);
+    assert.isNull(customer.emailVerifiedAt);
+  });
+
+  test("emails a short-lived verification link and verifies the customer", async ({
+    assert,
+    client,
+  }) => {
+    const customer = await Customer.create({
+      name: "",
+      email: `anonymous-${crypto.randomUUID()}@invalid.local`,
+      phone: "",
+      address: "",
+      notes: "",
+    });
+    using fake = mail.fake();
+
+    const request = await client
+      .post("/api/v1/demo/account")
+      .withSession({ customerId: customer.id })
+      .json({ email: "new.customer@example.com" });
+
+    request.assertStatus(200);
+    request.assertBody({ sent: true });
+    fake.messages.assertSent({
+      to: "new.customer@example.com",
+      subject: "Confirm your Oak & Pine email",
+    });
+
+    const token = "known-test-token";
+    await CustomerEmailVerification.query().where("customerId", customer.id).delete();
+    await CustomerEmailVerification.create({
+      id: crypto.randomUUID(),
+      customerId: customer.id,
+      email: "new.customer@example.com",
+      name: null,
+      tokenHash: hashCustomerEmailVerificationToken(token),
+      expiresAt: DateTime.now().plus({ minutes: 15 }),
+    });
+
+    const verification = await client.post(`/api/v1/demo/email-verifications/${token}`).json({});
+    verification.assertStatus(200);
+    verification.assertBody({
+      customer: { name: null, email: "new.customer@example.com", isVerified: true },
+    });
+    await customer.refresh();
+    assert.isNotNull(customer.emailVerifiedAt);
+  });
+
+  test("keeps anonymous chat open without granting booking authority", async ({
+    assert,
+    client,
+  }) => {
+    const customer = await Customer.create({
+      name: "",
+      email: `anonymous-${crypto.randomUUID()}@invalid.local`,
+      phone: "",
+      address: "",
+      notes: "",
+    });
+    const conversation = await createConversation(customer);
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/suspended-runs")) return Response.json({ runs: [] });
+      if (url.pathname === "/api/agents/conversation-title-agent/generate") {
+        return Response.json({ text: "Cleaning services" });
+      }
+      if (url.pathname === `/api/memory/threads/${conversation.id}`) return Response.json({});
+
+      const body = JSON.parse(String(init?.body)) as {
+        requestContext: { bookingCapability: string | null; customerVerified: boolean };
+      };
+      assert.isNull(body.requestContext.bookingCapability);
+      assert.isFalse(body.requestContext.customerVerified);
+      return agentStream([
+        { type: "text-delta", payload: { text: "We offer home cleaning and repairs." } },
+      ]);
+    };
+
+    try {
+      const response = await client
+        .post(`/api/v1/support/conversations/${conversation.id}/messages`)
+        .withSession({ customerId: customer.id })
+        .json({ message: "What services do you offer?" });
+      response.assertStatus(200);
+      assert.include(response.text(), "home cleaning and repairs");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test("rejects cross-origin use of the customer session", async ({ client }) => {
@@ -98,15 +192,16 @@ test.group("Customer support agent", (group) => {
       const body = JSON.parse(String(init?.body)) as {
         messages: Array<{ content: string }>;
         memory: { thread: string; resource: string };
-        requestContext: { bookingCapability: string };
+        requestContext: { bookingCapability: string; customerVerified: boolean };
       };
       assert.deepEqual(body.memory, {
         thread: conversation.id,
         resource: `customer:${customer.id}`,
       });
       const capability = readBookingCapability(`Bearer ${body.requestContext.bookingCapability}`);
+      assert.isTrue(body.requestContext.customerVerified);
       assert.equal(capability?.kind, "booking-read");
-      assert.deepEqual(capability?.scopes, ["find_bookings"]);
+      assert.deepEqual(capability?.scopes, ["find_bookings", "create_bookings"]);
       return agentStream([
         {
           type: "text-delta",
@@ -510,7 +605,7 @@ test.group("Customer support agent", (group) => {
       assert.deepInclude(readCapability, {
         kind: "booking-read",
         customerId: customer.id,
-        scopes: ["find_bookings"],
+        scopes: ["find_bookings", "create_bookings"],
       });
       const grant = await BookingRescheduleGrant.findOrFail("tool-123");
       assert.equal(grant.customerId, customer.id);

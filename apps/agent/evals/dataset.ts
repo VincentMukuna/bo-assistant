@@ -89,10 +89,17 @@ async function getOrCreateDataset(mastra: Mastra): Promise<Dataset> {
       properties: {
         bookingCapability: { type: "string" },
         customerName: { type: "string" },
+        customerVerified: { type: "boolean" },
         timezone: { type: "string" },
         currentDate: { type: "string" },
       },
-      required: ["bookingCapability", "customerName", "timezone", "currentDate"],
+      required: [
+        "bookingCapability",
+        "customerName",
+        "customerVerified",
+        "timezone",
+        "currentDate",
+      ],
       additionalProperties: false,
     },
     metadata: { managedBy },

@@ -43,12 +43,13 @@ test("agent instructions keep booking authority with the authenticated customer"
   const requestContext = new RequestContext();
   requestContext.set("bookingCapability", "test-capability");
   requestContext.set("customerName", "Alice Morgan");
+  requestContext.set("customerVerified", true);
   requestContext.set("timezone", "America/Los_Angeles");
   requestContext.set("currentDate", "2026-08-21");
 
   const instructions = await businessSupportAgent.getInstructions({ requestContext });
 
-  expect(instructions).toContain("authenticated customer identity above is authoritative");
+  expect(instructions).toContain("customer identity above is authoritative");
   expect(instructions).toContain("do not call a booking tool");
   expect(instructions).toContain("A person's name is not a staff preference");
 });

@@ -13,7 +13,7 @@ export default class Customer extends CustomerSchema {
 
   @computed()
   get initials() {
-    return this.name
+    return (this.name || this.email || "Guest")
       .split(/\s+/)
       .slice(0, 2)
       .map((part) => part.charAt(0))

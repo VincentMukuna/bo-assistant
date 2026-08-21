@@ -124,10 +124,13 @@ export class BusinessSupportAgentClient {
   }
 
   private context(customer: Customer, conversationId: string, bookingCapability?: string) {
+    const isVerified = Boolean(customer.emailVerifiedAt);
     return {
       bookingCapability:
-        bookingCapability ?? issueBookingReadCapability(customer.id, conversationId),
-      customerName: customer.name,
+        bookingCapability ??
+        (isVerified ? issueBookingReadCapability(customer.id, conversationId) : null),
+      customerName: customer.name || "Guest",
+      customerVerified: isVerified,
       timezone: CUSTOMER_TIMEZONE,
       currentDate: DateTime.now().setZone(CUSTOMER_TIMEZONE).toISODate(),
     };

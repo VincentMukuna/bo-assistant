@@ -43,6 +43,7 @@ export type EvalScenario = {
 export const evaluationRequestContext = {
   bookingCapability: "eval-secret-capability",
   customerName: "Alice Morgan",
+  customerVerified: true,
   timezone: "America/Los_Angeles",
   currentDate: "2026-08-19",
 } as const;

@@ -17,6 +17,26 @@ import { DateTime } from "luxon";
 test.group("Agent booking resources", (group) => {
   group.each.setup(() => testUtils.db().wrapInGlobalTransaction());
 
+  test("requires a verified email before booking access", async ({ client }) => {
+    const customer = await Customer.create({
+      name: "",
+      email: `anonymous-${crypto.randomUUID()}@invalid.local`,
+      phone: "",
+      address: "",
+      notes: "",
+    });
+
+    const response = await client
+      .post("/api/v1/agent/booking-searches")
+      .header("authorization", `Bearer ${issueBookingReadCapability(customer.id)}`)
+      .json({ from: "2026-09-01T00:00:00Z", to: "2026-09-04T00:00:00Z" });
+
+    response.assertStatus(401);
+    response.assertBodyContains({
+      error: { code: "EMAIL_VERIFICATION_REQUIRED" },
+    });
+  });
+
   test("scopes booking searches to the read capability customer", async ({ assert, client }) => {
     const alice = await Customer.create({
       name: "Alice",
@@ -24,6 +44,7 @@ test.group("Agent booking resources", (group) => {
       phone: "1",
       address: "1 Pine",
       notes: "",
+      emailVerifiedAt: DateTime.now(),
     });
     const bob = await Customer.create({
       name: "Bob",
@@ -31,6 +52,7 @@ test.group("Agent booking resources", (group) => {
       phone: "2",
       address: "2 Pine",
       notes: "",
+      emailVerifiedAt: DateTime.now(),
     });
     const aliceBooking = await Booking.create({
       customerId: alice.id,
@@ -75,6 +97,7 @@ test.group("Agent booking resources", (group) => {
       phone: "1",
       address: "1 Pine",
       notes: "",
+      emailVerifiedAt: DateTime.now(),
     });
     const conversation = await SupportConversation.create({
       id: crypto.randomUUID(),
@@ -139,6 +162,7 @@ test.group("Agent booking resources", (group) => {
       phone: "1",
       address: "1 Pine",
       notes: "",
+      emailVerifiedAt: DateTime.now(),
     });
     const booking = await Booking.create({
       customerId: customer.id,
@@ -208,6 +232,7 @@ test.group("Agent booking resources", (group) => {
       phone: "1",
       address: "1 Pine",
       notes: "",
+      emailVerifiedAt: DateTime.now(),
     });
     const booking = await Booking.create({
       customerId: customer.id,
@@ -300,6 +325,7 @@ test.group("Agent booking resources", (group) => {
       phone: "1",
       address: "1 Pine",
       notes: "",
+      emailVerifiedAt: DateTime.now(),
     });
     const booking = await Booking.create({
       customerId: customer.id,

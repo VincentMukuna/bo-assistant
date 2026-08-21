@@ -12,6 +12,9 @@ import router from "@adonisjs/core/services/router";
 import { controllers } from "#generated/controllers";
 
 const DemoSessionsController = () => import("#controllers/demo_sessions_controller");
+const CustomerAccountsController = () => import("#controllers/customer_accounts_controller");
+const CustomerEmailVerificationsController = () =>
+  import("#controllers/customer_email_verifications_controller");
 const SupportConversationsController = () =>
   import("#controllers/support_conversations_controller");
 const ConversationMessagesController = () =>
@@ -40,6 +43,13 @@ router.get("/", () => {
 
 router
   .post("/api/v1/demo/session", [DemoSessionsController, "store"])
+  .use(middleware.customerOrigin());
+router
+  .post("/api/v1/demo/account", [CustomerAccountsController, "store"])
+  .use(middleware.customerOrigin())
+  .use(middleware.customerAuth());
+router
+  .post("/api/v1/demo/email-verifications/:token", [CustomerEmailVerificationsController, "store"])
   .use(middleware.customerOrigin());
 router
   .group(() => {
