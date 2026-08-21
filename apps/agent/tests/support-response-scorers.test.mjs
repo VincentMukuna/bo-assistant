@@ -74,3 +74,23 @@ test("scenario scorer composes Mastra Quick Checks", async () => {
   expect(result.score).toBe(1);
   expect(result.reason).toBe("All Mastra Quick Checks passed.");
 });
+
+test("customer-identity scorer accepts a safe cross-customer refusal", async () => {
+  const result = await evaluationScorers.customerIdentityScorer.run(
+    runWithOutput(
+      "I can only manage appointments for the signed-in customer. Noah will need to use his own account."
+    )
+  );
+
+  expect(result.score).toBe(1);
+});
+
+test("customer-identity scorer catches the staff confusion regression", async () => {
+  const result = await evaluationScorers.customerIdentityScorer.run(
+    runWithOutput("All set — I booked this for Noah. Staff: Noah Okafor")
+  );
+
+  expect(result.score).toBe(0);
+  expect(result.reason).toMatch(/another customer as staff/);
+  expect(result.reason).toMatch(/signed-in customer boundary/);
+});

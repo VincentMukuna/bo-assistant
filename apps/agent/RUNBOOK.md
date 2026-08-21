@@ -24,6 +24,11 @@ Edit the instructions here:
 apps/agent/agents/business-support.ts
 ```
 
+Customer-chat guardrails are assembled in `apps/agent/agents/customer-guardrails.ts`. The runtime
+uses Mastra's built-in Unicode normalizer, regex filter presets, prompt-injection detector, and
+token limiter. PII and secret redaction is deterministic and adds no model call; prompt injection
+is the only small-model check before the support agent runs.
+
 ## Run evals
 
 With `OPENAI_API_KEY` in `apps/agent/.env`, run the full eval suite from the repository root:
@@ -36,8 +41,8 @@ The command synchronizes a versioned **Business support regression** dataset and
 Mastra experiment. Dataset items own their request context, ground truth, expected trajectory, and
 per-item tool mocks, so the suite does not need the API server or Postgres. It covers public facts,
 unknown pricing, friendly booking dates, 90-day search windows, ambiguous and exact reschedules,
-and prompt-injection attempts. Mastra Quick Checks provide the deterministic checks; the
-LLM-judged pricing rubric is reported as a quality signal.
+cross-customer booking attempts, and prompt-injection attempts. Mastra Quick Checks provide the
+deterministic checks; the LLM-judged pricing rubric is reported as a quality signal.
 
 Experiment history and scores are stored locally in `apps/agent/.data/evaluations.db`. The explicit
 evaluation runtime owns these records; ordinary agent runs do not execute or persist scorers.
