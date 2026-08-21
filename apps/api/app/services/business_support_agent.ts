@@ -8,6 +8,7 @@ const AGENT_ID = "business-support-agent";
 const TITLE_AGENT_ID = "conversation-title-agent";
 const CUSTOMER_TIMEZONE = "America/Los_Angeles";
 const TITLE_TIMEOUT_MS = 3_000;
+const CONNECTION_RETRY_DELAY_MS = 250;
 
 export type AgentStream = {
   body: ReadableStream<Uint8Array>;
@@ -44,6 +45,12 @@ type SuspendedRunsResponse = {
 
 function resourceId(customerId: number) {
   return `customer:${customerId}`;
+}
+
+function isConnectionRefused(error: unknown) {
+  return (
+    error instanceof Error && (error as Error & { code?: string }).code === "ConnectionRefused"
+  );
 }
 
 function textFromParts(value: unknown) {
@@ -137,11 +144,20 @@ export class BusinessSupportAgentClient {
   }
 
   private async request(path: string, init: RequestInit = {}, timeoutMs = 45_000) {
-    const response = await fetch(`${this.baseUrl}/api${path}`, {
+    const url = `${this.baseUrl}/api${path}`;
+    const requestInit = {
       ...init,
       headers: { ...this.headers(), ...init.headers },
       signal: init.signal ?? AbortSignal.timeout(timeoutMs),
-    });
+    };
+    let response: Response;
+    try {
+      response = await fetch(url, requestInit);
+    } catch (error) {
+      if (!isConnectionRefused(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, CONNECTION_RETRY_DELAY_MS));
+      response = await fetch(url, requestInit);
+    }
 
     if (!response.ok) {
       const detail = await response.text().catch(() => "");

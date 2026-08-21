@@ -541,6 +541,33 @@ test.group("Customer support agent", (group) => {
     }
   });
 
+  test("retries once when the agent is still starting", async ({ assert, client }) => {
+    const customer = await createCustomer("alice-agent-startup@example.com");
+    const conversation = await createConversation(customer);
+    const originalFetch = globalThis.fetch;
+    let requests = 0;
+
+    globalThis.fetch = async () => {
+      requests += 1;
+      if (requests === 1) {
+        throw Object.assign(new TypeError("Unable to connect"), { code: "ConnectionRefused" });
+      }
+      return Response.json({ runs: [] });
+    };
+
+    try {
+      const response = await client
+        .get(`/api/v1/support/conversations/${conversation.id}/approval-request`)
+        .withSession({ customerId: customer.id });
+
+      response.assertStatus(200);
+      response.assertBody({ approvalRequest: null });
+      assert.equal(requests, 2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("loads server-owned message history from the scoped Mastra thread", async ({
     assert,
     client,
