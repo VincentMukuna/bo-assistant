@@ -14,7 +14,8 @@ function displayAttentionContext(context: Record<string, unknown>) {
   return Object.fromEntries(
     Object.entries(context).map(([key, value]) => {
       if (typeof value !== "string" || !/(?:at|date|time)$/i.test(key)) return [key, value];
-      const date = DateTime.fromISO(value);
+      const isoDate = DateTime.fromISO(value);
+      const date = isoDate.isValid ? isoDate : DateTime.fromSQL(value, { zone: "utc" });
       if (!date.isValid) return [key, value];
       return [
         `${key}Display`,

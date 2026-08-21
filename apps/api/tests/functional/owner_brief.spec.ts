@@ -283,7 +283,7 @@ test.group("Owner brief", (group) => {
       status: "pending",
       externalKey: crypto.randomUUID(),
       summary: "Confirm the requested appointment",
-      contextJson: JSON.stringify({ scheduledAt: "2026-08-18T14:30:00-07:00" }),
+      contextJson: JSON.stringify({ scheduledAt: "2026-08-18 21:30:00" }),
     });
     const originalFetch = globalThis.fetch;
 
