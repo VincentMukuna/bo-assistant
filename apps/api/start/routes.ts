@@ -84,7 +84,7 @@ router
         router.resource("bookings", controllers.Bookings).apiOnly();
         router
           .resource("inbox/conversations", WorkspaceConversationsController)
-          .only(["index", "show"]);
+          .only(["index", "show", "destroy"]);
         router.put("inbox/conversations/:id/ownership", [
           ConversationOwnershipsController,
           "update",

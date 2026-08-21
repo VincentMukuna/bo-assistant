@@ -18,6 +18,7 @@ import {
   Search,
   Send,
   ShieldCheck,
+  Trash2,
   UserRound,
 } from "lucide-react";
 
@@ -25,6 +26,14 @@ import { AgentMessageMarkdown } from "@/components/inbox/agent-message-markdown"
 import { StatusBadge } from "@/components/status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -367,6 +376,7 @@ function ConversationPanel({
   const conversationQuery = useQuery(inboxConversationQueryOptions(id));
   const conversation = conversationQuery.data;
   const [draft, setDraft] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const refresh = async () => {
@@ -394,6 +404,17 @@ function ConversationPanel({
     },
     onSuccess: refresh,
   });
+  const deleteMutation = useMutation({
+    mutationFn: () => api.inbox.destroy(id),
+    onSuccess: async () => {
+      setDeleteOpen(false);
+      queryClient.removeQueries({ queryKey: queryKeys.inboxConversation(id), exact: true });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.inbox }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.agentActivity }),
+      ]);
+    },
+  });
 
   useEffect(() => {
     const viewport = scrollRef.current?.querySelector<HTMLElement>(
@@ -418,7 +439,11 @@ function ConversationPanel({
       </div>
     );
 
-  const mutationError = ownershipMutation.error ?? messageMutation.error ?? decisionMutation.error;
+  const mutationError =
+    ownershipMutation.error ??
+    messageMutation.error ??
+    decisionMutation.error ??
+    deleteMutation.error;
   const ownerHasControl = conversation.handlingMode === "owner";
   const timeline = [
     ...conversation.messages.map((message) => ({
@@ -488,8 +513,53 @@ function ConversationPanel({
             {ownerHasControl ? <Bot className="size-4" /> : <Hand className="size-4" />}
             {ownerHasControl ? "Return to agent" : "Take over"}
           </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-zinc-400 hover:bg-red-50 hover:text-red-700"
+            onClick={() => {
+              deleteMutation.reset();
+              setDeleteOpen(true);
+            }}
+            aria-label="Delete conversation"
+            title="Delete conversation"
+          >
+            <Trash2 />
+          </Button>
         </div>
       </header>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this conversation?</DialogTitle>
+            <DialogDescription>
+              Messages and Inbox activity for {conversation.customer.name} will be permanently
+              deleted. Their customer record and bookings will be kept.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteMutation.isError ? (
+            <p className="text-sm text-red-600" role="alert">
+              {errorMessage(deleteMutation.error, "Unable to delete this conversation.")}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleteMutation.isPending}
+            >
+              Keep conversation
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete conversation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {mutationError ? (
         <p className="bg-red-50 px-5 py-2 text-xs text-red-700" role="alert">
           {errorMessage(mutationError, "That action could not be completed.")}
@@ -778,6 +848,8 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
   useEffect(() => {
     if (selectedId && selectedId !== requestedId) {
       router.replace(`/inbox?conversation=${selectedId}`, { scroll: false });
+    } else if (!selectedId && requestedId) {
+      router.replace("/inbox", { scroll: false });
     }
   }, [requestedId, router, selectedId]);
 

@@ -239,6 +239,21 @@ export function createApi({ baseUrl = "/", cache, headers }: CreateApiOptions = 
         );
         return result.conversation;
       },
+      async destroy(id: string) {
+        const response = await fetch(`/api/v1/inbox/conversations/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          credentials: "include",
+          headers: { accept: "application/json" },
+        });
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+          throw new ApiError(
+            response.status,
+            responseMessage(body) ?? `Request failed with status ${response.status}`,
+            body
+          );
+        }
+      },
       async setHandlingMode(id: string, handlingMode: "agent" | "owner") {
         return jsonRequest<{ handlingMode: "agent" | "owner"; nextStepOwner: string }>(
           `/api/v1/inbox/conversations/${encodeURIComponent(id)}/ownership`,

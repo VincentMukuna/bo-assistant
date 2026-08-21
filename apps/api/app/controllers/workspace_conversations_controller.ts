@@ -1,3 +1,4 @@
+import deleteSupportConversation from "#actions/delete-support-conversation";
 import SupportConversation from "#models/support_conversation";
 import type InboxAttentionItem from "#models/inbox_attention_item";
 import { businessSupportAgent } from "#services/business_support_agent";
@@ -105,6 +106,22 @@ export default class WorkspaceConversationsController {
         "Unable to load workspace conversation"
       );
       return response.badGateway({ error: "The conversation could not be loaded right now." });
+    }
+  }
+
+  async destroy({ params, response, logger }: HttpContext) {
+    const conversation = await SupportConversation.query()
+      .where("id", params.id)
+      .preload("customer")
+      .first();
+    if (!conversation) return response.notFound({ error: "Conversation not found." });
+
+    try {
+      await deleteSupportConversation(conversation);
+      return response.noContent();
+    } catch (error) {
+      logger.error({ err: error, conversationId: params.id }, "Unable to delete conversation");
+      return response.badGateway({ error: "The conversation could not be deleted right now." });
     }
   }
 }

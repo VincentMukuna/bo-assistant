@@ -43,8 +43,10 @@ test.group("Workspace Inbox", (group) => {
   test("protects every workspace Inbox resource with owner authentication", async ({ client }) => {
     const index = await client.get("/api/v1/inbox/conversations");
     const events = await client.get("/api/v1/inbox/events");
+    const deletion = await client.delete(`/api/v1/inbox/conversations/${crypto.randomUUID()}`);
     index.assertStatus(401);
     events.assertStatus(401);
+    deletion.assertStatus(401);
   });
 
   test("lists every conversation by operational responsibility and returns decision-ready context", async ({
@@ -231,6 +233,65 @@ test.group("Workspace Inbox", (group) => {
     assert.equal(attention.status, "completed");
     assert.equal(conversation.nextStepOwner, "none");
     assert.equal(conversation.outcomeStatus, "completed");
+  });
+
+  test("deletes an Inbox conversation and its activity while keeping customer bookings", async ({
+    assert,
+    client,
+  }) => {
+    const owner = await createOwner();
+    const customer = await createCustomer("Alice Morgan");
+    const conversation = await createConversation(customer, "Old question");
+    const booking = await Booking.create({
+      customerId: customer.id,
+      service: "Home cleaning",
+      staff: "Unassigned",
+      scheduledAt: DateTime.fromISO("2026-09-15T17:00:00Z"),
+      durationMinutes: 120,
+      status: "needs_approval",
+      serviceAddress: customer.address,
+    });
+    const attention = await InboxAttentionItem.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      cause: "authority",
+      actionType: "booking_confirmation",
+      status: "pending",
+      externalKey: "booking-creation:delete-tool-1",
+      summary: "New booking",
+      contextJson: JSON.stringify({ bookingId: booking.id }),
+    });
+    const annotation = await InboxAnnotation.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      kind: "attention",
+      summary: "New booking needs confirmation",
+    });
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(init?.method, "DELETE");
+      assert.equal(url.pathname, `/api/memory/threads/${conversation.id}`);
+      assert.equal(url.searchParams.get("agentId"), "business-support-agent");
+      assert.equal(url.searchParams.get("resourceId"), `customer:${customer.id}`);
+      return new Response(null, { status: 204 });
+    };
+
+    try {
+      const response = await client
+        .delete(`/api/v1/inbox/conversations/${conversation.id}`)
+        .withGuard("web")
+        .loginAs(owner);
+      response.assertStatus(204);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    assert.isNull(await SupportConversation.find(conversation.id));
+    assert.isNull(await InboxAttentionItem.find(attention.id));
+    assert.isNull(await InboxAnnotation.find(annotation.id));
+    assert.isNotNull(await Booking.find(booking.id));
   });
 
   test("publishes a conversation-scoped live update for workspace reconciliation", ({ assert }) => {

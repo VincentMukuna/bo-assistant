@@ -199,9 +199,15 @@ export class BusinessSupportAgentClient {
       agentId: AGENT_ID,
       resourceId: resourceId(customer.id),
     });
-    await this.request(`/memory/threads/${encodeURIComponent(threadId)}?${query}`, {
+    const path = `/memory/threads/${encodeURIComponent(threadId)}?${query}`;
+    const response = await fetch(`${this.baseUrl}/api${path}`, {
       method: "DELETE",
+      headers: this.headers(),
+      signal: AbortSignal.timeout(45_000),
     });
+    if (response.ok || response.status === 404) return;
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Mastra rejected ${path} with status ${response.status}: ${detail}`);
   }
 
   async updateThreadTitle(customer: Customer, threadId: string, title: string) {
