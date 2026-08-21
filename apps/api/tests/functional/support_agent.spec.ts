@@ -6,6 +6,7 @@ import InboxAttentionItem from "#models/inbox_attention_item";
 import SupportConversation from "#models/support_conversation";
 import User from "#models/user";
 import { readBookingCapability } from "#services/booking_capability";
+import { businessSupportAgent } from "#services/business_support_agent";
 import { hashCustomerEmailVerificationCode } from "#actions/request-customer-email-verification";
 import testUtils from "@adonisjs/core/services/test_utils";
 import mail from "@adonisjs/mail/services/main";
@@ -754,5 +755,119 @@ test.group("Customer support agent", (group) => {
       .get(`/api/v1/support/conversations/${conversation.id}`)
       .withSession({ visitorId: crypto.randomUUID() });
     response.assertStatus(404);
+  });
+});
+
+test.group("Business support agent dataset maintenance", () => {
+  test("deletes every paginated Mastra thread before resetting local conversations", async ({
+    assert,
+  }) => {
+    const originalFetch = globalThis.fetch;
+    const deleted: Array<{ id: string; resourceId: string | null }> = [];
+    const listedPages: number[] = [];
+
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(
+        init?.headers && new Headers(init.headers).get("authorization")?.startsWith("Bearer "),
+        true
+      );
+
+      if (url.pathname === "/api/memory/threads" && init?.method !== "DELETE") {
+        const page = Number(url.searchParams.get("page"));
+        listedPages.push(page);
+        return Response.json(
+          page === 0
+            ? {
+                threads: [
+                  { id: "thread-1", resourceId: "customer:1" },
+                  { id: "thread-2", resourceId: "customer:2" },
+                ],
+                hasMore: true,
+              }
+            : {
+                threads: [{ id: "thread-3", resourceId: "conversation:3" }],
+                hasMore: false,
+              }
+        );
+      }
+
+      if (init?.method === "DELETE") {
+        deleted.push({
+          id: url.pathname.split("/").at(-1)!,
+          resourceId: url.searchParams.get("resourceId"),
+        });
+        return Response.json({ result: "Thread deleted" });
+      }
+
+      return Response.json({ error: "Unexpected request" }, { status: 500 });
+    };
+
+    try {
+      assert.equal(await businessSupportAgent.deleteAllThreads(), 3);
+      assert.deepEqual(listedPages, [0, 1]);
+      assert.deepEqual(deleted, [
+        { id: "thread-1", resourceId: "customer:1" },
+        { id: "thread-2", resourceId: "customer:2" },
+        { id: "thread-3", resourceId: "conversation:3" },
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("upserts deterministic showcase messages into their Mastra thread", async ({ assert }) => {
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ path: string; body: unknown }> = [];
+
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      requests.push({ path: url.pathname, body });
+      return Response.json(body ?? {});
+    };
+
+    try {
+      await businessSupportAgent.seedThread({
+        id: "showcase-thread",
+        resourceId: "customer:7",
+        title: "Showcase request",
+        messages: [
+          {
+            id: "showcase-message",
+            role: "user",
+            content: "Can you help?",
+            createdAt: "2026-08-22T12:00:00.000Z",
+          },
+        ],
+      });
+      assert.deepEqual(requests, [
+        {
+          path: "/api/memory/threads",
+          body: {
+            threadId: "showcase-thread",
+            resourceId: "customer:7",
+            title: "Showcase request",
+          },
+        },
+        {
+          path: "/api/memory/save-messages",
+          body: {
+            messages: [
+              {
+                id: "showcase-message",
+                role: "user",
+                content: "Can you help?",
+                createdAt: "2026-08-22T12:00:00.000Z",
+                threadId: "showcase-thread",
+                resourceId: "customer:7",
+              },
+            ],
+          },
+        },
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

@@ -24,6 +24,23 @@ export type AgentMessage = {
   author: "agent" | "owner" | null;
 };
 
+export type SeedAgentMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+};
+
+type AgentThread = {
+  id: string;
+  resourceId: string;
+};
+
+type AgentThreadsResponse = {
+  threads?: AgentThread[];
+  hasMore?: boolean;
+};
+
 export type PendingRescheduleCall = {
   runId: string;
   toolCallId: string;
@@ -210,11 +227,9 @@ export class BusinessSupportAgentClient {
     });
   }
 
-  async deleteThread(threadId: string, memoryResourceId: string) {
-    const query = new URLSearchParams({
-      agentId: AGENT_ID,
-      resourceId: memoryResourceId,
-    });
+  async deleteThread(threadId: string, memoryResourceId?: string) {
+    const query = new URLSearchParams({ agentId: AGENT_ID });
+    if (memoryResourceId) query.set("resourceId", memoryResourceId);
     const path = `/memory/threads/${encodeURIComponent(threadId)}?${query}`;
     const response = await fetch(`${this.baseUrl}/api${path}`, {
       method: "DELETE",
@@ -224,6 +239,51 @@ export class BusinessSupportAgentClient {
     if (response.ok || response.status === 404) return;
     const detail = await response.text().catch(() => "");
     throw new Error(`Mastra rejected ${path} with status ${response.status}: ${detail}`);
+  }
+
+  async deleteAllThreads() {
+    const threads: AgentThread[] = [];
+    let page = 0;
+
+    while (true) {
+      const query = new URLSearchParams({
+        agentId: AGENT_ID,
+        page: String(page),
+        perPage: "100",
+      });
+      const response = await this.request(`/memory/threads?${query}`);
+      const result = (await response.json()) as AgentThreadsResponse;
+      threads.push(...(result.threads ?? []));
+      if (!result.hasMore) break;
+      page += 1;
+    }
+
+    for (const thread of threads) {
+      await this.deleteThread(thread.id, thread.resourceId);
+    }
+
+    return threads.length;
+  }
+
+  async seedThread(input: {
+    id: string;
+    resourceId: string;
+    title: string;
+    messages: SeedAgentMessage[];
+  }) {
+    await this.createThread(input.id, input.resourceId, input.title);
+    if (!input.messages.length) return;
+
+    await this.request(`/memory/save-messages?agentId=${encodeURIComponent(AGENT_ID)}`, {
+      method: "POST",
+      body: JSON.stringify({
+        messages: input.messages.map((message) => ({
+          ...message,
+          threadId: input.id,
+          resourceId: input.resourceId,
+        })),
+      }),
+    });
   }
 
   async updateThreadTitle(conversation: SupportConversation, title: string) {
