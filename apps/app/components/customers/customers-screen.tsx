@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api, type Booking, type Customer } from "@/lib/api";
+import { formatBusinessDate, formatBusinessTime } from "@/lib/business-time";
 import {
   bookingsQueryOptions,
   customersQueryOptions,
@@ -43,11 +44,10 @@ const emptyCustomers: Customer[] = [];
 const emptyBookings: Booking[] = [];
 
 function formatBookingDate(booking: Booking) {
-  const date = new Date(booking.scheduledAt);
   return {
-    day: date.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }),
-    date: date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }),
-    time: date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }),
+    day: formatBusinessDate(booking.scheduledAt, { weekday: "short" }),
+    date: formatBusinessDate(booking.scheduledAt, { month: "short", day: "numeric" }),
+    time: `${formatBusinessTime(booking.scheduledAt)} PT`,
   };
 }
 

@@ -5,6 +5,12 @@ export interface ApiDefinition {
   demoSessions: {
     store: typeof routes['demo_sessions.store']
   }
+  customerAccounts: {
+    store: typeof routes['customer_accounts.store']
+  }
+  customerEmailVerifications: {
+    store: typeof routes['customer_email_verifications.store']
+  }
   conversations: {
     index: typeof routes['conversations.index']
     store: typeof routes['conversations.store']
@@ -56,6 +62,7 @@ export interface ApiDefinition {
   inboxConversations: {
     index: typeof routes['inbox_conversations.index']
     show: typeof routes['inbox_conversations.show']
+    destroy: typeof routes['inbox_conversations.destroy']
   }
   conversationOwnerships: {
     update: typeof routes['conversation_ownerships.update']
@@ -71,5 +78,11 @@ export interface ApiDefinition {
   }
   agentActivities: {
     index: typeof routes['agent_activities.index']
+  }
+  ownerBriefs: {
+    index: typeof routes['owner_briefs.index']
+  }
+  ownerAssistantMessages: {
+    store: typeof routes['owner_assistant_messages.store']
   }
 }

@@ -5,7 +5,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
-import { Activity, Bell, CalendarDays, Check, Inbox, LogOut, Menu, Users } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  CalendarDays,
+  Check,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Users,
+} from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,6 +42,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
+  { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/customers", label: "Customers", icon: Users },
@@ -41,7 +52,7 @@ const navItems: NavItem[] = [
 function Brand() {
   return (
     <Link
-      href="/inbox"
+      href="/overview"
       className="focus-visible:ring-ring flex shrink-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2"
       aria-label="Oak and Pine home"
     >
@@ -154,7 +165,7 @@ function AccountMenu() {
       <DropdownMenuContent align="end" className="w-56 p-1.5">
         <DropdownMenuLabel className="px-2 py-2">
           <span className="text-foreground block truncate text-sm font-semibold">
-            {user?.fullName ?? "Oak & Pine owner"}
+            {user?.fullName ?? "Oak & Pine"}
           </span>
           <span className="text-muted-foreground mt-0.5 block truncate font-normal">
             {user?.email}

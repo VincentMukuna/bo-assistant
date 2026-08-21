@@ -3,6 +3,7 @@ import { SimpleAuth } from "@mastra/core/server";
 import { PinoLogger } from "@mastra/loggers";
 import { businessSupportAgent } from "@/agents/business-support";
 import { conversationTitleAgent } from "@/agents/conversation-title";
+import { ownerOperationsAgent } from "@/agents/owner-operations";
 import { postgresStore } from "@/storage";
 
 const logLevel =
@@ -14,7 +15,7 @@ const logLevel =
     : "debug";
 
 export const mastra = new Mastra({
-  agents: { businessSupportAgent, conversationTitleAgent },
+  agents: { businessSupportAgent, conversationTitleAgent, ownerOperationsAgent },
   environment: process.env.NODE_ENV === "production" ? "production" : "development",
   logger: new PinoLogger({
     name: "business-support-agent",

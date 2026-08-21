@@ -9,6 +9,7 @@ export const queryKeys = {
   inbox: ["inbox", "conversations"] as const,
   inboxConversation: (id: string) => ["inbox", "conversations", id] as const,
   agentActivity: ["agent-activity"] as const,
+  ownerBrief: ["owner-brief"] as const,
 };
 
 export const profileQueryOptions = queryOptions({
@@ -42,6 +43,11 @@ export const inboxQueryOptions = queryOptions({
 export const agentActivityQueryOptions = queryOptions({
   queryKey: queryKeys.agentActivity,
   queryFn: api.agentActivity.index,
+});
+
+export const ownerBriefQueryOptions = queryOptions({
+  queryKey: queryKeys.ownerBrief,
+  queryFn: api.ownerBrief.index,
 });
 
 export function inboxConversationQueryOptions(id: string) {

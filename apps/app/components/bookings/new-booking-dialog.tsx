@@ -21,6 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, type Booking, type BookingInput, type BookingStatus, type Customer } from "@/lib/api";
+import {
+  businessLocalDateTimeToIso,
+  formatBusinessDate,
+  formatBusinessTime,
+} from "@/lib/business-time";
 import { errorMessage, queryKeys } from "@/lib/queries";
 
 const weekDays = [
@@ -50,10 +55,9 @@ function to24Hour(time: string) {
 
 function bookingDefaults(booking?: Booking) {
   if (!booking) return { day: "Wed", time: "1:30 PM" };
-  const date = new Date(booking.scheduledAt);
   return {
-    day: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getUTCDay()],
-    time: date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }),
+    day: formatBusinessDate(booking.scheduledAt, { weekday: "short" }),
+    time: formatBusinessTime(booking.scheduledAt, { hour: "numeric", minute: "2-digit" }),
   };
 }
 
@@ -101,7 +105,7 @@ export function NewBookingDialog({
       customerId: selectedCustomer.id,
       service,
       staff,
-      scheduledAt: `${dateByDay[day]}T${to24Hour(time)}:00.000Z`,
+      scheduledAt: businessLocalDateTimeToIso(dateByDay[day], to24Hour(time)),
       durationMinutes: Number(durationMinutes),
       status,
       serviceAddress: selectedCustomer.address,

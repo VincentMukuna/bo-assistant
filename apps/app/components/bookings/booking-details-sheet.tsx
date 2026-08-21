@@ -34,6 +34,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, type Booking, type BookingInput, type BookingStatus } from "@/lib/api";
+import {
+  businessDateKey,
+  businessLocalDateTimeToIso,
+  businessTimeInputValue,
+  formatBusinessDate,
+  formatBusinessTime,
+} from "@/lib/business-time";
 import { errorMessage, queryKeys } from "@/lib/queries";
 
 const statusLabels = {
@@ -46,29 +53,27 @@ const statusLabels = {
 type EditableField = "service" | "date" | "time" | "duration" | "staff" | "status";
 
 function dateInputValue(value: string) {
-  return new Date(value).toISOString().slice(0, 10);
+  return businessDateKey(value);
 }
 
 function timeInputValue(value: string) {
-  return new Date(value).toISOString().slice(11, 16);
+  return businessTimeInputValue(value);
 }
 
 function longDate(value: string) {
-  return new Date(value).toLocaleDateString("en-US", {
+  return formatBusinessDate(value, {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-    timeZone: "UTC",
   });
 }
 
 function timeLabel(value: string) {
-  return new Date(value).toLocaleTimeString("en-US", {
+  return `${formatBusinessTime(value, {
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "UTC",
-  });
+  })} PT`;
 }
 
 function durationLabel(minutes: number) {
@@ -214,6 +219,7 @@ export function BookingDetailsDialog({
           a.scheduledAt.localeCompare(b.scheduledAt)
         )
       );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.ownerBrief });
       setActiveField(undefined);
     },
   });
@@ -223,6 +229,7 @@ export function BookingDetailsDialog({
       queryClient.setQueryData<Booking[]>(queryKeys.bookings, (current = []) =>
         current.filter((item) => item.id !== booking.id)
       );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.ownerBrief });
       onOpenChange(false);
     },
   });
@@ -249,11 +256,11 @@ export function BookingDetailsDialog({
     if (activeField === "service") updateMutation.mutate({ service: draft.trim() });
     else if (activeField === "date") {
       updateMutation.mutate({
-        scheduledAt: `${draft}T${timeInputValue(booking.scheduledAt)}:00.000Z`,
+        scheduledAt: businessLocalDateTimeToIso(draft, timeInputValue(booking.scheduledAt)),
       });
     } else if (activeField === "time") {
       updateMutation.mutate({
-        scheduledAt: `${dateInputValue(booking.scheduledAt)}T${draft}:00.000Z`,
+        scheduledAt: businessLocalDateTimeToIso(dateInputValue(booking.scheduledAt), draft),
       });
     } else if (activeField === "duration") {
       updateMutation.mutate({ durationMinutes: Number(draft) });
@@ -467,15 +474,26 @@ export function BookingDetailsDialog({
           <p className="hidden text-xs text-zinc-400 sm:block">
             Select a field to edit it in place.
           </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-zinc-500 hover:bg-red-50 hover:text-red-700"
-            onClick={() => setConfirmingDelete(true)}
-            disabled={confirmingDelete || deleteMutation.isPending}
-          >
-            <Trash2 /> Delete booking
-          </Button>
+          <div className="flex items-center gap-2">
+            {booking.status === "needs_approval" ? (
+              <Button
+                size="sm"
+                onClick={() => updateMutation.mutate({ status: "confirmed" })}
+                disabled={updateMutation.isPending}
+              >
+                <Check /> {updateMutation.isPending ? "Confirming…" : "Confirm booking"}
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-zinc-500 hover:bg-red-50 hover:text-red-700"
+              onClick={() => setConfirmingDelete(true)}
+              disabled={confirmingDelete || deleteMutation.isPending}
+            >
+              <Trash2 /> Delete booking
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

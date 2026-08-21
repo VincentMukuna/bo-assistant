@@ -36,6 +36,9 @@ const OwnerConversationMessagesController = () =>
 const AttentionDecisionsController = () => import("#controllers/attention_decisions_controller");
 const InboxEventsController = () => import("#controllers/inbox_events_controller");
 const AgentActivitiesController = () => import("#controllers/agent_activities_controller");
+const OwnerBriefsController = () => import("#controllers/owner_briefs_controller");
+const OwnerAssistantMessagesController = () =>
+  import("#controllers/owner_assistant_messages_controller");
 
 router.get("/", () => {
   return { hello: "world" };
@@ -110,6 +113,8 @@ router
         ]);
         router.get("inbox/events", [InboxEventsController, "index"]);
         router.get("agent-activities", [AgentActivitiesController, "index"]);
+        router.get("owner-briefs", [OwnerBriefsController, "index"]);
+        router.post("owner-assistant/messages", [OwnerAssistantMessagesController, "store"]);
       })
       .use(middleware.auth({ guards: ["web"] }));
   })

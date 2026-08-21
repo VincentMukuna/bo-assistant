@@ -88,7 +88,7 @@ test.group("Customer support agent", (group) => {
     const message = fake.messages.sent()[0];
     const text = String(message.nodeMailerMessage.text);
     const code = text.match(/\b\d{6}\b/)?.[0];
-    assert.isDefined(code);
+    if (!code) throw new Error("Expected a six-digit verification code in the email");
     assert.notInclude(text, "http");
     const pending = await CustomerEmailVerification.query()
       .where("visitorId", visitorId)
