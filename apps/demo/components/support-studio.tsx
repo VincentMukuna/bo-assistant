@@ -185,10 +185,7 @@ export function SupportStudio() {
             />
           ) : null}
           {view === "new" ? (
-            <NewRequestForm
-              customerName={support.session?.name ?? null}
-              onStart={submitNewRequest}
-            />
+            <NewRequestForm onStart={submitNewRequest} />
           ) : null}
           {view === "conversation" ? (
             <ConversationView
@@ -200,7 +197,6 @@ export function SupportStudio() {
               decisionState={support.decisionState}
               onSend={submitReply}
               onDecision={support.submitDecision}
-              customerName={support.session?.name ?? null}
               isVerified={Boolean(support.session?.isVerified)}
               onVerify={() => setView("account")}
             />
@@ -284,7 +280,6 @@ function ConversationView({
   decisionState,
   onSend,
   onDecision,
-  customerName,
   isVerified,
   onVerify,
 }: {
@@ -295,7 +290,6 @@ function ConversationView({
   decisionState: DecisionState;
   onSend: (message: string) => void;
   onDecision: (decision: "approve" | "decline") => void;
-  customerName: string | null;
   isVerified: boolean;
   onVerify: () => void;
 }) {
@@ -337,11 +331,7 @@ function ConversationView({
             ))}
           </>
         ) : (
-          <ChatStarter
-            customerName={customerName}
-            onSelect={onSend}
-            disabled={replyUnavailable}
-          />
+          <ChatStarter onSelect={onSend} disabled={replyUnavailable} />
         )}
         {isSending && !messages.some((message) => message.id === "streaming-assistant") ? (
           <div
@@ -485,13 +475,7 @@ function ApprovalCard({
   );
 }
 
-function NewRequestForm({
-  customerName,
-  onStart,
-}: {
-  customerName: string | null;
-  onStart: (message: string) => void;
-}) {
+function NewRequestForm({ onStart }: { onStart: (message: string) => void }) {
   function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = String(new FormData(event.currentTarget).get("message") ?? "").trim();
@@ -501,7 +485,7 @@ function NewRequestForm({
   return (
     <div className="chat-view chat-new-view">
       <div className="chat-messages chat-new-messages">
-        <ChatStarter customerName={customerName} onSelect={onStart} />
+        <ChatStarter onSelect={onStart} />
       </div>
       <form className="chat-reply" onSubmit={submitMessage}>
         <label className="sr-only" htmlFor="chat-new-reply-input">
@@ -526,11 +510,9 @@ function NewRequestForm({
 }
 
 function ChatStarter({
-  customerName,
   onSelect,
   disabled = false,
 }: {
-  customerName: string | null;
   onSelect: (message: string) => void;
   disabled?: boolean;
 }) {
@@ -540,7 +522,7 @@ function ChatStarter({
         <span>O&amp;P</span>
         <div>
           <div className="chat-message-body">
-            <p>Hi{customerName ? ` ${customerName.split(" ")[0]}` : ""}! How can we help today?</p>
+            <p>Hi! How can we help today?</p>
           </div>
         </div>
       </div>
