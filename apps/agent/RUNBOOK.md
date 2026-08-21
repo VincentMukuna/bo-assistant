@@ -14,7 +14,7 @@ bun run dev
 
 This starts Postgres, the app, API, demo, and agent together. Open [http://localhost:4111](http://localhost:4111), edit the agent, and test it in Studio. Source changes reload automatically. Press `Ctrl+C` when you are done.
 
-Studio records local traces, model and tool spans, token and latency metrics, scores, and debug-level logs. Use the **Observability**, **Metrics**, and **Logs** screens to inspect agent runs. The telemetry is kept locally in `apps/agent/.data/observability.duckdb`; Postgres remains the agent's regular storage. Booking capabilities are redacted from stored traces.
+Studio records traces, model and tool spans, token and latency metrics, scores, and debug-level logs. Use the **Observability**, **Metrics**, and **Logs** screens to inspect agent runs. Agent state, evaluation data, and telemetry use Postgres. Booking capabilities are redacted from stored traces.
 
 Edit the instructions here:
 

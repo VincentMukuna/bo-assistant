@@ -27,10 +27,6 @@ services:
       MASTRA_DATABASE_URL: postgresql://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/mastra
       MASTRA_INTERNAL_TOKEN: ${SERVICE_PASSWORD_64_MASTRA}
       MASTRA_LOG_LEVEL: info
-      MASTRA_OBSERVABILITY_DATABASE_PATH: /data/observability.duckdb
-      MASTRA_EVALUATION_DATABASE_URL: file:/data/evaluations.db
-    volumes:
-      - agent-data:/data
     expose:
       - "4111"
     depends_on:
@@ -148,5 +144,4 @@ services:
 
 volumes:
   mastra-db-data:
-  agent-data:
   api-data:

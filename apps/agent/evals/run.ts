@@ -1,6 +1,5 @@
 import type { ExperimentSummary, ItemWithScores } from "@mastra/core/datasets";
 import { extractToolCalls, getAssistantMessageFromRunOutput } from "@mastra/evals/scorers/utils";
-import { resolve, sep } from "node:path";
 import { evaluationDatasetId, evaluationTargetId, syncEvaluationDataset } from "@/evals/dataset";
 import { scenarios, type EvalScenario } from "@/evals/scenarios";
 
@@ -11,14 +10,6 @@ function loadEnvironment() {
     );
   }
 
-  const initialDirectory = process.env.INIT_CWD ?? process.cwd();
-  const agentDirectory = initialDirectory.endsWith(`${sep}apps${sep}agent`)
-    ? initialDirectory
-    : resolve(initialDirectory, "apps/agent");
-  process.env.MASTRA_OBSERVABILITY_DATABASE_PATH ??= resolve(
-    agentDirectory,
-    ".data/eval-observability.duckdb"
-  );
   process.env.MASTRA_LOG_LEVEL ??= "warn";
 }
 
