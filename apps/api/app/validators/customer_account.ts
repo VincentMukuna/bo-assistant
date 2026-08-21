@@ -6,6 +6,7 @@ export const requestCustomerEmailVerificationValidator = vine.create({
 });
 
 export const verifyCustomerEmailValidator = vine.create({
+  email: vine.string().trim().email().maxLength(254),
   code: vine
     .string()
     .trim()

@@ -187,7 +187,7 @@ export function useSupportConversations() {
   });
 
   const verifyEmailMutation = useMutation({
-    mutationFn: verifyEmail,
+    mutationFn: ({ email, code }: { email: string; code: string }) => verifyEmail(email, code),
     onSuccess: async (result) => {
       queryClient.setQueryData(supportQueryKeys.session(), result);
       setPendingVerification(null);
@@ -309,8 +309,9 @@ export function useSupportConversations() {
   }
 
   async function verifyEmailCode(code: string) {
+    if (!pendingVerification) return;
     verifyEmailMutation.reset();
-    await verifyEmailMutation.mutateAsync(code);
+    await verifyEmailMutation.mutateAsync({ email: pendingVerification.email, code });
   }
 
   function changeVerificationEmail() {

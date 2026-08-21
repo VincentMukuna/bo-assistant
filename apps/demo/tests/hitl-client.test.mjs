@@ -4,6 +4,7 @@ import {
   decideApproval,
   readBusinessSupportStream,
   sendConversationMessage,
+  verifyEmail,
 } from "../lib/business-support-agent.ts";
 
 test("bootstraps identity without sending a customer selector", async () => {
@@ -16,6 +17,25 @@ test("bootstraps identity without sending a customer selector", async () => {
   };
   try {
     expect(await bootstrapCustomerSession()).toEqual({ customer: { name: "Alice Morgan" } });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("verifies an email code without a browser challenge identifier", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    expect(String(input)).toBe("/api/v1/demo/email-verifications");
+    expect(JSON.parse(String(init.body))).toEqual({
+      email: "alice@example.com",
+      code: "123456",
+    });
+    return Response.json({
+      customer: { name: "Alice", email: "alice@example.com", isVerified: true },
+    });
+  };
+  try {
+    await verifyEmail("alice@example.com", "123456");
   } finally {
     globalThis.fetch = originalFetch;
   }

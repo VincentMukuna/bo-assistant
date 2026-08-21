@@ -5,9 +5,10 @@ import { DateTime } from "luxon";
 
 const MAX_FAILED_ATTEMPTS = 5;
 
-export default async function verifyCustomerEmail(verificationId: string, code: string) {
+export default async function verifyCustomerEmail(email: string, code: string) {
   const verification = await CustomerEmailVerification.query()
-    .where("id", verificationId)
+    .whereRaw("LOWER(email) = ?", [email.toLowerCase()])
+    .orderBy("createdAt", "desc")
     .preload("customer")
     .first();
 

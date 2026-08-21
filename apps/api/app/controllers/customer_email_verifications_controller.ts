@@ -4,19 +4,12 @@ import type { HttpContext } from "@adonisjs/core/http";
 
 export default class CustomerEmailVerificationsController {
   async store({ request, response, session }: HttpContext) {
-    const { code } = await request.validateUsing(verifyCustomerEmailValidator);
-    const verificationId = session.get("customerEmailVerificationId");
-    if (typeof verificationId !== "string") {
-      return response.gone({ error: "Request a new verification code to continue." });
-    }
-
-    const result = await verifyCustomerEmail(verificationId, code);
+    const { email, code } = await request.validateUsing(verifyCustomerEmailValidator);
+    const result = await verifyCustomerEmail(email, code);
     if (result.status === "expired") {
-      session.forget("customerEmailVerificationId");
       return response.gone({ error: "That code has expired. Request a new one to continue." });
     }
     if (result.status === "locked") {
-      session.forget("customerEmailVerificationId");
       return response.tooManyRequests({
         error: "Too many incorrect attempts. Request a new code to try again.",
       });
@@ -27,7 +20,6 @@ export default class CustomerEmailVerificationsController {
       });
     }
 
-    session.forget("customerEmailVerificationId");
     session.put("customerId", result.customer.id);
     return {
       customer: {

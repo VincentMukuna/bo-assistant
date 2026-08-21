@@ -80,10 +80,10 @@ export function requestEmailVerification(email: string, name?: string) {
   );
 }
 
-export function verifyEmail(code: string) {
+export function verifyEmail(email: string, code: string) {
   return json<CustomerSession>(
     "/api/v1/demo/email-verifications",
-    { method: "POST", body: JSON.stringify({ code }) },
+    { method: "POST", body: JSON.stringify({ email, code }) },
     "That verification code could not be confirmed."
   );
 }

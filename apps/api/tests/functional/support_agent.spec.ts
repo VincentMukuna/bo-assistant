@@ -57,7 +57,7 @@ test.group("Customer support agent", (group) => {
     assert.isNull(customer.emailVerifiedAt);
   });
 
-  test("emails a short-lived verification code and verifies the customer", async ({
+  test("verifies an emailed code without a pre-existing browser session", async ({
     assert,
     client,
   }) => {
@@ -90,18 +90,14 @@ test.group("Customer support agent", (group) => {
     const pending = await CustomerEmailVerification.query()
       .where("customerId", customer.id)
       .firstOrFail();
-
     const verification = await client
       .post("/api/v1/demo/email-verifications")
-      .withSession({
-        customerId: customer.id,
-        customerEmailVerificationId: pending.id,
-      })
-      .json({ code });
+      .json({ email: pending.email, code });
     verification.assertStatus(200);
     verification.assertBody({
       customer: { name: null, email: "new.customer@example.com", isVerified: true },
     });
+    verification.assertSession("customerId", customer.id);
     await customer.refresh();
     assert.isNotNull(customer.emailVerifiedAt);
   });
@@ -130,21 +126,13 @@ test.group("Customer support agent", (group) => {
     for (let attempt = 1; attempt <= 4; attempt += 1) {
       const response = await client
         .post("/api/v1/demo/email-verifications")
-        .withSession({
-          customerId: customer.id,
-          customerEmailVerificationId: verificationId,
-        })
-        .json({ code: "000000" });
+        .json({ email: "new.customer@example.com", code: "000000" });
       response.assertStatus(422);
     }
 
     const locked = await client
       .post("/api/v1/demo/email-verifications")
-      .withSession({
-        customerId: customer.id,
-        customerEmailVerificationId: verificationId,
-      })
-      .json({ code: "000000" });
+      .json({ email: "new.customer@example.com", code: "000000" });
     locked.assertStatus(429);
     assert.isNull(await CustomerEmailVerification.find(verificationId));
   });
