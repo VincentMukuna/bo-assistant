@@ -25,28 +25,27 @@ COPY apps/api ./apps/api
 RUN bun run --filter api build
 
 
-FROM dependencies AS agent-builder
+FROM api-builder AS agent-builder
 
 COPY apps/agent ./apps/agent
 
 RUN bun run --filter agent build
 
 
-FROM dependencies AS app-builder
+FROM agent-builder AS app-builder
 
 ARG ADONIS_URL=http://api:3333
 
 ENV ADONIS_URL=${ADONIS_URL} \
     NEXT_TELEMETRY_DISABLED=1
 
-COPY apps/api ./apps/api
 COPY apps/app ./apps/app
 
 RUN --mount=type=cache,id=bo-assistant-next-app,target=/workspace/apps/app/.next/cache,sharing=locked \
     bun run --filter app build
 
 
-FROM dependencies AS demo-builder
+FROM app-builder AS demo-builder
 
 ARG ADONIS_URL=http://api:3333
 
