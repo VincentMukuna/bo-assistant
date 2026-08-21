@@ -279,14 +279,13 @@ function ConversationView({
         {isSending && !messages.some((message) => message.id === "streaming-assistant") ? (
           <div
             className="chat-message chat-message--business chat-message--typing"
-            aria-label="Oak and Pine is typing"
+            role="status"
+            aria-live="polite"
           >
             <span>O&amp;P</span>
             <div>
               <div className="chat-message-body chat-message-body--typing">
-                <i />
-                <i />
-                <i />
+                One moment…
               </div>
             </div>
           </div>

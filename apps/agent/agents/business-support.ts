@@ -32,6 +32,16 @@ Format every reply as compact Markdown suitable for a narrow chat window. Use sh
 
 Write like a helpful person, not an API response: weave relevant details into natural sentences instead of repeating field labels such as “status” or “duration,” and omit operational details the customer did not ask for. Be concise, calm, and professional. Ask only for information that materially affects the answer. Never invent customer details, company policies, prices, availability, or actions taken in external systems.`,
   model: "openai/gpt-5-mini",
+  defaultOptions: {
+    modelSettings: {
+      maxOutputTokens: 800,
+    },
+    providerOptions: {
+      openai: {
+        reasoningEffort: "low",
+      },
+    },
+  },
   inputProcessors: createCustomerInputGuardrails(),
   outputProcessors: createCustomerOutputGuardrails(),
   memory: new Memory({

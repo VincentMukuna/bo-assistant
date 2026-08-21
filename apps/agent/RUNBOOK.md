@@ -27,7 +27,8 @@ apps/agent/agents/business-support.ts
 Customer-chat guardrails are assembled in `apps/agent/agents/customer-guardrails.ts`. The runtime
 uses Mastra's built-in Unicode normalizer, regex filter presets, prompt-injection detector, and
 token limiter. PII and secret redaction is deterministic and adds no model call; prompt injection
-is the only small-model check before the support agent runs.
+is the only small-model check before the support agent runs. The support model uses low reasoning
+and an 800-token response cap to keep replies responsive.
 
 ## Run evals
 
