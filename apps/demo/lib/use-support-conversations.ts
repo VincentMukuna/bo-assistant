@@ -10,7 +10,9 @@ import {
   readApprovalRequest,
   readBusinessSupportStream,
   readConversation,
+  requestEmailVerification,
   sendConversationMessage,
+  verifyEmail,
   type ApprovalRequest,
   type ConversationSummary,
   type SupportConversation,
@@ -46,6 +48,7 @@ export function useSupportConversations() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingExchange, setPendingExchange] = useState<PendingExchange | null>(null);
+  const [verificationSentTo, setVerificationSentTo] = useState("");
   const [notice, setNotice] = useState("");
   const noticeTimeoutRef = useRef<number | null>(null);
 
@@ -166,6 +169,30 @@ export function useSupportConversations() {
     },
   });
 
+  const requestVerificationMutation = useMutation({
+    mutationFn: ({ email, name }: { email: string; name?: string }) =>
+      requestEmailVerification(email, name),
+    onSuccess: (result, variables) => {
+      if (result.customer) {
+        queryClient.setQueryData(supportQueryKeys.session(), result);
+        announce("Email verified");
+        return;
+      }
+      setVerificationSentTo(variables.email);
+    },
+  });
+
+  const verifyEmailMutation = useMutation({
+    mutationFn: verifyEmail,
+    onSuccess: async (result) => {
+      queryClient.setQueryData(supportQueryKeys.session(), result);
+      setVerificationSentTo("");
+      setSelectedId(null);
+      await queryClient.invalidateQueries({ queryKey: supportQueryKeys.conversations() });
+      announce("Email verified");
+    },
+  });
+
   const conversation = conversationQuery.data ?? null;
   const approval = approvalQuery.data ?? null;
   const activeExchange = pendingExchange?.conversationId === activeId ? pendingExchange : null;
@@ -208,13 +235,17 @@ export function useSupportConversations() {
     approvalQuery.error,
     createConversationMutation.error,
     messageMutation.error,
-    decisionMutation.error
+    decisionMutation.error,
+    requestVerificationMutation.error,
+    verifyEmailMutation.error
   );
 
   function resetMutationErrors() {
     createConversationMutation.reset();
     messageMutation.reset();
     decisionMutation.reset();
+    requestVerificationMutation.reset();
+    verifyEmailMutation.reset();
   }
 
   function selectConversation(id: string) {
@@ -258,7 +289,19 @@ export function useSupportConversations() {
     }
   }
 
+  async function requestVerification(email: string, name?: string) {
+    requestVerificationMutation.reset();
+    setVerificationSentTo("");
+    await requestVerificationMutation.mutateAsync({ email, name });
+  }
+
+  async function verifyEmailToken(token: string) {
+    verifyEmailMutation.reset();
+    await verifyEmailMutation.mutateAsync(token);
+  }
+
   return {
+    session: sessionQuery.data?.customer ?? null,
     threads,
     conversation,
     approval,
@@ -268,10 +311,15 @@ export function useSupportConversations() {
     error,
     isSending,
     decisionState,
+    isRequestingVerification: requestVerificationMutation.isPending,
+    isVerifyingEmail: verifyEmailMutation.isPending,
+    verificationSentTo,
     selectConversation,
     sendReply,
     submitDecision,
     createRequest,
+    requestVerification,
+    verifyEmailToken,
   };
 }
 

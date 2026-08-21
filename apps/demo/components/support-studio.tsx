@@ -10,8 +10,10 @@ import {
   Clock3,
   List,
   MessageCircle,
+  MailCheck,
   Plus,
   Send,
+  UserRound,
   X,
 } from "lucide-react";
 import type {
@@ -21,7 +23,7 @@ import type {
 } from "@/lib/business-support-agent";
 import { useSupportConversations, type DecisionState } from "@/lib/use-support-conversations";
 
-type ChatView = "conversation" | "threads" | "new";
+type ChatView = "account" | "conversation" | "threads" | "new";
 function formatBookingTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Los_Angeles",
@@ -45,6 +47,22 @@ export function SupportStudio() {
   const [view, setView] = useState<ChatView>("conversation");
   const [isOpen, setIsOpen] = useState(false);
   const [reply, setReply] = useState("");
+  const handledVerificationRef = useRef(false);
+
+  useEffect(() => {
+    if (handledVerificationRef.current) return;
+    if (!support.session) return;
+    const token = new URLSearchParams(window.location.search).get("verify");
+    if (!token) return;
+    handledVerificationRef.current = true;
+    window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+    const timeout = window.setTimeout(() => {
+      setView("account");
+      setIsOpen(true);
+      void support.verifyEmailToken(token).catch(() => undefined);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [support]);
 
   async function submitReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,6 +79,15 @@ export function SupportStudio() {
     if (!message) return;
     setView("conversation");
     await support.createRequest(message);
+  }
+
+  async function submitAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") ?? "").trim();
+    const name = String(form.get("name") ?? "").trim();
+    if (!email) return;
+    await support.requestVerification(email, name || undefined).catch(() => undefined);
   }
 
   return (
@@ -97,6 +124,13 @@ export function SupportStudio() {
             <div className="chat-header-actions">
               <button
                 type="button"
+                onClick={() => setView("account")}
+                aria-label={support.session?.isVerified ? "View account" : "Verify email"}
+              >
+                {support.session?.isVerified ? <Check size={17} /> : <UserRound size={17} />}
+              </button>
+              <button
+                type="button"
                 onClick={() => setView("threads")}
                 aria-label="View conversations"
               >
@@ -127,8 +161,23 @@ export function SupportStudio() {
               onNew={() => setView("new")}
             />
           ) : null}
+          {view === "account" ? (
+            <AccountView
+              session={support.session}
+              sentTo={support.verificationSentTo}
+              error={support.error}
+              isSending={support.isRequestingVerification}
+              isVerifying={support.isVerifyingEmail}
+              onBack={() => setView("conversation")}
+              onSubmit={submitAccount}
+            />
+          ) : null}
           {view === "new" ? (
-            <NewRequestForm onCancel={() => setView("conversation")} onSubmit={submitNewRequest} />
+            <NewRequestForm
+              customerName={support.session?.name ?? null}
+              onCancel={() => setView("conversation")}
+              onSubmit={submitNewRequest}
+            />
           ) : null}
           {view === "conversation" ? (
             <ConversationView
@@ -143,6 +192,8 @@ export function SupportStudio() {
               onSubmit={submitReply}
               onBack={() => setView("threads")}
               onDecision={support.submitDecision}
+              isVerified={Boolean(support.session?.isVerified)}
+              onVerify={() => setView("account")}
             />
           ) : null}
           <div
@@ -236,6 +287,8 @@ function ConversationView({
   onSubmit,
   onBack,
   onDecision,
+  isVerified,
+  onVerify,
 }: {
   conversation: SupportConversation | null;
   messages: Array<{ id: string; sender: "customer" | "business"; body: string }>;
@@ -248,6 +301,8 @@ function ConversationView({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onBack: () => void;
   onDecision: (decision: "approve" | "decline") => void;
+  isVerified: boolean;
+  onVerify: () => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -284,9 +339,7 @@ function ConversationView({
           >
             <span>O&amp;P</span>
             <div>
-              <div className="chat-message-body chat-message-body--typing">
-                One moment…
-              </div>
+              <div className="chat-message-body chat-message-body--typing">One moment…</div>
             </div>
           </div>
         ) : null}
@@ -305,26 +358,33 @@ function ConversationView({
         </p>
       ) : null}
       {!approval ? (
-        <form className="chat-reply" onSubmit={onSubmit}>
-          <label className="sr-only" htmlFor="chat-reply-input">
-            Write a message
-          </label>
-          <input
-            id="chat-reply-input"
-            type="text"
-            placeholder="Write a message…"
-            value={reply}
-            onChange={(event) => onReplyChange(event.target.value)}
-            disabled={isSending || decisionState !== "idle"}
-          />
-          <button
-            type="submit"
-            disabled={!reply.trim() || isSending || decisionState !== "idle"}
-            aria-label="Send message"
-          >
-            <Send size={17} />
-          </button>
-        </form>
+        <div className="chat-compose">
+          {!isVerified ? (
+            <button className="chat-verify-prompt" type="button" onClick={onVerify}>
+              Verify email to manage appointments
+            </button>
+          ) : null}
+          <form className="chat-reply" onSubmit={onSubmit}>
+            <label className="sr-only" htmlFor="chat-reply-input">
+              Write a message
+            </label>
+            <input
+              id="chat-reply-input"
+              type="text"
+              placeholder="Write a message…"
+              value={reply}
+              onChange={(event) => onReplyChange(event.target.value)}
+              disabled={isSending || decisionState !== "idle"}
+            />
+            <button
+              type="submit"
+              disabled={!reply.trim() || isSending || decisionState !== "idle"}
+              aria-label="Send message"
+            >
+              <Send size={17} />
+            </button>
+          </form>
+        </div>
       ) : null}
     </div>
   );
@@ -416,9 +476,11 @@ function ApprovalCard({
 }
 
 function NewRequestForm({
+  customerName,
   onCancel,
   onSubmit,
 }: {
+  customerName: string | null;
   onCancel: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
@@ -434,10 +496,12 @@ function NewRequestForm({
       </div>
       <form className="chat-request-form" onSubmit={onSubmit}>
         <div className="chat-customer">
-          <span>AM</span>
+          <span>
+            {customerName ? customerName.slice(0, 2).toUpperCase() : <UserRound size={15} />}
+          </span>
           <div>
             <small>Requesting as</small>
-            <strong>Alice Morgan</strong>
+            <strong>{customerName || "Guest"}</strong>
           </div>
         </div>
         <label>
@@ -462,6 +526,85 @@ function NewRequestForm({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function AccountView({
+  session,
+  sentTo,
+  error,
+  isSending,
+  isVerifying,
+  onBack,
+  onSubmit,
+}: {
+  session: { name: string | null; email: string | null; isVerified: boolean } | null;
+  sentTo: string;
+  error: string;
+  isSending: boolean;
+  isVerifying: boolean;
+  onBack: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <div className="chat-view chat-account-view">
+      <div className="chat-conversation-heading">
+        <button type="button" onClick={onBack} aria-label="Back to conversation">
+          <ArrowLeft size={17} />
+        </button>
+        <div>
+          <h3>Your account</h3>
+        </div>
+      </div>
+      <div className="chat-account-body">
+        {isVerifying ? (
+          <div className="chat-account-state">
+            <MailCheck size={24} />
+            <strong>Confirming your email…</strong>
+          </div>
+        ) : session?.isVerified ? (
+          <div className="chat-account-state">
+            <span className="chat-account-check">
+              <Check size={18} />
+            </span>
+            <strong>{session.name || "You’re verified"}</strong>
+            <p>{session.email}</p>
+            <small>You can manage appointments in this chat.</small>
+          </div>
+        ) : sentTo ? (
+          <div className="chat-account-state">
+            <MailCheck size={24} />
+            <strong>Check your email</strong>
+            <p>We sent a confirmation link to {sentTo}.</p>
+            <small>The link expires in 15 minutes.</small>
+          </div>
+        ) : (
+          <>
+            <div className="chat-account-intro">
+              <strong>Verify when you need to take action</strong>
+              <p>You can keep asking questions without an account.</p>
+            </div>
+            <form className="chat-account-form" onSubmit={onSubmit}>
+              <label>
+                <span>Email</span>
+                <input type="email" name="email" autoComplete="email" required />
+              </label>
+              <label>
+                <span>
+                  Name <small>Optional</small>
+                </span>
+                <input type="text" name="name" autoComplete="name" maxLength={120} />
+              </label>
+              {error ? <p role="alert">{error}</p> : null}
+              <button type="submit" disabled={isSending}>
+                {isSending ? "Sending…" : "Send confirmation link"}
+              </button>
+            </form>
+          </>
+        )}
+        {error && (sentTo || isVerifying) ? <p className="chat-account-error">{error}</p> : null}
+      </div>
     </div>
   );
 }

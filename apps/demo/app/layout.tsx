@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { QueryProvider } from "@/components/query-provider";
+import { VersionPrompt } from "@/components/version-prompt";
 import "./globals.css";
 
 const sans = Manrope({
@@ -22,7 +23,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={sans.variable}>
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          {children}
+          <VersionPrompt />
+        </QueryProvider>
       </body>
     </html>
   );

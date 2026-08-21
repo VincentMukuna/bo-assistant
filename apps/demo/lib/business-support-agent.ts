@@ -19,6 +19,14 @@ export type SupportConversation = ConversationSummary & {
   messages: SupportMessage[];
 };
 
+export type CustomerSession = {
+  customer: {
+    name: string | null;
+    email: string | null;
+    isVerified: boolean;
+  };
+};
+
 export type ApprovalRequest = {
   id: string;
   type: "booking_reschedule";
@@ -54,10 +62,29 @@ async function json<T>(path: string, init: RequestInit = {}, fallback = "Request
 }
 
 export function bootstrapCustomerSession() {
-  return json<{ customer: { name: string } }>(
+  return json<CustomerSession>(
     "/api/v1/demo/session",
     { method: "POST", body: "{}" },
     "Could not start the demo session."
+  );
+}
+
+export function requestEmailVerification(email: string, name?: string) {
+  return json<{ sent?: boolean } & Partial<CustomerSession>>(
+    "/api/v1/demo/account",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, ...(name ? { name } : {}) }),
+    },
+    "Could not send the confirmation email."
+  );
+}
+
+export function verifyEmail(token: string) {
+  return json<CustomerSession>(
+    `/api/v1/demo/email-verifications/${encodeURIComponent(token)}`,
+    { method: "POST", body: "{}" },
+    "This confirmation link is invalid or has expired."
   );
 }
 
