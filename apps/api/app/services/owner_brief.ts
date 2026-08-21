@@ -2,6 +2,7 @@ import Booking from "#models/booking";
 import InboxAnnotation from "#models/inbox_annotation";
 import InboxAttentionItem from "#models/inbox_attention_item";
 import SupportConversation from "#models/support_conversation";
+import { bookingWorkspaceHref } from "#services/workspace_links";
 import { DateTime } from "luxon";
 
 export const OWNER_TIMEZONE = "America/Los_Angeles";
@@ -205,7 +206,7 @@ export async function buildOwnerBrief(now = DateTime.now().setZone(OWNER_TIMEZON
       createdAt: booking.createdAt.toISO()!,
       link: {
         label: "Review booking",
-        href: `/bookings?view=agenda&booking=${booking.id}`,
+        href: bookingWorkspaceHref(booking.id),
       },
     });
   }
@@ -237,7 +238,7 @@ export async function buildOwnerBrief(now = DateTime.now().setZone(OWNER_TIMEZON
       note: relevantVisitNote(booking.customer.notes),
       link: {
         label: "Open booking",
-        href: `/bookings?view=agenda&booking=${booking.id}`,
+        href: bookingWorkspaceHref(booking.id),
       },
     }));
 
@@ -256,7 +257,7 @@ export async function buildOwnerBrief(now = DateTime.now().setZone(OWNER_TIMEZON
       .toFormat("LLL d 'at' h:mm a")}`,
     link: {
       label: "Check booking",
-      href: `/bookings?view=agenda&booking=${booking.id}`,
+      href: bookingWorkspaceHref(booking.id),
     },
   }));
 

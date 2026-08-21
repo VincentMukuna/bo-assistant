@@ -1,5 +1,6 @@
 import type { OwnerBrief } from "#services/owner_brief";
 import { issueOwnerOperationsCapability } from "#services/owner_operations_capability";
+import { bookingIdFromWorkspaceHref } from "#services/workspace_links";
 import env from "#start/env";
 import app from "@adonisjs/core/services/app";
 
@@ -20,9 +21,9 @@ function collectOperationRecordIds(...sources: unknown[]) {
       if (key === "href" && typeof child === "string") {
         const url = new URL(child, "http://workspace.local");
         const conversationId = url.searchParams.get("conversation");
-        const bookingId = Number(url.searchParams.get("booking"));
+        const bookingId = bookingIdFromWorkspaceHref(child);
         if (conversationId) conversationIds.add(conversationId);
-        if (Number.isInteger(bookingId) && bookingId > 0) bookingIds.add(bookingId);
+        if (bookingId) bookingIds.add(bookingId);
       } else {
         visit(child);
       }

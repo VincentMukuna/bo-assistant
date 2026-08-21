@@ -54,7 +54,7 @@ test("reads one authoritative booking through the scoped operations tool", async
         durationMinutes: 180,
         status: "needs_approval",
         serviceAddress: "1842 Pine Street",
-        href: "/bookings?view=agenda&booking=3",
+        href: "/bookings/3",
       },
     });
   };

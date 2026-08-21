@@ -8,7 +8,13 @@ import { getQueryClient } from "@/lib/query-client";
 import { profileQueryOptions } from "@/lib/queries";
 import { getServerProfile } from "@/lib/server-api";
 
-export default async function WorkspaceLayout({ children }: { children: ReactNode }) {
+export default async function WorkspaceLayout({
+  booking,
+  children,
+}: {
+  booking: ReactNode;
+  children: ReactNode;
+}) {
   const queryClient = getQueryClient();
 
   const user = await queryClient.fetchQuery({
@@ -21,7 +27,10 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <AuthProvider>
-        <AppShell>{children}</AppShell>
+        <AppShell>
+          {children}
+          {booking}
+        </AppShell>
       </AuthProvider>
     </HydrationBoundary>
   );
