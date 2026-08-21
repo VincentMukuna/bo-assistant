@@ -285,6 +285,9 @@ export function createApi({ baseUrl = "/", cache, headers }: CreateApiOptions = 
       async index() {
         return data(await execute(client.api.bookings.index({})));
       },
+      async show(id: number) {
+        return data(await execute(client.api.bookings.show({ params: { id } })));
+      },
       async store(input: BookingInput) {
         return data(await execute(client.api.bookings.store({ body: input })));
       },

@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Booking } from "@/lib/api";
+import { bookingPath } from "@/lib/booking-routes";
 import { businessDateKey, formatBusinessDate, formatBusinessTime } from "@/lib/business-time";
 import { bookingsQueryOptions, customersQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -332,7 +333,7 @@ export function BookingsScreen({
                         <button
                           key={booking.id}
                           type="button"
-                          onClick={() => setSelectedBookingId(booking.id)}
+                          onClick={() => router.push(bookingPath(booking.id), { scroll: false })}
                           className="group w-full rounded-lg bg-white p-3 text-left transition-colors hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:outline-none"
                           aria-label={`Open ${booking.service} booking for ${booking.customer.name}`}
                         >
@@ -382,7 +383,7 @@ export function BookingsScreen({
                       <BookingRow
                         key={booking.id}
                         booking={booking}
-                        onOpen={(item) => setSelectedBookingId(item.id)}
+                        onOpen={(item) => router.push(bookingPath(item.id), { scroll: false })}
                       />
                     ))}
                   </div>
@@ -402,7 +403,7 @@ export function BookingsScreen({
                   <BookingRow
                     key={booking.id}
                     booking={booking}
-                    onOpen={(item) => setSelectedBookingId(item.id)}
+                    onOpen={(item) => router.push(bookingPath(item.id), { scroll: false })}
                   />
                 ))}
               </div>

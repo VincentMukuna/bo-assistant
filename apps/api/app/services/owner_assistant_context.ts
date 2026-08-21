@@ -2,6 +2,7 @@ import Booking from "#models/booking";
 import Customer from "#models/customer";
 import SupportConversation from "#models/support_conversation";
 import { businessSupportAgent } from "#services/business_support_agent";
+import { bookingWorkspaceHref } from "#services/workspace_links";
 import { DateTime } from "luxon";
 
 const BUSINESS_TIME_ZONE = "America/Los_Angeles";
@@ -115,7 +116,7 @@ export async function buildOwnerAssistantPageContext(
         durationMinutes: booking.durationMinutes,
         status: booking.status,
         serviceAddress: booking.serviceAddress,
-        href: `/bookings?view=agenda&booking=${booking.id}`,
+        href: bookingWorkspaceHref(booking.id),
       })),
     };
   }
@@ -146,7 +147,7 @@ export async function buildOwnerAssistantPageContext(
           durationMinutes: booking.durationMinutes,
           status: booking.status,
           serviceAddress: booking.serviceAddress,
-          href: `/bookings?view=agenda&booking=${booking.id}`,
+          href: bookingWorkspaceHref(booking.id),
         })),
         recentConversations: customer.supportConversations.map((conversation) => ({
           id: conversation.id,
@@ -201,7 +202,7 @@ export async function buildOwnerAssistantPageContext(
                   }
                 : {
                     label: "Open booking",
-                    href: `/bookings?view=agenda&booking=${bookingId}`,
+                    href: bookingWorkspaceHref(bookingId),
                   },
           };
         }),

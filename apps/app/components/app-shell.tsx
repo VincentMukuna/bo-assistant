@@ -49,6 +49,8 @@ const navItems: NavItem[] = [
   { href: "/customers", label: "Customers", icon: Users },
 ];
 
+const bookingDetailPath = /^\/bookings\/\d+$/;
+
 function Brand() {
   return (
     <Link
@@ -309,7 +311,18 @@ function BookingNotifications() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
+  const [routeState, setRouteState] = useState({
+    pathname,
+    askOakPageKey: pathname,
+  });
   useInboxEvents();
+
+  if (routeState.pathname !== pathname) {
+    setRouteState({
+      pathname,
+      askOakPageKey: bookingDetailPath.test(pathname) ? routeState.askOakPageKey : pathname,
+    });
+  }
 
   return (
     <div className="bg-background text-foreground flex h-svh min-h-[620px] flex-col overflow-hidden">
@@ -343,7 +356,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <AccountMenu />
         </div>
       </header>
-      <AskOakWorkspace key={pathname}>{children}</AskOakWorkspace>
+      <AskOakWorkspace key={routeState.askOakPageKey}>{children}</AskOakWorkspace>
     </div>
   );
 }

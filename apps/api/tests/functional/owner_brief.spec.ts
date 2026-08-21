@@ -114,7 +114,7 @@ test.group("Owner brief", (group) => {
     const todayBooking = body.todaySchedule.find((item) => item.service === "Window track repair");
     assert.equal(todayBooking?.customerName, "Alice Morgan");
     assert.equal(todayBooking?.note, "Use the side gate");
-    assert.equal(todayBooking?.link.href, `/bookings?view=agenda&booking=${todayBooking?.id}`);
+    assert.equal(todayBooking?.link.href, `/bookings/${todayBooking?.id}`);
     const staleBooking = body.watchItems.find((item) =>
       String(item.title).includes("Door hinge repair")
     );
@@ -371,7 +371,7 @@ test.group("Owner brief", (group) => {
       assert.equal(pageContext.conversation.attentionItems[0]?.summary, "Your approval is needed");
       assert.deepEqual(pageContext.conversation.attentionItems[0]?.link, {
         label: "Open booking",
-        href: "/bookings?view=agenda&booking=42",
+        href: "/bookings/42",
       });
       assert.notMatch(
         body.requestContext.pageContextJson,

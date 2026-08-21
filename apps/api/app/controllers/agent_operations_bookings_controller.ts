@@ -1,5 +1,6 @@
 import Booking from "#models/booking";
 import { formatOwnerScheduledAt } from "#services/owner_assistant_context";
+import { bookingWorkspaceHref } from "#services/workspace_links";
 import type { HttpContext } from "@adonisjs/core/http";
 
 export default class AgentOperationsBookingsController {
@@ -22,7 +23,7 @@ export default class AgentOperationsBookingsController {
         durationMinutes: booking.durationMinutes,
         status: booking.status,
         serviceAddress: booking.serviceAddress,
-        href: `/bookings?view=agenda&booking=${booking.id}`,
+        href: bookingWorkspaceHref(booking.id),
       },
     };
   }
