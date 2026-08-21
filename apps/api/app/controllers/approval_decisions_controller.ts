@@ -12,16 +12,17 @@ import syncRescheduleAttention from "#actions/sync-reschedule-attention";
 import { inboxEventStream } from "#services/inbox_event_stream";
 
 export default class ApprovalDecisionsController {
-  async store({ customer, params, request, response, logger }: HttpContext) {
+  async store({ customer, visitorId, params, request, response, logger }: HttpContext) {
     const decision = await request.validateUsing(createApprovalDecisionValidator);
-    const conversation = await SupportConversation.query()
+    const conversation = await SupportConversation.forIdentity({ customer, visitorId })
       .where("id", params.id)
-      .where("customerId", customer.id)
       .first();
     if (!conversation) return response.notFound({ error: "Conversation not found." });
+    if (!customer)
+      return response.conflict({ error: "Verify your email before changing a booking." });
 
     try {
-      const pending = await businessSupportAgent.listPendingReschedules(customer, conversation.id);
+      const pending = await businessSupportAgent.listPendingReschedules(conversation);
       if (pending.length !== 1) {
         return response.conflict({ error: "There is no single pending approval to decide." });
       }
@@ -83,7 +84,7 @@ export default class ApprovalDecisionsController {
 
       const agentStream = await businessSupportAgent.decideToolCall({
         customer,
-        threadId: conversation.id,
+        conversation,
         decision: decision.decision,
         runId: call.runId,
         toolCallId: call.toolCallId,

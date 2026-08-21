@@ -64,8 +64,9 @@ test.group("Agent activity", (group) => {
     if (!activity) throw new Error("Expected the durable attention event in the activity feed");
     assert.equal(activity.category, "attention");
     assert.equal(activity.conversation.title, "Move a booking");
-    assert.equal(activity.customer.id, customer.id);
-    assert.equal(activity.customer.name, "Alice Morgan");
-    assert.equal(activity.customer.initials, "AM");
+    assert.equal(activity.contact.kind, "customer");
+    assert.equal(activity.contact.id, customer.id);
+    assert.equal(activity.contact.name, "Alice Morgan");
+    assert.equal(activity.contact.initials, "AM");
   });
 });

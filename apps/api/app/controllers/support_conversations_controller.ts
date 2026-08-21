@@ -4,10 +4,11 @@ import { businessSupportAgent } from "#services/business_support_agent";
 import type { HttpContext } from "@adonisjs/core/http";
 
 export default class SupportConversationsController {
-  async index({ customer }: HttpContext) {
-    const conversations = await SupportConversation.query()
-      .where("customerId", customer.id)
-      .orderBy("updatedAt", "desc");
+  async index({ customer, visitorId }: HttpContext) {
+    const conversations = await SupportConversation.forIdentity({ customer, visitorId }).orderBy(
+      "updatedAt",
+      "desc"
+    );
 
     return {
       conversations: conversations.map((conversation) => ({
@@ -20,13 +21,13 @@ export default class SupportConversationsController {
     };
   }
 
-  async store({ customer, response, logger }: HttpContext) {
+  async store({ customer, visitorId, response, logger }: HttpContext) {
     let conversation: SupportConversation;
     try {
-      conversation = await createSupportConversation(customer);
+      conversation = await createSupportConversation({ customer, visitorId });
     } catch (error) {
       logger.error(
-        { err: error, customerId: customer.id },
+        { err: error, customerId: customer?.id, visitorId },
         "Unable to create support conversation"
       );
       return response.badGateway({ error: "A support conversation could not be created." });
@@ -43,15 +44,14 @@ export default class SupportConversationsController {
     });
   }
 
-  async show({ customer, params, response, logger }: HttpContext) {
-    const conversation = await SupportConversation.query()
+  async show({ customer, visitorId, params, response, logger }: HttpContext) {
+    const conversation = await SupportConversation.forIdentity({ customer, visitorId })
       .where("id", params.id)
-      .where("customerId", customer.id)
       .first();
     if (!conversation) return response.notFound({ error: "Conversation not found." });
 
     try {
-      const messages = await businessSupportAgent.listMessages(customer, conversation.id);
+      const messages = await businessSupportAgent.listMessages(conversation);
       return {
         conversation: {
           id: conversation.id,

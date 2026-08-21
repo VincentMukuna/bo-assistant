@@ -10,13 +10,11 @@ export default async function syncRescheduleAttention(
   conversation: SupportConversation,
   pendingCall?: PendingRescheduleCall
 ) {
+  if (!conversation.customerId) return null;
   await conversation.load("customer");
   let call = pendingCall;
   if (!call) {
-    const pending = await businessSupportAgent.listPendingReschedules(
-      conversation.customer,
-      conversation.id
-    );
+    const pending = await businessSupportAgent.listPendingReschedules(conversation);
     if (pending.length !== 1) return null;
     call = pending[0];
   }

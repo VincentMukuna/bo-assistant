@@ -43,11 +43,12 @@ router.get("/", () => {
 
 router
   .post("/api/v1/demo/session", [DemoSessionsController, "store"])
-  .use(middleware.customerOrigin());
+  .use(middleware.customerOrigin())
+  .use(middleware.supportIdentity());
 router
   .post("/api/v1/demo/account", [CustomerAccountsController, "store"])
   .use(middleware.customerOrigin())
-  .use(middleware.customerAuth());
+  .use(middleware.supportIdentity());
 router
   .post("/api/v1/demo/email-verifications", [CustomerEmailVerificationsController, "store"])
   .use(middleware.customerOrigin());
@@ -62,7 +63,7 @@ router
   })
   .prefix("/api/v1/support")
   .use(middleware.customerOrigin())
-  .use(middleware.customerAuth());
+  .use(middleware.supportIdentity());
 router
   .group(() => {
     router

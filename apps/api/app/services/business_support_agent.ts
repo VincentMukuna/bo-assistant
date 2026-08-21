@@ -1,4 +1,5 @@
 import type Customer from "#models/customer";
+import type SupportConversation from "#models/support_conversation";
 import { issueBookingReadCapability } from "#services/booking_capability";
 import env from "#start/env";
 import app from "@adonisjs/core/services/app";
@@ -42,10 +43,6 @@ type SuspendedRunsResponse = {
     }>;
   }>;
 };
-
-function resourceId(customerId: number) {
-  return `customer:${customerId}`;
-}
 
 function isConnectionRefused(error: unknown) {
   return (
@@ -130,13 +127,13 @@ export class BusinessSupportAgentClient {
     };
   }
 
-  private context(customer: Customer, conversationId: string, bookingCapability?: string) {
-    const isVerified = Boolean(customer.emailVerifiedAt);
+  private context(customer: Customer | null, conversationId: string, bookingCapability?: string) {
+    const isVerified = Boolean(customer?.emailVerifiedAt);
     return {
       bookingCapability:
         bookingCapability ??
-        (isVerified ? issueBookingReadCapability(customer.id, conversationId) : null),
-      customerName: customer.name || "Guest",
+        (isVerified && customer ? issueBookingReadCapability(customer.id, conversationId) : null),
+      customerName: customer?.name || "Website visitor",
       customerVerified: isVerified,
       timezone: CUSTOMER_TIMEZONE,
       currentDate: DateTime.now().setZone(CUSTOMER_TIMEZONE).toISODate(),
@@ -180,12 +177,12 @@ export class BusinessSupportAgentClient {
     };
   }
 
-  streamMessage(customer: Customer, threadId: string, message: string) {
+  streamMessage(customer: Customer | null, conversation: SupportConversation, message: string) {
     return this.stream(`/agents/${AGENT_ID}/stream`, {
       messages: [{ role: "user", content: message }],
-      memory: { thread: threadId, resource: resourceId(customer.id) },
+      memory: { thread: conversation.id, resource: conversation.memoryResourceId },
       maxSteps: 6,
-      requestContext: this.context(customer, threadId),
+      requestContext: this.context(customer, conversation.id),
     });
   }
 
@@ -202,21 +199,21 @@ export class BusinessSupportAgentClient {
     return presentTitle(result.text);
   }
 
-  async createThread(customer: Customer, threadId: string, title: string) {
+  async createThread(threadId: string, memoryResourceId: string, title: string) {
     await this.request(`/memory/threads?agentId=${encodeURIComponent(AGENT_ID)}`, {
       method: "POST",
       body: JSON.stringify({
         threadId,
-        resourceId: resourceId(customer.id),
+        resourceId: memoryResourceId,
         title,
       }),
     });
   }
 
-  async deleteThread(customer: Customer, threadId: string) {
+  async deleteThread(threadId: string, memoryResourceId: string) {
     const query = new URLSearchParams({
       agentId: AGENT_ID,
-      resourceId: resourceId(customer.id),
+      resourceId: memoryResourceId,
     });
     const path = `/memory/threads/${encodeURIComponent(threadId)}?${query}`;
     const response = await fetch(`${this.baseUrl}/api${path}`, {
@@ -229,26 +226,26 @@ export class BusinessSupportAgentClient {
     throw new Error(`Mastra rejected ${path} with status ${response.status}: ${detail}`);
   }
 
-  async updateThreadTitle(customer: Customer, threadId: string, title: string) {
+  async updateThreadTitle(conversation: SupportConversation, title: string) {
     const query = new URLSearchParams({ agentId: AGENT_ID });
-    await this.request(`/memory/threads/${encodeURIComponent(threadId)}?${query}`, {
+    await this.request(`/memory/threads/${encodeURIComponent(conversation.id)}?${query}`, {
       method: "PUT",
       body: JSON.stringify({
-        resourceId: resourceId(customer.id),
+        resourceId: conversation.memoryResourceId,
         title,
       }),
     });
   }
 
-  async listMessages(customer: Customer, threadId: string) {
+  async listMessages(conversation: SupportConversation) {
     const query = new URLSearchParams({
       agentId: AGENT_ID,
-      resourceId: resourceId(customer.id),
+      resourceId: conversation.memoryResourceId,
       perPage: "100",
       orderBy: JSON.stringify({ field: "createdAt", direction: "ASC" }),
     });
     const response = await this.request(
-      `/memory/threads/${encodeURIComponent(threadId)}/messages?${query}`
+      `/memory/threads/${encodeURIComponent(conversation.id)}/messages?${query}`
     );
     const result = (await response.json()) as {
       messages?: unknown[];
@@ -261,8 +258,7 @@ export class BusinessSupportAgentClient {
   }
 
   async appendOwnerMessage(
-    customer: Customer,
-    threadId: string,
+    conversation: SupportConversation,
     message: string,
     messageId: string = crypto.randomUUID()
   ) {
@@ -272,8 +268,8 @@ export class BusinessSupportAgentClient {
         messages: [
           {
             id: messageId,
-            threadId,
-            resourceId: resourceId(customer.id),
+            threadId: conversation.id,
+            resourceId: conversation.memoryResourceId,
             role: "assistant",
             content: message,
             createdAt: new Date().toISOString(),
@@ -284,10 +280,10 @@ export class BusinessSupportAgentClient {
     });
   }
 
-  async listPendingReschedules(customer: Customer, threadId: string) {
+  async listPendingReschedules(conversation: SupportConversation) {
     const query = new URLSearchParams({
-      threadId,
-      resourceId: resourceId(customer.id),
+      threadId: conversation.id,
+      resourceId: conversation.memoryResourceId,
       perPage: "20",
     });
     const response = await this.request(`/agents/${AGENT_ID}/suspended-runs?${query}`);
@@ -322,7 +318,7 @@ export class BusinessSupportAgentClient {
 
   decideToolCall(input: {
     customer: Customer;
-    threadId: string;
+    conversation: SupportConversation;
     decision: "approve" | "decline";
     runId: string;
     toolCallId: string;
@@ -331,7 +327,7 @@ export class BusinessSupportAgentClient {
     return this.stream(`/agents/${AGENT_ID}/resume-stream`, {
       runId: input.runId,
       toolCallId: input.toolCallId,
-      requestContext: this.context(input.customer, input.threadId),
+      requestContext: this.context(input.customer, input.conversation.id),
       resumeData:
         input.decision === "approve"
           ? { approved: true }

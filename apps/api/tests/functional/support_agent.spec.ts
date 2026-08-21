@@ -45,34 +45,37 @@ async function createConversation(customer: Customer) {
 test.group("Customer support agent", (group) => {
   group.each.setup(() => testUtils.db().wrapInGlobalTransaction());
 
-  test("bootstraps an isolated anonymous customer", async ({ assert, client }) => {
+  test("bootstraps an anonymous visitor without creating a customer", async ({
+    assert,
+    client,
+  }) => {
+    const before = await Customer.query().count("* as total");
     const response = await client.post("/api/v1/demo/session").json({ customerId: 999 });
 
     response.assertStatus(200);
     response.assertBody({ customer: { name: null, email: null, isVerified: false } });
-    const customer = await Customer.query()
-      .whereLike("email", "anonymous-%@invalid.local")
-      .firstOrFail();
-    response.assertSession("customerId", customer.id);
-    assert.isNull(customer.emailVerifiedAt);
+    const after = await Customer.query().count("* as total");
+    assert.equal(Number(after[0].$extras.total), Number(before[0].$extras.total));
+    assert.isNull(await Customer.query().whereLike("email", "anonymous-%@invalid.local").first());
   });
 
   test("verifies an emailed code without a pre-existing browser session", async ({
     assert,
     client,
   }) => {
-    const customer = await Customer.create({
-      name: "",
-      email: `anonymous-${crypto.randomUUID()}@invalid.local`,
-      phone: "",
-      address: "",
-      notes: "",
+    const visitorId = crypto.randomUUID();
+    const conversation = await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: null,
+      visitorId,
+      title: "New conversation",
+      status: "open",
     });
     using fake = mail.fake();
 
     const request = await client
       .post("/api/v1/demo/account")
-      .withSession({ customerId: customer.id })
+      .withSession({ visitorId })
       .json({ email: "new.customer@example.com" });
 
     request.assertStatus(200);
@@ -88,35 +91,35 @@ test.group("Customer support agent", (group) => {
     assert.isDefined(code);
     assert.notInclude(text, "http");
     const pending = await CustomerEmailVerification.query()
-      .where("customerId", customer.id)
+      .where("visitorId", visitorId)
       .firstOrFail();
+    assert.isNull(pending.customerId);
+    assert.isNull(await Customer.findBy("email", pending.email));
     const verification = await client
       .post("/api/v1/demo/email-verifications")
-      .json({ email: pending.email, code });
+      .json({ email: pending.email, code: code! });
     verification.assertStatus(200);
     verification.assertBody({
       customer: { name: null, email: "new.customer@example.com", isVerified: true },
     });
+    const customer = await Customer.findByOrFail("email", pending.email);
     verification.assertSession("customerId", customer.id);
-    await customer.refresh();
+    await conversation.refresh();
     assert.isNotNull(customer.emailVerifiedAt);
+    assert.equal(conversation.customerId, customer.id);
+    assert.isNull(conversation.visitorId);
   });
 
   test("invalidates a verification code after five incorrect attempts", async ({
     assert,
     client,
   }) => {
-    const customer = await Customer.create({
-      name: "",
-      email: `anonymous-${crypto.randomUUID()}@invalid.local`,
-      phone: "",
-      address: "",
-      notes: "",
-    });
+    const visitorId = crypto.randomUUID();
     const verificationId = crypto.randomUUID();
     await CustomerEmailVerification.create({
       id: verificationId,
-      customerId: customer.id,
+      customerId: null,
+      visitorId,
       email: "new.customer@example.com",
       name: null,
       codeHash: hashCustomerEmailVerificationCode(verificationId, "123456"),
@@ -141,14 +144,14 @@ test.group("Customer support agent", (group) => {
     assert,
     client,
   }) => {
-    const customer = await Customer.create({
-      name: "",
-      email: `anonymous-${crypto.randomUUID()}@invalid.local`,
-      phone: "",
-      address: "",
-      notes: "",
+    const visitorId = crypto.randomUUID();
+    const conversation = await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: null,
+      visitorId,
+      title: "New conversation",
+      status: "open",
     });
-    const conversation = await createConversation(customer);
     const originalFetch = globalThis.fetch;
 
     globalThis.fetch = async (input, init) => {
@@ -172,7 +175,7 @@ test.group("Customer support agent", (group) => {
     try {
       const response = await client
         .post(`/api/v1/support/conversations/${conversation.id}/messages`)
-        .withSession({ customerId: customer.id })
+        .withSession({ visitorId })
         .json({ message: "What services do you offer?" });
       response.assertStatus(200);
       assert.include(response.text(), "home cleaning and repairs");
@@ -298,7 +301,7 @@ test.group("Customer support agent", (group) => {
         title: string;
       };
       assert.match(body.threadId, /^[0-9a-f-]{36}$/);
-      assert.equal(body.resourceId, `customer:${customer.id}`);
+      assert.equal(body.resourceId, `conversation:${body.threadId}`);
       assert.equal(body.title, "New conversation");
       return Response.json({
         id: body.threadId,
@@ -316,7 +319,11 @@ test.group("Customer support agent", (group) => {
         .json({});
       response.assertStatus(201);
       const id = (response.body() as { conversation: { id: string } }).conversation.id;
-      await db.assertHas("support_conversations", { id, customer_id: customer.id });
+      await db.assertHas("support_conversations", {
+        id,
+        customer_id: customer.id,
+        memory_resource_id: `conversation:${id}`,
+      });
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -730,6 +737,22 @@ test.group("Customer support agent", (group) => {
     const response = await client
       .get(`/api/v1/support/conversations/${conversation.id}`)
       .withSession({ customerId: bob.id });
+    response.assertStatus(404);
+  });
+
+  test("keeps anonymous visitor conversations isolated by session", async ({ client }) => {
+    const visitorId = crypto.randomUUID();
+    const conversation = await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: null,
+      visitorId,
+      title: "New conversation",
+      status: "open",
+    });
+
+    const response = await client
+      .get(`/api/v1/support/conversations/${conversation.id}`)
+      .withSession({ visitorId: crypto.randomUUID() });
     response.assertStatus(404);
   });
 });

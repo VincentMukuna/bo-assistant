@@ -56,6 +56,13 @@ test.group("Workspace Inbox", (group) => {
     const alice = await createCustomer("Alice Morgan");
     const marcus = await createCustomer("Marcus Lee");
     const routine = await createConversation(marcus, "Pricing question");
+    const visitor = await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: null,
+      visitorId: crypto.randomUUID(),
+      title: "Window repair estimate",
+      status: "open",
+    });
     const needsOwner = await createConversation(alice, "Move a booking");
     needsOwner.nextStepOwner = "owner";
     await needsOwner.save();
@@ -105,6 +112,15 @@ test.group("Workspace Inbox", (group) => {
     });
     const ids = body.conversations.map((conversation) => conversation.id);
     if (!ids.includes(routine.id)) throw new Error("Routine conversations must remain visible");
+    const visitorPayload = body.conversations.find(
+      (conversation) => conversation.id === visitor.id
+    );
+    if (!visitorPayload) throw new Error("Anonymous visitor conversations must remain visible");
+    if (visitorPayload.customer)
+      throw new Error("Visitor conversations must not expose a customer");
+    if (visitorPayload.contact.kind !== "visitor" || visitorPayload.contact.id !== null) {
+      throw new Error("Visitor conversations must use visitor contact context");
+    }
   });
 
   test("takeover pauses the agent, saves owner replies in the same thread, and can be released", async ({

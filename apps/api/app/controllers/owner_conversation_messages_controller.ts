@@ -10,21 +10,14 @@ import { DateTime } from "luxon";
 export default class OwnerConversationMessagesController {
   async store({ params, request, response, logger }: HttpContext) {
     const { message } = await request.validateUsing(createOwnerMessageValidator);
-    const conversation = await SupportConversation.query()
-      .where("id", params.id)
-      .preload("customer")
-      .first();
+    const conversation = await SupportConversation.query().where("id", params.id).first();
     if (!conversation) return response.notFound({ error: "Conversation not found." });
     if (conversation.handlingMode !== "owner") {
       return response.conflict({ error: "Take over this conversation before replying." });
     }
 
     try {
-      await businessSupportAgent.appendOwnerMessage(
-        conversation.customer,
-        conversation.id,
-        message
-      );
+      await businessSupportAgent.appendOwnerMessage(conversation, message);
       conversation.lastMessagePreview = conversationPreview(message);
       conversation.nextStepOwner = "customer";
       conversation.updatedAt = DateTime.now();

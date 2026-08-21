@@ -14,7 +14,8 @@ function codeHash(verificationId: string, code: string) {
 export { codeHash as hashCustomerEmailVerificationCode };
 
 export default async function requestCustomerEmailVerification(input: {
-  customer: Customer;
+  customer: Customer | null;
+  visitorId: string;
   email: string;
   name?: string;
 }) {
@@ -23,7 +24,8 @@ export default async function requestCustomerEmailVerification(input: {
   const customer = existing ?? input.customer;
 
   if (
-    customer.id === input.customer.id &&
+    customer &&
+    customer.id === input.customer?.id &&
     customer.emailVerifiedAt &&
     customer.email?.toLowerCase() === email
   ) {
@@ -31,7 +33,7 @@ export default async function requestCustomerEmailVerification(input: {
   }
 
   await CustomerEmailVerification.query()
-    .where("customerId", customer.id)
+    .where("visitorId", input.visitorId)
     .orWhereRaw("LOWER(email) = ?", [email])
     .delete();
 
@@ -39,7 +41,8 @@ export default async function requestCustomerEmailVerification(input: {
   const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
   const verification = await CustomerEmailVerification.create({
     id,
-    customerId: customer.id,
+    customerId: customer?.id ?? null,
+    visitorId: input.visitorId,
     email,
     name: input.name || null,
     codeHash: codeHash(id, code),

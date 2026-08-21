@@ -37,16 +37,29 @@ function presentConversation(conversation: SupportConversation) {
     outcomeSummary: conversation.outcomeSummary,
     attention: attention ? presentAttention(attention) : null,
     bookingNotifications: bookingNotifications.map(presentAttention),
-    customer: {
-      id: conversation.customer.id,
-      name: conversation.customer.name,
-      initials: conversation.customer.initials,
-      phone: conversation.customer.phone,
-      email: conversation.customer.email,
-      address: conversation.customer.address,
-      notes: conversation.customer.notes,
-      createdAt: conversation.customer.createdAt.toISO(),
-    },
+    contact: conversation.customerId
+      ? {
+          kind: "customer" as const,
+          id: conversation.customer.id,
+          name: conversation.customer.name,
+          initials: conversation.customer.initials,
+          phone: conversation.customer.phone,
+          email: conversation.customer.email,
+          address: conversation.customer.address,
+          notes: conversation.customer.notes,
+          createdAt: conversation.customer.createdAt.toISO(),
+        }
+      : {
+          kind: "visitor" as const,
+          id: null,
+          name: "Website visitor",
+          initials: "WV",
+          phone: null,
+          email: null,
+          address: null,
+          notes: null,
+          createdAt: conversation.createdAt.toISO(),
+        },
   };
 }
 
@@ -75,8 +88,10 @@ export default class WorkspaceConversationsController {
 
     try {
       const [messages, bookings] = await Promise.all([
-        businessSupportAgent.listMessages(conversation.customer, conversation.id),
-        conversation.customer.related("bookings").query().orderBy("scheduledAt", "asc"),
+        businessSupportAgent.listMessages(conversation),
+        conversation.customerId
+          ? conversation.customer.related("bookings").query().orderBy("scheduledAt", "asc")
+          : [],
       ]);
       return {
         conversation: {
@@ -110,10 +125,7 @@ export default class WorkspaceConversationsController {
   }
 
   async destroy({ params, response, logger }: HttpContext) {
-    const conversation = await SupportConversation.query()
-      .where("id", params.id)
-      .preload("customer")
-      .first();
+    const conversation = await SupportConversation.query().where("id", params.id).first();
     if (!conversation) return response.notFound({ error: "Conversation not found." });
 
     try {

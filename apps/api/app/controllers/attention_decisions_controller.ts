@@ -109,7 +109,7 @@ export default class AttentionDecisionsController {
       try {
         const stream = await businessSupportAgent.decideToolCall({
           customer: conversation.customer,
-          threadId: conversation.id,
+          conversation,
           decision: "decline",
           runId: context.runId,
           toolCallId: context.toolCallId,

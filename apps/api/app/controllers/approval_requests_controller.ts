@@ -6,15 +6,15 @@ import { DateTime } from "luxon";
 import syncRescheduleAttention from "#actions/sync-reschedule-attention";
 
 export default class ApprovalRequestsController {
-  async show({ customer, params, response, logger }: HttpContext) {
-    const conversation = await SupportConversation.query()
+  async show({ customer, visitorId, params, response, logger }: HttpContext) {
+    const conversation = await SupportConversation.forIdentity({ customer, visitorId })
       .where("id", params.id)
-      .where("customerId", customer.id)
       .first();
     if (!conversation) return response.notFound({ error: "Conversation not found." });
+    if (!customer) return { approvalRequest: null };
 
     try {
-      const pending = await businessSupportAgent.listPendingReschedules(customer, conversation.id);
+      const pending = await businessSupportAgent.listPendingReschedules(conversation);
       if (pending.length > 1) {
         return response.conflict({ error: "This conversation has multiple pending approvals." });
       }

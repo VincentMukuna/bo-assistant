@@ -21,6 +21,7 @@ export default class CustomerEmailVerificationsController {
     }
 
     session.put("customerId", result.customer.id);
+    session.forget("visitorId");
     return {
       customer: {
         name: result.customer.name || null,

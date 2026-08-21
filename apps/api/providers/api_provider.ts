@@ -67,7 +67,8 @@ HttpContext.instanceProperty("serialize", serialize);
 declare module "@adonisjs/core/http" {
   export interface HttpContext {
     serialize: typeof serialize;
-    customer: Customer;
+    customer: Customer | null;
+    visitorId: string;
     bookingCapability: BookingCapability;
   }
 }

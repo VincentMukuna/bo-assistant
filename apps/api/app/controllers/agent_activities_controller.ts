@@ -53,11 +53,19 @@ export default class AgentActivitiesController {
           nextStepOwner: annotation.conversation.nextStepOwner,
           outcomeStatus: annotation.conversation.outcomeStatus,
         },
-        customer: {
-          id: annotation.conversation.customer.id,
-          name: annotation.conversation.customer.name,
-          initials: annotation.conversation.customer.initials,
-        },
+        contact: annotation.conversation.customerId
+          ? {
+              kind: "customer" as const,
+              id: annotation.conversation.customer.id,
+              name: annotation.conversation.customer.name,
+              initials: annotation.conversation.customer.initials,
+            }
+          : {
+              kind: "visitor" as const,
+              id: null,
+              name: "Website visitor",
+              initials: "WV",
+            },
       })),
     };
   }

@@ -158,8 +158,7 @@ export default async function confirmPendingBooking(
 
   try {
     await businessSupportAgent.appendOwnerMessage(
-      prepared.conversation.customer,
-      prepared.conversation.id,
+      prepared.conversation,
       confirmationMessage(prepared.booking),
       prepared.item.id
     );

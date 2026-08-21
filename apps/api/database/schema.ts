@@ -56,14 +56,14 @@ export class BookingSchema extends BaseModel {
 }
 
 export class CustomerEmailVerificationSchema extends BaseModel {
-  static $columns = ['codeHash', 'createdAt', 'customerId', 'email', 'expiresAt', 'failedAttempts', 'id', 'name'] as const
+  static $columns = ['codeHash', 'createdAt', 'customerId', 'email', 'expiresAt', 'failedAttempts', 'id', 'name', 'visitorId'] as const
   $columns = CustomerEmailVerificationSchema.$columns
   @column()
   declare codeHash: string
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
-  declare customerId: number
+  declare customerId: number | null
   @column()
   declare email: string
   @column.dateTime()
@@ -74,6 +74,8 @@ export class CustomerEmailVerificationSchema extends BaseModel {
   declare id: string
   @column()
   declare name: string | null
+  @column()
+  declare visitorId: string | null
 }
 
 export class CustomerSchema extends BaseModel {
@@ -97,37 +99,6 @@ export class CustomerSchema extends BaseModel {
   declare phone: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
-}
-
-export class DemoApprovalSchema extends BaseModel {
-  static $columns = ['bookingId', 'customerId', 'expectedStartTime', 'id', 'issuedAt', 'proposedStartTime', 'publicId', 'resolvedAt', 'runId', 'status', 'threadId', 'toolCallId', 'toolName'] as const
-  $columns = DemoApprovalSchema.$columns
-  @column()
-  declare bookingId: number
-  @column()
-  declare customerId: number
-  @column()
-  declare expectedStartTime: string
-  @column({ isPrimary: true })
-  declare id: number
-  @column()
-  declare issuedAt: string
-  @column()
-  declare proposedStartTime: string
-  @column()
-  declare publicId: string
-  @column()
-  declare resolvedAt: string | null
-  @column()
-  declare runId: string
-  @column()
-  declare status: string
-  @column()
-  declare threadId: string
-  @column()
-  declare toolCallId: string
-  @column()
-  declare toolName: string
 }
 
 export class InboxAnnotationSchema extends BaseModel {
@@ -179,12 +150,12 @@ export class InboxAttentionItemSchema extends BaseModel {
 }
 
 export class SupportConversationSchema extends BaseModel {
-  static $columns = ['createdAt', 'customerId', 'firstMessageAt', 'handlingMode', 'id', 'lastMessagePreview', 'nextStepOwner', 'outcomeStatus', 'outcomeSummary', 'status', 'title', 'updatedAt'] as const
+  static $columns = ['createdAt', 'customerId', 'firstMessageAt', 'handlingMode', 'id', 'lastMessagePreview', 'memoryResourceId', 'nextStepOwner', 'outcomeStatus', 'outcomeSummary', 'status', 'title', 'updatedAt', 'visitorId'] as const
   $columns = SupportConversationSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
-  declare customerId: number
+  declare customerId: number | null
   @column.dateTime()
   declare firstMessageAt: DateTime | null
   @column()
@@ -193,6 +164,8 @@ export class SupportConversationSchema extends BaseModel {
   declare id: string
   @column()
   declare lastMessagePreview: string | null
+  @column()
+  declare memoryResourceId: string
   @column()
   declare nextStepOwner: string
   @column()
@@ -205,6 +178,8 @@ export class SupportConversationSchema extends BaseModel {
   declare title: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+  @column()
+  declare visitorId: string | null
 }
 
 export class UserSchema extends BaseModel {

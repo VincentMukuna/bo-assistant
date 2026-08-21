@@ -44,17 +44,19 @@ async function claimFirstMessage(conversationId: string, message: string) {
 }
 
 async function generateAndStoreTitle(
-  customer: Customer,
-  conversationId: string,
+  conversation: SupportConversation,
   message: string,
   logger: HttpContext["logger"]
 ) {
   const title = await businessSupportAgent.generateConversationTitle(message);
   if (!title) return;
 
-  await SupportConversation.query().where("id", conversationId).update({ title });
-  void businessSupportAgent.updateThreadTitle(customer, conversationId, title).catch((error) => {
-    logger.warn({ err: error, conversationId }, "Unable to synchronize conversation title");
+  await SupportConversation.query().where("id", conversation.id).update({ title });
+  void businessSupportAgent.updateThreadTitle(conversation, title).catch((error) => {
+    logger.warn(
+      { err: error, conversationId: conversation.id },
+      "Unable to synchronize conversation title"
+    );
   });
 }
 
@@ -155,17 +157,17 @@ export function trackConversationStream(
 }
 
 export default async function sendConversationMessage(input: {
-  customer: Customer;
+  customer: Customer | null;
   conversation: SupportConversation;
   message: string;
   logger: HttpContext["logger"];
 }) {
   const [agentStream, isFirstMessage] = await Promise.all([
-    businessSupportAgent.streamMessage(input.customer, input.conversation.id, input.message),
+    businessSupportAgent.streamMessage(input.customer, input.conversation, input.message),
     claimFirstMessage(input.conversation.id, input.message),
   ]);
   const tasks = isFirstMessage
-    ? [generateAndStoreTitle(input.customer, input.conversation.id, input.message, input.logger)]
+    ? [generateAndStoreTitle(input.conversation, input.message, input.logger)]
     : [];
 
   return trackConversationStream(
