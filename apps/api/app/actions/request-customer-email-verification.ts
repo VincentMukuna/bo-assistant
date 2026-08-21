@@ -3,13 +3,15 @@ import Customer from "#models/customer";
 import env from "#start/env";
 import mail from "@adonisjs/mail/services/main";
 import { DateTime } from "luxon";
-import { createHash, randomBytes } from "node:crypto";
+import { createHmac, randomInt } from "node:crypto";
 
-function tokenHash(token: string) {
-  return createHash("sha256").update(token).digest("hex");
+function codeHash(verificationId: string, code: string) {
+  return createHmac("sha256", env.get("APP_KEY").release())
+    .update(`${verificationId}:${code}`)
+    .digest("hex");
 }
 
-export { tokenHash as hashCustomerEmailVerificationToken };
+export { codeHash as hashCustomerEmailVerificationCode };
 
 export default async function requestCustomerEmailVerification(input: {
   customer: Customer;
@@ -33,29 +35,27 @@ export default async function requestCustomerEmailVerification(input: {
     .orWhereRaw("LOWER(email) = ?", [email])
     .delete();
 
-  const token = randomBytes(32).toString("base64url");
+  const id = crypto.randomUUID();
+  const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
   const verification = await CustomerEmailVerification.create({
-    id: crypto.randomUUID(),
+    id,
     customerId: customer.id,
     email,
     name: input.name || null,
-    tokenHash: tokenHash(token),
+    codeHash: codeHash(id, code),
     expiresAt: DateTime.now().plus({ minutes: 15 }),
   });
-  const origin = env.get("CUSTOMER_APP_ORIGIN") ?? env.get("APP_URL");
-  const verificationUrl = new URL("/", origin);
-  verificationUrl.searchParams.set("verify", token);
 
   try {
     await mail.send((message) => {
       message
         .to(email)
-        .subject("Confirm your Oak & Pine email")
+        .subject("Your Oak & Pine verification code")
         .text(
-          `Confirm your email to manage appointments with Oak & Pine:\n\n${verificationUrl}\n\nThis link expires in 15 minutes.`
+          `Enter this code to verify your email with Oak & Pine:\n\n${code}\n\nThis code expires in 15 minutes. If you did not request it, you can ignore this email.`
         )
         .html(
-          `<p>Confirm your email to manage appointments with Oak &amp; Pine.</p><p><a href="${verificationUrl}">Confirm email</a></p><p>This link expires in 15 minutes.</p>`
+          `<p>Enter this code to verify your email with Oak &amp; Pine:</p><p style="font-size: 28px; font-weight: 700; letter-spacing: 0.2em;">${code}</p><p>This code expires in 15 minutes. If you did not request it, you can ignore this email.</p>`
         );
     });
   } catch (error) {
@@ -63,5 +63,5 @@ export default async function requestCustomerEmailVerification(input: {
     throw error;
   }
 
-  return { customer, alreadyVerified: false } as const;
+  return { customer, alreadyVerified: false, verificationId: verification.id } as const;
 }

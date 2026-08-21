@@ -229,7 +229,7 @@ export default function Home() {
           <div className="support-copy">
             <p>
               Ask a question without an account. When you want to book or manage an appointment,
-              verify your email with one quick link.
+              verify your email with a quick one-time code.
             </p>
             <SupportStudio />
           </div>

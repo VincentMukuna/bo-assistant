@@ -6,7 +6,7 @@ import InboxAttentionItem from "#models/inbox_attention_item";
 import SupportConversation from "#models/support_conversation";
 import User from "#models/user";
 import { readBookingCapability } from "#services/booking_capability";
-import { hashCustomerEmailVerificationToken } from "#actions/request-customer-email-verification";
+import { hashCustomerEmailVerificationCode } from "#actions/request-customer-email-verification";
 import testUtils from "@adonisjs/core/services/test_utils";
 import mail from "@adonisjs/mail/services/main";
 import { test } from "@japa/runner";
@@ -57,7 +57,7 @@ test.group("Customer support agent", (group) => {
     assert.isNull(customer.emailVerifiedAt);
   });
 
-  test("emails a short-lived verification link and verifies the customer", async ({
+  test("emails a short-lived verification code and verifies the customer", async ({
     assert,
     client,
   }) => {
@@ -79,27 +79,74 @@ test.group("Customer support agent", (group) => {
     request.assertBody({ sent: true });
     fake.messages.assertSent({
       to: "new.customer@example.com",
-      subject: "Confirm your Oak & Pine email",
+      subject: "Your Oak & Pine verification code",
     });
 
-    const token = "known-test-token";
-    await CustomerEmailVerification.query().where("customerId", customer.id).delete();
-    await CustomerEmailVerification.create({
-      id: crypto.randomUUID(),
-      customerId: customer.id,
-      email: "new.customer@example.com",
-      name: null,
-      tokenHash: hashCustomerEmailVerificationToken(token),
-      expiresAt: DateTime.now().plus({ minutes: 15 }),
-    });
+    const message = fake.messages.sent()[0];
+    const text = String(message.nodeMailerMessage.text);
+    const code = text.match(/\b\d{6}\b/)?.[0];
+    assert.isDefined(code);
+    assert.notInclude(text, "http");
+    const pending = await CustomerEmailVerification.query()
+      .where("customerId", customer.id)
+      .firstOrFail();
 
-    const verification = await client.post(`/api/v1/demo/email-verifications/${token}`).json({});
+    const verification = await client
+      .post("/api/v1/demo/email-verifications")
+      .withSession({
+        customerId: customer.id,
+        customerEmailVerificationId: pending.id,
+      })
+      .json({ code });
     verification.assertStatus(200);
     verification.assertBody({
       customer: { name: null, email: "new.customer@example.com", isVerified: true },
     });
     await customer.refresh();
     assert.isNotNull(customer.emailVerifiedAt);
+  });
+
+  test("invalidates a verification code after five incorrect attempts", async ({
+    assert,
+    client,
+  }) => {
+    const customer = await Customer.create({
+      name: "",
+      email: `anonymous-${crypto.randomUUID()}@invalid.local`,
+      phone: "",
+      address: "",
+      notes: "",
+    });
+    const verificationId = crypto.randomUUID();
+    await CustomerEmailVerification.create({
+      id: verificationId,
+      customerId: customer.id,
+      email: "new.customer@example.com",
+      name: null,
+      codeHash: hashCustomerEmailVerificationCode(verificationId, "123456"),
+      expiresAt: DateTime.now().plus({ minutes: 15 }),
+    });
+
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
+      const response = await client
+        .post("/api/v1/demo/email-verifications")
+        .withSession({
+          customerId: customer.id,
+          customerEmailVerificationId: verificationId,
+        })
+        .json({ code: "000000" });
+      response.assertStatus(422);
+    }
+
+    const locked = await client
+      .post("/api/v1/demo/email-verifications")
+      .withSession({
+        customerId: customer.id,
+        customerEmailVerificationId: verificationId,
+      })
+      .json({ code: "000000" });
+    locked.assertStatus(429);
+    assert.isNull(await CustomerEmailVerification.find(verificationId));
   });
 
   test("keeps anonymous chat open without granting booking authority", async ({

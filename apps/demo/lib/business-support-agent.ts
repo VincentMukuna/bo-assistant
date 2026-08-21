@@ -80,11 +80,11 @@ export function requestEmailVerification(email: string, name?: string) {
   );
 }
 
-export function verifyEmail(token: string) {
+export function verifyEmail(code: string) {
   return json<CustomerSession>(
-    `/api/v1/demo/email-verifications/${encodeURIComponent(token)}`,
-    { method: "POST", body: "{}" },
-    "This confirmation link is invalid or has expired."
+    "/api/v1/demo/email-verifications",
+    { method: "POST", body: JSON.stringify({ code }) },
+    "That verification code could not be confirmed."
   );
 }
 

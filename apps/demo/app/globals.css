@@ -644,6 +644,45 @@ button { color: inherit; }
   gap: 9px;
   text-align: center;
 }
+.chat-account-code {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.chat-account-code .chat-account-state { margin: 0 0 2px; }
+.chat-account-code .chat-account-state p strong { color: var(--ink); }
+.chat-account-form .chat-account-code-input {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: .28em;
+  font-variant-numeric: tabular-nums;
+}
+.chat-account-expiry {
+  color: #77827b;
+  font-size: 9px;
+  text-align: center;
+}
+.chat-account-code-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+.chat-account-code-actions button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #53691a;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.chat-account-code-actions button:hover { text-decoration: underline; }
+.chat-account-code-actions button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
 .chat-account-state > svg { color: #677d22; }
 .chat-account-state strong { font-size: 17px; }
 .chat-account-state small {

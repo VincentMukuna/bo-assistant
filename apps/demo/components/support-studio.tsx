@@ -46,22 +46,6 @@ export function SupportStudio() {
   const support = useSupportConversations();
   const [view, setView] = useState<ChatView>("conversation");
   const [isOpen, setIsOpen] = useState(false);
-  const handledVerificationRef = useRef(false);
-
-  useEffect(() => {
-    if (handledVerificationRef.current) return;
-    if (!support.session) return;
-    const token = new URLSearchParams(window.location.search).get("verify");
-    if (!token) return;
-    handledVerificationRef.current = true;
-    window.history.replaceState({}, "", window.location.pathname + window.location.hash);
-    const timeout = window.setTimeout(() => {
-      setView("account");
-      setIsOpen(true);
-      void support.verifyEmailToken(token).catch(() => undefined);
-    }, 0);
-    return () => window.clearTimeout(timeout);
-  }, [support]);
 
   function submitReply(message: string) {
     support.sendReply(message);
@@ -83,6 +67,14 @@ export function SupportStudio() {
     const name = String(form.get("name") ?? "").trim();
     if (!email) return;
     await support.requestVerification(email, name || undefined).catch(() => undefined);
+  }
+
+  async function submitVerificationCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const code = String(form.get("code") ?? "").replace(/\D/g, "");
+    if (code.length !== 6) return;
+    await support.verifyEmailCode(code).catch(() => undefined);
   }
 
   return (
@@ -164,6 +156,9 @@ export function SupportStudio() {
               isVerifying={support.isVerifyingEmail}
               onBack={() => setView("conversation")}
               onSubmit={submitAccount}
+              onSubmitCode={submitVerificationCode}
+              onResend={() => void support.resendVerification().catch(() => undefined)}
+              onChangeEmail={support.changeVerificationEmail}
             />
           ) : null}
           {view === "new" ? (
@@ -538,6 +533,9 @@ function AccountView({
   isVerifying,
   onBack,
   onSubmit,
+  onSubmitCode,
+  onResend,
+  onChangeEmail,
 }: {
   session: { name: string | null; email: string | null; isVerified: boolean } | null;
   sentTo: string;
@@ -546,6 +544,9 @@ function AccountView({
   isVerifying: boolean;
   onBack: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmitCode: (event: FormEvent<HTMLFormElement>) => void;
+  onResend: () => void;
+  onChangeEmail: () => void;
 }) {
   return (
     <div className="chat-view chat-account-view">
@@ -558,12 +559,7 @@ function AccountView({
         </div>
       </div>
       <div className="chat-account-body">
-        {isVerifying ? (
-          <div className="chat-account-state">
-            <MailCheck size={24} />
-            <strong>Confirming your email…</strong>
-          </div>
-        ) : session?.isVerified ? (
+        {session?.isVerified ? (
           <div className="chat-account-state">
             <span className="chat-account-check">
               <Check size={18} />
@@ -573,11 +569,45 @@ function AccountView({
             <small>You can manage appointments in this chat.</small>
           </div>
         ) : sentTo ? (
-          <div className="chat-account-state">
-            <MailCheck size={24} />
-            <strong>Check your email</strong>
-            <p>We sent a confirmation link to {sentTo}.</p>
-            <small>The link expires in 15 minutes.</small>
+          <div className="chat-account-code">
+            <div className="chat-account-state">
+              <MailCheck size={24} />
+              <strong>Enter your code</strong>
+              <p>
+                We sent a 6-digit code to <strong>{sentTo}</strong>.
+              </p>
+            </div>
+            <form className="chat-account-form" onSubmit={onSubmitCode}>
+              <label>
+                <span>Verification code</span>
+                <input
+                  className="chat-account-code-input"
+                  type="text"
+                  name="code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  minLength={6}
+                  maxLength={6}
+                  placeholder="000000"
+                  autoFocus
+                  required
+                />
+              </label>
+              {error ? <p role="alert">{error}</p> : null}
+              <button type="submit" disabled={isVerifying}>
+                {isVerifying ? "Verifying…" : "Verify email"}
+              </button>
+            </form>
+            <small className="chat-account-expiry">The code expires in 15 minutes.</small>
+            <div className="chat-account-code-actions">
+              <button type="button" onClick={onResend} disabled={isSending || isVerifying}>
+                {isSending ? "Sending…" : "Resend code"}
+              </button>
+              <button type="button" onClick={onChangeEmail} disabled={isSending || isVerifying}>
+                Change email
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -598,12 +628,11 @@ function AccountView({
               </label>
               {error ? <p role="alert">{error}</p> : null}
               <button type="submit" disabled={isSending}>
-                {isSending ? "Sending…" : "Send confirmation link"}
+                {isSending ? "Sending…" : "Send verification code"}
               </button>
             </form>
           </>
         )}
-        {error && (sentTo || isVerifying) ? <p className="chat-account-error">{error}</p> : null}
       </div>
     </div>
   );

@@ -49,8 +49,9 @@ router
   .use(middleware.customerOrigin())
   .use(middleware.customerAuth());
 router
-  .post("/api/v1/demo/email-verifications/:token", [CustomerEmailVerificationsController, "store"])
-  .use(middleware.customerOrigin());
+  .post("/api/v1/demo/email-verifications", [CustomerEmailVerificationsController, "store"])
+  .use(middleware.customerOrigin())
+  .use(middleware.customerAuth());
 router
   .group(() => {
     router

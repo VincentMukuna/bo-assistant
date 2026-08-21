@@ -56,8 +56,10 @@ export class BookingSchema extends BaseModel {
 }
 
 export class CustomerEmailVerificationSchema extends BaseModel {
-  static $columns = ['createdAt', 'customerId', 'email', 'expiresAt', 'id', 'name', 'tokenHash'] as const
+  static $columns = ['codeHash', 'createdAt', 'customerId', 'email', 'expiresAt', 'failedAttempts', 'id', 'name'] as const
   $columns = CustomerEmailVerificationSchema.$columns
+  @column()
+  declare codeHash: string
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
@@ -66,12 +68,12 @@ export class CustomerEmailVerificationSchema extends BaseModel {
   declare email: string
   @column.dateTime()
   declare expiresAt: DateTime
+  @column()
+  declare failedAttempts: number
   @column({ isPrimary: true })
   declare id: string
   @column()
   declare name: string | null
-  @column()
-  declare tokenHash: string
 }
 
 export class CustomerSchema extends BaseModel {

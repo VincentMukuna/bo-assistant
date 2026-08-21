@@ -3,12 +3,13 @@ import { requestCustomerEmailVerificationValidator } from "#validators/customer_
 import type { HttpContext } from "@adonisjs/core/http";
 
 export default class CustomerAccountsController {
-  async store({ customer, request, response, logger }: HttpContext) {
+  async store({ customer, request, response, logger, session }: HttpContext) {
     const input = await request.validateUsing(requestCustomerEmailVerificationValidator);
 
     try {
       const result = await requestCustomerEmailVerification({ customer, ...input });
       if (result.alreadyVerified) {
+        session.forget("customerEmailVerificationId");
         return {
           customer: {
             name: result.customer.name || null,
@@ -17,6 +18,7 @@ export default class CustomerAccountsController {
           },
         };
       }
+      session.put("customerEmailVerificationId", result.verificationId);
       return { sent: true };
     } catch (error) {
       logger.error({ err: error, customerId: customer.id }, "Unable to send verification email");

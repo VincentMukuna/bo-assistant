@@ -48,7 +48,10 @@ export function useSupportConversations() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingExchange, setPendingExchange] = useState<PendingExchange | null>(null);
-  const [verificationSentTo, setVerificationSentTo] = useState("");
+  const [pendingVerification, setPendingVerification] = useState<{
+    email: string;
+    name?: string;
+  } | null>(null);
   const [notice, setNotice] = useState("");
   const noticeTimeoutRef = useRef<number | null>(null);
 
@@ -174,11 +177,12 @@ export function useSupportConversations() {
       requestEmailVerification(email, name),
     onSuccess: (result, variables) => {
       if (result.customer) {
+        setPendingVerification(null);
         queryClient.setQueryData(supportQueryKeys.session(), result);
         announce("Email verified");
         return;
       }
-      setVerificationSentTo(variables.email);
+      setPendingVerification(variables);
     },
   });
 
@@ -186,7 +190,7 @@ export function useSupportConversations() {
     mutationFn: verifyEmail,
     onSuccess: async (result) => {
       queryClient.setQueryData(supportQueryKeys.session(), result);
-      setVerificationSentTo("");
+      setPendingVerification(null);
       setSelectedId(null);
       await queryClient.invalidateQueries({ queryKey: supportQueryKeys.conversations() });
       announce("Email verified");
@@ -291,13 +295,27 @@ export function useSupportConversations() {
 
   async function requestVerification(email: string, name?: string) {
     requestVerificationMutation.reset();
-    setVerificationSentTo("");
+    verifyEmailMutation.reset();
+    setPendingVerification(null);
     await requestVerificationMutation.mutateAsync({ email, name });
   }
 
-  async function verifyEmailToken(token: string) {
+  async function resendVerification() {
+    if (!pendingVerification) return;
+    requestVerificationMutation.reset();
     verifyEmailMutation.reset();
-    await verifyEmailMutation.mutateAsync(token);
+    await requestVerificationMutation.mutateAsync(pendingVerification);
+    announce("New code sent");
+  }
+
+  async function verifyEmailCode(code: string) {
+    verifyEmailMutation.reset();
+    await verifyEmailMutation.mutateAsync(code);
+  }
+
+  function changeVerificationEmail() {
+    resetMutationErrors();
+    setPendingVerification(null);
   }
 
   return {
@@ -313,13 +331,15 @@ export function useSupportConversations() {
     decisionState,
     isRequestingVerification: requestVerificationMutation.isPending,
     isVerifyingEmail: verifyEmailMutation.isPending,
-    verificationSentTo,
+    verificationSentTo: pendingVerification?.email ?? "",
     selectConversation,
     sendReply,
     submitDecision,
     createRequest,
     requestVerification,
-    verifyEmailToken,
+    resendVerification,
+    verifyEmailCode,
+    changeVerificationEmail,
   };
 }
 
