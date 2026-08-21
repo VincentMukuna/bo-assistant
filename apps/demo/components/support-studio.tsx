@@ -138,7 +138,9 @@ export function SupportStudio() {
                   <button
                     type="button"
                     onClick={() => setView("account")}
-                    aria-label={support.session?.isVerified ? "View account" : "Verify email"}
+                    aria-label={
+                      support.session?.isVerified ? "View account" : "Unlock personalized support"
+                    }
                   >
                     {support.session?.isVerified ? <Check size={17} /> : <UserRound size={17} />}
                   </button>
@@ -341,7 +343,9 @@ function ConversationView({
           >
             <span>O&amp;P</span>
             <div>
-              <div className="chat-message-body chat-message-body--typing">One moment…</div>
+              <div className="chat-message-body chat-message-body--typing">
+                Looking into that…
+              </div>
             </div>
           </div>
         ) : null}
@@ -362,7 +366,7 @@ function ConversationView({
         <div className="chat-compose">
           {!isVerified ? (
             <button className="chat-verify-prompt" type="button" onClick={onVerify}>
-              Verify email to manage appointments
+              Unlock personalized support
             </button>
           ) : null}
           <form className="chat-reply" onSubmit={submitMessage} aria-busy={isSending}>
@@ -417,7 +421,7 @@ function ApprovalCard({
         </span>
         <div>
           <strong id="booking-approval-heading">
-            {awaitingOwner ? "Waiting for Oak & Pine" : "Confirm booking change?"}
+            {awaitingOwner ? "Oak & Pine is on it" : "Does this new time work?"}
           </strong>
           <small>
             {approval.service}
@@ -441,7 +445,7 @@ function ApprovalCard({
       ) : null}
       {approval.status === "stale" ? (
         <p className="chat-approval-error">
-          This request is stale. Decline it and ask for a new time.
+          This time needs a refresh. Keep your current booking, then ask for another option.
         </p>
       ) : null}
       {error ? (
@@ -458,7 +462,7 @@ function ApprovalCard({
             disabled={busy}
             aria-label={`Decline change for ${approval.service}`}
           >
-            {decisionState === "declining" ? "Declining…" : "Decline"}
+            {decisionState === "declining" ? "Updating…" : "Keep current time"}
           </button>
           <button
             type="button"
@@ -467,7 +471,7 @@ function ApprovalCard({
             disabled={busy || !awaitingCustomer}
             aria-label={`Confirm change for ${approval.service}`}
           >
-            {decisionState === "confirming" ? "Confirming…" : "Confirm"}
+            {decisionState === "confirming" ? "Confirming…" : "Confirm new time"}
           </button>
         </div>
       ) : null}
@@ -522,7 +526,7 @@ function ChatStarter({
         <span>O&amp;P</span>
         <div>
           <div className="chat-message-body">
-            <p>Hi! How can we help today?</p>
+            <p>Hi! What can we take care of for you today?</p>
           </div>
         </div>
       </div>
@@ -571,15 +575,15 @@ function AccountView({
             <span className="chat-account-check">
               <Check size={18} />
             </span>
-            <strong>{session.name || "You’re verified"}</strong>
+            <strong>{session.name ? `Welcome, ${session.name}` : "You’re all set"}</strong>
             <p>{session.email}</p>
-            <small>You can manage appointments in this chat.</small>
+            <small>Personalized support is ready—you can manage appointments here.</small>
           </div>
         ) : sentTo ? (
           <div className="chat-account-code">
             <div className="chat-account-state">
               <MailCheck size={24} />
-              <strong>Enter your code</strong>
+              <strong>Check your inbox</strong>
               <p>
                 We sent a 6-digit code to <strong>{sentTo}</strong>.
               </p>
@@ -603,7 +607,7 @@ function AccountView({
               </label>
               {error ? <p role="alert">{error}</p> : null}
               <button type="submit" disabled={isVerifying}>
-                {isVerifying ? "Verifying…" : "Verify email"}
+                {isVerifying ? "Verifying…" : "Verify and continue"}
               </button>
             </form>
             <small className="chat-account-expiry">The code expires in 15 minutes.</small>
@@ -619,8 +623,8 @@ function AccountView({
         ) : (
           <>
             <div className="chat-account-intro">
-              <strong>Verify when you need to take action</strong>
-              <p>You can keep asking questions without an account.</p>
+              <strong>Unlock personalized support</strong>
+              <p>Verify your email to get tailored help and manage appointments right here.</p>
             </div>
             <form className="chat-account-form" onSubmit={onSubmit}>
               <label>
@@ -635,7 +639,7 @@ function AccountView({
               </label>
               {error ? <p role="alert">{error}</p> : null}
               <button type="submit" disabled={isSending}>
-                {isSending ? "Sending…" : "Send verification code"}
+                {isSending ? "Sending…" : "Email me a code"}
               </button>
             </form>
           </>
