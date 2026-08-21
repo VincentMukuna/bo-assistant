@@ -179,7 +179,7 @@ export function useSupportConversations() {
       if (result.customer) {
         setPendingVerification(null);
         queryClient.setQueryData(supportQueryKeys.session(), result);
-        announce("Email verified");
+        announce("Personalized support is ready");
         return;
       }
       setPendingVerification(variables);
@@ -193,7 +193,7 @@ export function useSupportConversations() {
       setPendingVerification(null);
       setSelectedId(null);
       await queryClient.invalidateQueries({ queryKey: supportQueryKeys.conversations() });
-      announce("Email verified");
+      announce("Personalized support is ready");
     },
   });
 
