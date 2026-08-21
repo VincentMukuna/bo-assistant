@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { BookingDetailsDialog } from "@/components/bookings/booking-details-sheet";
 import { NewBookingDialog } from "@/components/bookings/new-booking-dialog";
+import { AskOakDialog } from "@/components/operations/ask-oak-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -210,6 +211,15 @@ export function BookingsScreen({
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <AskOakDialog
+              surface="bookings"
+              contextLabel="bookings"
+              suggestions={[
+                "Which bookings need attention?",
+                "What should I prepare for today?",
+                "What is overdue?",
+              ]}
+            />
             <div className="bg-secondary flex rounded-lg p-1">
               {(["week", "agenda"] as const).map((option) => (
                 <button

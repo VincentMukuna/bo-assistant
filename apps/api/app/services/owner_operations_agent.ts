@@ -21,7 +21,12 @@ export class OwnerOperationsAgentClient {
     };
   }
 
-  async answer(question: string, ownerName: string, brief: OwnerBrief) {
+  async answer(
+    question: string,
+    ownerName: string,
+    brief: OwnerBrief,
+    pageContext: Record<string, unknown>
+  ) {
     const response = await fetch(`${this.baseUrl}/api/agents/${AGENT_ID}/generate`, {
       method: "POST",
       headers: this.headers(),
@@ -33,6 +38,7 @@ export class OwnerOperationsAgentClient {
           timezone: "America/Los_Angeles",
           currentDate: brief.businessDate,
           briefJson: JSON.stringify(brief),
+          pageContextJson: JSON.stringify(pageContext),
         },
       }),
       signal: AbortSignal.timeout(30_000),

@@ -173,6 +173,8 @@ export type OwnerAssistantAnswer = {
   generatedAt: string;
 };
 
+export type OwnerAssistantSurface = "overview" | "bookings" | "customer";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -352,10 +354,13 @@ export function createApi({ baseUrl = "/", cache, headers }: CreateApiOptions = 
       async index() {
         return jsonRequest<OwnerBrief>("/api/v1/owner-briefs");
       },
-      async ask(message: string) {
+      async ask(
+        message: string,
+        context: { surface?: OwnerAssistantSurface; customerId?: number } = {}
+      ) {
         return jsonRequest<OwnerAssistantAnswer>("/api/v1/owner-assistant/messages", {
           method: "POST",
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({ message, ...context }),
         });
       },
     },

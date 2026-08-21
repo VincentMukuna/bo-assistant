@@ -17,6 +17,7 @@ import {
 
 import { NewBookingDialog } from "@/components/bookings/new-booking-dialog";
 import { CustomerDialog } from "@/components/customers/customer-dialog";
+import { AskOakDialog } from "@/components/operations/ask-oak-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -197,6 +198,16 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                     <h2 className="text-xl font-semibold tracking-[-0.02em]">{selected.name}</h2>
                     <p className="text-muted-foreground mt-1 text-sm">{customerSince(selected)}</p>
                   </div>
+                  <AskOakDialog
+                    surface="customer"
+                    customerId={selected.id}
+                    contextLabel={selected.name}
+                    suggestions={[
+                      `What should I know before ${selected.name.split(/\s+/)[0]}’s next visit?`,
+                      `Does anything need follow-up for ${selected.name.split(/\s+/)[0]}?`,
+                      `Summarize ${selected.name.split(/\s+/)[0]}’s booking history.`,
+                    ]}
+                  />
                   <Button
                     variant="outline"
                     size="icon"

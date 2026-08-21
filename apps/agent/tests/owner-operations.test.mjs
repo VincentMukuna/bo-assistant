@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { RequestContext } from "@mastra/core/request-context";
 import { ownerOperationsAgent } from "@/agents/owner-operations.ts";
 
-test("keeps owner guidance read-only and grounded in the workspace brief", async () => {
+test("keeps operations guidance read-only and grounded in server-built context", async () => {
   const requestContext = new RequestContext();
   requestContext.set("ownerName", "Kim Lewis");
   requestContext.set("businessName", "Oak & Pine");
@@ -12,11 +12,12 @@ test("keeps owner guidance read-only and grounded in the workspace brief", async
     "briefJson",
     JSON.stringify({ attentionItems: [], todaySchedule: [], watchItems: [], recentWins: [] })
   );
+  requestContext.set("pageContextJson", JSON.stringify({ surface: "bookings", bookings: [] }));
 
   const instructions = await ownerOperationsAgent.getInstructions({ requestContext });
 
-  expect(instructions).toContain("only factual source");
-  expect(instructions).toContain("read-only snapshot");
+  expect(instructions).toContain("only factual sources");
+  expect(instructions).toContain("server-built, read-only snapshots");
   expect(instructions).toContain("Never claim you changed a booking");
   expect(instructions).toContain("Do not infer revenue, profit, payments");
 });

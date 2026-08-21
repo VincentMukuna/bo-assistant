@@ -123,10 +123,7 @@ test.group("Owner brief", (group) => {
     assert.equal(recentWin?.summary, "Booking details verified");
   });
 
-  test("answers core owner questions from the durable brief without a model", async ({
-    assert,
-    client,
-  }) => {
+  test("routes suggested questions through the operations model", async ({ assert, client }) => {
     const { owner, customer } = await setupOwnerOperation();
     const now = DateTime.now().setZone("America/Los_Angeles");
     await Booking.create({
@@ -139,20 +136,47 @@ test.group("Owner brief", (group) => {
       serviceAddress: customer.address,
     });
 
-    const response = await client
-      .post("/api/v1/owner-assistant/messages")
-      .withGuard("web")
-      .loginAs(owner)
-      .json({ message: "Prepare me for today" });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        messages: Array<{ content: string }>;
+        requestContext: { briefJson: string; pageContextJson: string };
+      };
+      assert.equal(body.messages[0].content, "Prepare me for today");
+      assert.include(body.requestContext.briefJson, "Window track repair");
+      assert.deepEqual(JSON.parse(body.requestContext.pageContextJson), { surface: "overview" });
+      return Response.json({ text: "You have one window repair today." });
+    };
 
-    response.assertStatus(200);
-    assert.equal(response.body().mode, "brief");
-    assert.include(response.body().answer, "Window track repair");
-    assert.include(response.body().answer, "/bookings?view=agenda&booking=");
+    try {
+      const response = await client
+        .post("/api/v1/owner-assistant/messages")
+        .withGuard("web")
+        .loginAs(owner)
+        .json({ message: "Prepare me for today", surface: "overview" });
+
+      response.assertStatus(200);
+      assert.equal(response.body().mode, "agent");
+      assert.equal(response.body().answer, "You have one window repair today.");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
-  test("gives the owner agent only the grounded read-only brief", async ({ assert, client }) => {
-    const { owner } = await setupOwnerOperation();
+  test("gives the model server-built context for the selected customer", async ({
+    assert,
+    client,
+  }) => {
+    const { owner, customer } = await setupOwnerOperation();
+    await Booking.create({
+      customerId: customer.id,
+      service: "Window track repair",
+      staff: "Noah",
+      scheduledAt: DateTime.now().plus({ days: 1 }),
+      durationMinutes: 90,
+      status: "confirmed",
+      serviceAddress: customer.address,
+    });
     const originalFetch = globalThis.fetch;
 
     globalThis.fetch = async (input, init) => {
@@ -160,7 +184,7 @@ test.group("Owner brief", (group) => {
       assert.equal(url.pathname, "/api/agents/owner-operations-agent/generate");
       const body = JSON.parse(String(init?.body)) as {
         messages: Array<{ content: string }>;
-        requestContext: { ownerName: string; briefJson: string };
+        requestContext: { ownerName: string; briefJson: string; pageContextJson: string };
       };
       assert.equal(body.messages[0].content, "Give me your operating read");
       assert.equal(body.requestContext.ownerName, "Kim Lewis");
@@ -168,6 +192,14 @@ test.group("Owner brief", (group) => {
       assert.property(brief, "attentionItems");
       assert.property(brief, "todaySchedule");
       assert.notProperty(brief, "revenue");
+      const pageContext = JSON.parse(body.requestContext.pageContextJson) as {
+        surface: string;
+        customer: { id: number; name: string; bookings: Array<{ service: string }> };
+      };
+      assert.equal(pageContext.surface, "customer");
+      assert.equal(pageContext.customer.id, customer.id);
+      assert.equal(pageContext.customer.name, "Alice Morgan");
+      assert.equal(pageContext.customer.bookings[0]?.service, "Window track repair");
       return Response.json({ text: "The operation is quiet. No action is required." });
     };
 
@@ -176,7 +208,11 @@ test.group("Owner brief", (group) => {
         .post("/api/v1/owner-assistant/messages")
         .withGuard("web")
         .loginAs(owner)
-        .json({ message: "Give me your operating read" });
+        .json({
+          message: "Give me your operating read",
+          surface: "customer",
+          customerId: customer.id,
+        });
 
       response.assertStatus(200);
       assert.equal(response.body().mode, "agent");

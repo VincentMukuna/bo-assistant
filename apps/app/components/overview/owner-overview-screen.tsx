@@ -91,7 +91,7 @@ export function OwnerOverviewScreen() {
   const brief = briefQuery.data;
 
   const askMutation = useMutation({
-    mutationFn: api.ownerBrief.ask,
+    mutationFn: (message: string) => api.ownerBrief.ask(message, { surface: "overview" }),
     onSuccess: (result, askedQuestion) => {
       setMessages((current) => [
         ...current,
@@ -328,7 +328,7 @@ export function OwnerOverviewScreen() {
                       <Bot className="size-4" />
                     </span>
                     <div>
-                      <h2 className="text-sm font-semibold text-zinc-950">Ask about the day</h2>
+                      <h2 className="text-sm font-semibold text-zinc-950">Ask Oak</h2>
                     </div>
                   </div>
                 </div>
