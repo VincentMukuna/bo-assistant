@@ -22,6 +22,12 @@ import type {
 import { useSupportConversations, type DecisionState } from "@/lib/use-support-conversations";
 
 type ChatView = "account" | "conversation" | "threads" | "new";
+const SUGGESTED_MESSAGES = [
+  "I need to reschedule my appointment.",
+  "I’d like to book an appointment.",
+  "I have a question about your services.",
+];
+
 function formatBookingTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Los_Angeles",
@@ -194,6 +200,7 @@ export function SupportStudio() {
               decisionState={support.decisionState}
               onSend={submitReply}
               onDecision={support.submitDecision}
+              customerName={support.session?.name ?? null}
               isVerified={Boolean(support.session?.isVerified)}
               onVerify={() => setView("account")}
             />
@@ -277,6 +284,7 @@ function ConversationView({
   decisionState,
   onSend,
   onDecision,
+  customerName,
   isVerified,
   onVerify,
 }: {
@@ -287,6 +295,7 @@ function ConversationView({
   decisionState: DecisionState;
   onSend: (message: string) => void;
   onDecision: (decision: "approve" | "decline") => void;
+  customerName: string | null;
   isVerified: boolean;
   onVerify: () => void;
 }) {
@@ -309,18 +318,31 @@ function ConversationView({
 
   return (
     <div className="chat-view chat-conversation-view">
-      <div className="chat-messages" ref={messagesRef}>
-        <div className="chat-status chat-status--open">Open</div>
-        {messages.map((message) => (
-          <div className={`chat-message chat-message--${message.sender}`} key={message.id}>
-            {message.sender === "business" ? <span>O&amp;P</span> : null}
-            <div>
-              <div className="chat-message-body">
-                <ReactMarkdown>{message.body}</ReactMarkdown>
+      <div
+        className={messages.length ? "chat-messages" : "chat-messages chat-new-messages"}
+        ref={messagesRef}
+      >
+        {messages.length ? (
+          <>
+            <div className="chat-status chat-status--open">Open</div>
+            {messages.map((message) => (
+              <div className={`chat-message chat-message--${message.sender}`} key={message.id}>
+                {message.sender === "business" ? <span>O&amp;P</span> : null}
+                <div>
+                  <div className="chat-message-body">
+                    <ReactMarkdown>{message.body}</ReactMarkdown>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            ))}
+          </>
+        ) : (
+          <ChatStarter
+            customerName={customerName}
+            onSelect={onSend}
+            disabled={replyUnavailable}
+          />
+        )}
         {isSending && !messages.some((message) => message.id === "streaming-assistant") ? (
           <div
             className="chat-message chat-message--business chat-message--typing"
@@ -470,12 +492,6 @@ function NewRequestForm({
   customerName: string | null;
   onStart: (message: string) => void;
 }) {
-  const suggestions = [
-    "I need to reschedule my appointment.",
-    "I’d like to book an appointment.",
-    "I have a question about your services.",
-  ];
-
   function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = String(new FormData(event.currentTarget).get("message") ?? "").trim();
@@ -485,23 +501,7 @@ function NewRequestForm({
   return (
     <div className="chat-view chat-new-view">
       <div className="chat-messages chat-new-messages">
-        <div className="chat-message chat-message--business">
-          <span>O&amp;P</span>
-          <div>
-            <div className="chat-message-body">
-              <p>
-                Hi{customerName ? ` ${customerName.split(" ")[0]}` : ""}! How can we help today?
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="chat-starter-replies" aria-label="Suggested messages">
-          {suggestions.map((suggestion) => (
-            <button key={suggestion} type="button" onClick={() => onStart(suggestion)}>
-              {suggestion}
-            </button>
-          ))}
-        </div>
+        <ChatStarter customerName={customerName} onSelect={onStart} />
       </div>
       <form className="chat-reply" onSubmit={submitMessage}>
         <label className="sr-only" htmlFor="chat-new-reply-input">
@@ -522,6 +522,41 @@ function NewRequestForm({
         </button>
       </form>
     </div>
+  );
+}
+
+function ChatStarter({
+  customerName,
+  onSelect,
+  disabled = false,
+}: {
+  customerName: string | null;
+  onSelect: (message: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <>
+      <div className="chat-message chat-message--business">
+        <span>O&amp;P</span>
+        <div>
+          <div className="chat-message-body">
+            <p>Hi{customerName ? ` ${customerName.split(" ")[0]}` : ""}! How can we help today?</p>
+          </div>
+        </div>
+      </div>
+      <div className="chat-starter-replies" aria-label="Suggested messages">
+        {SUGGESTED_MESSAGES.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            onClick={() => onSelect(suggestion)}
+            disabled={disabled}
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 
