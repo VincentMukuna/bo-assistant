@@ -48,6 +48,7 @@ export type InboxConversationSummary = {
   outcomeStatus: "active" | "completed" | "failed";
   outcomeSummary: string | null;
   attention: InboxAttention | null;
+  bookingNotifications: InboxAttention[];
   customer: InboxCustomer;
 };
 

@@ -5,6 +5,7 @@
 
 export const controllers = {
   AgentActivities: () => import('#controllers/agent_activities_controller'),
+  AgentBookingCreations: () => import('#controllers/agent_booking_creations_controller'),
   AgentBookingReschedules: () => import('#controllers/agent_booking_reschedules_controller'),
   AgentBookingSearches: () => import('#controllers/agent_booking_searches_controller'),
   ApprovalDecisions: () => import('#controllers/approval_decisions_controller'),

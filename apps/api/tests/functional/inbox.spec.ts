@@ -1,4 +1,5 @@
 import Customer from "#models/customer";
+import Booking from "#models/booking";
 import InboxAnnotation from "#models/inbox_annotation";
 import InboxAttentionItem, { type AttentionCause } from "#models/inbox_attention_item";
 import SupportConversation from "#models/support_conversation";
@@ -6,6 +7,7 @@ import User from "#models/user";
 import { inboxEventStream } from "#services/inbox_event_stream";
 import testUtils from "@adonisjs/core/services/test_utils";
 import { test } from "@japa/runner";
+import { DateTime } from "luxon";
 
 async function createOwner() {
   return User.create({
@@ -162,6 +164,73 @@ test.group("Workspace Inbox", (group) => {
     await conversation.refresh();
     assert.equal(conversation.handlingMode, "agent");
     assert.equal(conversation.nextStepOwner, "agent");
+  });
+
+  test("confirms a pending booking and notifies the customer in the same conversation", async ({
+    assert,
+    client,
+  }) => {
+    const owner = await createOwner();
+    const customer = await createCustomer("Alice Morgan");
+    const conversation = await createConversation(customer, "Book a deep clean");
+    conversation.nextStepOwner = "owner";
+    await conversation.save();
+    const booking = await Booking.create({
+      customerId: customer.id,
+      service: "Deep home clean",
+      staff: "Jamie",
+      scheduledAt: DateTime.fromISO("2026-09-15T17:00:00Z"),
+      durationMinutes: 120,
+      status: "needs_approval",
+      serviceAddress: customer.address,
+    });
+    const attention = await InboxAttentionItem.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      cause: "authority",
+      actionType: "booking_confirmation",
+      status: "pending",
+      externalKey: "booking-creation:confirm-tool-1",
+      summary: "Alice Morgan created a new Deep home clean booking",
+      contextJson: JSON.stringify({ bookingId: booking.id }),
+    });
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/api/memory/save-messages");
+      const body = JSON.parse(String(init?.body)) as {
+        messages: Array<Record<string, unknown>>;
+      };
+      assert.deepInclude(body.messages[0], {
+        id: attention.id,
+        threadId: conversation.id,
+        resourceId: `customer:${customer.id}`,
+        role: "assistant",
+        content:
+          "Your Deep home clean booking for Tuesday, September 15 at 10:00 AM has been confirmed.",
+        metadata: { author: "owner" },
+      });
+      return Response.json({ messages: body.messages });
+    };
+
+    try {
+      const response = await client
+        .post(`/api/v1/inbox/conversations/${conversation.id}/attention/${attention.id}/decisions`)
+        .withGuard("web")
+        .loginAs(owner)
+        .json({ decision: "approve" });
+      response.assertStatus(200);
+      response.assertBodyContains({ attention: { id: attention.id, status: "completed" } });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    await Promise.all([booking.refresh(), attention.refresh(), conversation.refresh()]);
+    assert.equal(booking.status, "confirmed");
+    assert.equal(attention.status, "completed");
+    assert.equal(conversation.nextStepOwner, "none");
+    assert.equal(conversation.outcomeStatus, "completed");
   });
 
   test("publishes a conversation-scoped live update for workspace reconciliation", ({ assert }) => {

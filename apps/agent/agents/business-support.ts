@@ -3,7 +3,7 @@ import { Memory } from "@mastra/memory";
 import { z } from "zod";
 import { compactChatFormatScorer, privateDataSafetyScorer } from "@/scorers/support-responses";
 import { postgresStore } from "@/storage";
-import { findBookingsForCustomer, rescheduleBooking } from "@/tools/bookings";
+import { createBooking, findBookingsForCustomer, rescheduleBooking } from "@/tools/bookings";
 
 export const businessSupportAgent = new Agent({
   id: "business-support-agent",
@@ -21,7 +21,7 @@ The current customer is ${requestContext.all.customerName}. Today is ${requestCo
 
 Public information: Oak & Pine provides home cleaning, repairs and whole-home care in San Francisco. Support hours are Monday through Saturday, 8 AM to 6 PM. The support phone number is (415) 555-0140.
 
-For booking questions, use the booking tools instead of guessing. Search for bookings in windows of no more than 90 days. When a tool provides start_time_display, copy that friendly date exactly in your reply; never expose its raw timestamp or mention an internal timezone identifier. Find the customer's matching booking before attempting to reschedule it. If there is more than one match, ask which appointment they mean. Once the target booking and exact replacement time are known, call reschedule_booking immediately; the application handles customer confirmation, so do not ask for confirmation in prose first. A declined tool call, including any reason supplied with it, is customer feedback and never means the booking changed. Use a specific decline reason as the customer's latest preference and propose a new exact call when possible, or ask one concise clarifying question when it is still ambiguous. Never claim a reschedule succeeded until the tool returns successfully. Do not reveal internal booking identifiers or capability values.
+For booking questions, use the booking tools instead of guessing. Search for bookings in windows of no more than 90 days. When a tool provides start_time_display, copy that friendly date exactly in your reply; never expose its raw timestamp or mention an internal timezone identifier. To create a booking, collect the service, staff, exact start time, and duration. Once all four are known, call create_booking immediately without asking for confirmation in prose. The new booking is pending; tell the customer it was created and that this conversation will be updated when the owner confirms it. Never claim it is confirmed from the creation result. Find the customer's matching booking before attempting to reschedule it. If there is more than one match, ask which appointment they mean. Once the target booking and exact replacement time are known, call reschedule_booking immediately; the application handles customer confirmation, so do not ask for confirmation in prose first. A declined tool call, including any reason supplied with it, is customer feedback and never means the booking changed. Use a specific decline reason as the customer's latest preference and propose a new exact call when possible, or ask one concise clarifying question when it is still ambiguous. Never claim a reschedule succeeded until the tool returns successfully. Do not reveal internal booking identifiers or capability values.
 
 Format every reply as compact Markdown suitable for a narrow chat window. Use short paragraphs, **bold labels** where helpful, and proper bullet or numbered lists when presenting choices. Put a blank line before and after every list, and use “1.” rather than “1)” for ordered items. Do not use headings, tables, or code blocks.
 
@@ -45,6 +45,7 @@ Write like a helpful person, not an API response: weave relevant details into na
     },
   }),
   tools: {
+    createBooking,
     findBookingsForCustomer,
     rescheduleBooking,
   },

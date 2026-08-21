@@ -18,7 +18,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AgentActivity, AgentActivityCategory, AgentActivityFilter } from "@/lib/api";
 import { agentActivityQueryOptions } from "@/lib/queries";
-import { useInboxEvents } from "@/lib/use-inbox-events";
 import { cn } from "@/lib/utils";
 
 const filters: Array<{ value: AgentActivityFilter; label: string }> = [
@@ -116,7 +115,6 @@ function ActivityRow({ activity }: { activity: AgentActivity }) {
 export function AgentActivityScreen({ filter }: { filter: AgentActivityFilter }) {
   const router = useRouter();
   const activityQuery = useQuery(agentActivityQueryOptions);
-  useInboxEvents();
   const feed = activityQuery.data;
   const grouped = useMemo(() => {
     const groups = new Map<string, AgentActivity[]>();

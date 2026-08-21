@@ -20,6 +20,10 @@ function presentConversation(conversation: SupportConversation) {
   const attention = conversation.attentionItems.find((item) =>
     ["pending", "approved", "failed"].includes(item.status)
   );
+  const bookingNotifications = conversation.attentionItems.filter(
+    (item) =>
+      item.actionType === "booking_confirmation" && ["pending", "approved"].includes(item.status)
+  );
   return {
     id: conversation.id,
     title: conversation.title,
@@ -31,6 +35,7 @@ function presentConversation(conversation: SupportConversation) {
     outcomeStatus: conversation.outcomeStatus,
     outcomeSummary: conversation.outcomeSummary,
     attention: attention ? presentAttention(attention) : null,
+    bookingNotifications: bookingNotifications.map(presentAttention),
     customer: {
       id: conversation.customer.id,
       name: conversation.customer.name,

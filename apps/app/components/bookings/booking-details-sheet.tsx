@@ -38,7 +38,7 @@ import { errorMessage, queryKeys } from "@/lib/queries";
 
 const statusLabels = {
   confirmed: "Confirmed",
-  needs_approval: "Needs approval",
+  needs_approval: "Pending",
   in_progress: "In progress",
   completed: "Completed",
 } as const;
@@ -411,7 +411,7 @@ export function BookingDetailsDialog({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="confirmed">Confirmed</SelectItem>
-                        <SelectItem value="needs_approval">Needs approval</SelectItem>
+                        <SelectItem value="needs_approval">Pending</SelectItem>
                         <SelectItem value="in_progress">In progress</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                       </SelectContent>
@@ -435,10 +435,7 @@ export function BookingDetailsDialog({
             ) : null}
 
             {confirmingDelete ? (
-              <section
-                className="mt-6 rounded-xl bg-red-50 p-4 sm:col-span-2"
-                aria-live="polite"
-              >
+              <section className="mt-6 rounded-xl bg-red-50 p-4 sm:col-span-2" aria-live="polite">
                 <p className="text-sm font-semibold text-red-950">Delete this booking?</p>
                 <p className="mt-1 text-xs leading-5 text-red-800/80">
                   This removes it from the business calendar and cannot be undone.
@@ -467,7 +464,9 @@ export function BookingDetailsDialog({
         </ScrollArea>
 
         <DialogFooter className="!m-0 items-center rounded-none border-t bg-zinc-50/70 px-5 py-3 sm:justify-between sm:px-6">
-          <p className="hidden text-xs text-zinc-400 sm:block">Select a field to edit it in place.</p>
+          <p className="hidden text-xs text-zinc-400 sm:block">
+            Select a field to edit it in place.
+          </p>
           <Button
             variant="ghost"
             size="sm"

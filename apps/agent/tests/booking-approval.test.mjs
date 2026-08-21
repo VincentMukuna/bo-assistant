@@ -4,6 +4,7 @@ import {
   BookingApiRejected,
   BookingApiUnavailable,
   InvalidBookingApiResponse,
+  createBooking,
   findBookingsForCustomer,
   rescheduleBooking,
 } from "@/tools/bookings.ts";
@@ -20,8 +21,49 @@ const context = {
 };
 
 test("requires explicit approval only for the reschedule mutation", () => {
+  expect(createBooking.requireApproval).not.toBe(true);
   expect(findBookingsForCustomer.requireApproval).not.toBe(true);
   expect(rescheduleBooking.requireApproval).toBe(true);
+});
+
+test("creates a pending booking immediately through the focused internal resource", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    expect(String(input)).toBe("http://localhost:3333/api/v1/agent/booking-creations");
+    expect(JSON.parse(String(init.body))).toEqual({
+      service: "Deep home clean",
+      staff: "Jamie",
+      start_time: "2026-08-25T10:00:00-07:00",
+      duration_minutes: 120,
+      tool_call_id: "approved-tool-call",
+    });
+    return Response.json({
+      booking: {
+        booking_id: 9,
+        service: "Deep home clean",
+        staff: "Jamie",
+        start_time: "2026-08-25T17:00:00Z",
+        duration_minutes: 120,
+        status: "needs_approval",
+      },
+    });
+  };
+
+  try {
+    const result = await createBooking.execute(
+      {
+        service: "Deep home clean",
+        staff: "Jamie",
+        start_time: "2026-08-25T10:00:00-07:00",
+        duration_minutes: 120,
+      },
+      context
+    );
+    expect(result.booking.status).toBe("needs_approval");
+    expect(result.booking.start_time_display).toBe("Tuesday, August 25 at 10:00 AM");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("documents the API's 90-day booking search boundary for the model", () => {

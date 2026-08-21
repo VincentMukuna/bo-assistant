@@ -8,6 +8,8 @@ import rescheduleBooking, {
 import { issueBookingReadCapability } from "#services/booking_capability";
 import Booking from "#models/booking";
 import Customer from "#models/customer";
+import InboxAttentionItem from "#models/inbox_attention_item";
+import SupportConversation from "#models/support_conversation";
 import testUtils from "@adonisjs/core/services/test_utils";
 import { test } from "@japa/runner";
 import { DateTime } from "luxon";
@@ -61,6 +63,66 @@ test.group("Agent booking resources", (group) => {
       ),
       [aliceBooking.id]
     );
+  });
+
+  test("creates one pending booking and owner notification for an exact tool call", async ({
+    assert,
+    client,
+  }) => {
+    const customer = await Customer.create({
+      name: "Alice",
+      email: "alice-create@example.com",
+      phone: "1",
+      address: "1 Pine",
+      notes: "",
+    });
+    const conversation = await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: customer.id,
+      title: "Book a deep clean",
+      status: "open",
+    });
+    const capability = issueBookingReadCapability(customer.id, conversation.id);
+    const request = {
+      tool_call_id: "create-tool-1",
+      service: "Deep home clean",
+      staff: "Jamie",
+      start_time: "2026-09-15T10:00:00-07:00",
+      duration_minutes: 120,
+    };
+
+    const created = await client
+      .post("/api/v1/agent/booking-creations")
+      .header("authorization", `Bearer ${capability}`)
+      .json(request);
+    created.assertStatus(200);
+    created.assertBodyContains({
+      booking: { service: "Deep home clean", status: "needs_approval" },
+    });
+
+    const retried = await client
+      .post("/api/v1/agent/booking-creations")
+      .header("authorization", `Bearer ${capability}`)
+      .json(request);
+    retried.assertStatus(200);
+    assert.equal(retried.body().booking.booking_id, created.body().booking.booking_id);
+    assert.equal(
+      await Booking.query()
+        .where("customerId", customer.id)
+        .count("* as total")
+        .then((rows) => Number(rows[0].$extras.total)),
+      1
+    );
+
+    const attention = await InboxAttentionItem.findByOrFail(
+      "externalKey",
+      "booking-creation:create-tool-1"
+    );
+    assert.equal(attention.actionType, "booking_confirmation");
+    assert.equal(attention.status, "pending");
+    assert.equal(attention.context.bookingId, created.body().booking.booking_id);
+    await conversation.refresh();
+    assert.equal(conversation.nextStepOwner, "owner");
   });
 
   test("executes only the exact approved reschedule and makes exact retries idempotent", async ({

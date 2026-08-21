@@ -22,6 +22,8 @@ const AgentBookingSearchesController = () =>
   import("#controllers/agent_booking_searches_controller");
 const AgentBookingReschedulesController = () =>
   import("#controllers/agent_booking_reschedules_controller");
+const AgentBookingCreationsController = () =>
+  import("#controllers/agent_booking_creations_controller");
 const WorkspaceConversationsController = () =>
   import("#controllers/workspace_conversations_controller");
 const ConversationOwnershipsController = () =>
@@ -59,6 +61,9 @@ router
     router
       .post("booking-reschedules", [AgentBookingReschedulesController, "store"])
       .use(middleware.bookingCapability({ scope: "find_bookings" }));
+    router
+      .post("booking-creations", [AgentBookingCreationsController, "store"])
+      .use(middleware.bookingCapability({ scope: "create_bookings" }));
   })
   .prefix("/api/v1/agent");
 

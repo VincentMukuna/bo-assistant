@@ -1,5 +1,6 @@
 import InboxAnnotation from "#models/inbox_annotation";
 import InboxAttentionItem from "#models/inbox_attention_item";
+import confirmPendingBooking from "#actions/confirm-pending-booking";
 import { businessSupportAgent } from "#services/business_support_agent";
 import { inboxEventStream } from "#services/inbox_event_stream";
 import { createAttentionDecisionValidator } from "#validators/inbox";
@@ -28,6 +29,43 @@ export default class AttentionDecisionsController {
       .preload("conversation", (query) => query.preload("customer"))
       .first();
     if (!item) return response.notFound({ error: "Attention item not found." });
+    if (item.actionType === "booking_confirmation") {
+      if (decision.decision !== "approve") {
+        return response.unprocessableEntity({
+          error: "Pending bookings can be confirmed from this notification.",
+        });
+      }
+      const confirmed = await confirmPendingBooking({
+        attentionId: item.id,
+        conversationId: params.conversationId,
+        ownerId: auth.user!.id,
+      });
+      if (confirmed.status === "error") {
+        return confirmed.error.match({
+          BookingConfirmationNotFound: () =>
+            response.notFound({ error: "Booking confirmation notification not found." }),
+          BookingConfirmationConflict: (failure) => response.conflict({ error: failure.message }),
+          BookingConfirmationNotificationFailed: (failure) => {
+            logger.error(
+              { err: failure, attentionId: item.id },
+              "Unable to notify customer of confirmed booking"
+            );
+            return response.badGateway({ error: failure.message });
+          },
+          BookingConfirmationStoreUnavailable: (failure) => {
+            logger.error({ err: failure, attentionId: item.id }, "Unable to confirm booking");
+            return response.serviceUnavailable({ error: failure.message });
+          },
+        });
+      }
+      return {
+        attention: {
+          id: confirmed.value.id,
+          status: confirmed.value.status,
+          outcomeSummary: confirmed.value.outcomeSummary,
+        },
+      };
+    }
     if (item.status !== "pending") {
       return response.conflict({ error: "This attention item has already been decided." });
     }
@@ -71,6 +109,7 @@ export default class AttentionDecisionsController {
       try {
         const stream = await businessSupportAgent.decideToolCall({
           customer: conversation.customer,
+          threadId: conversation.id,
           decision: "decline",
           runId: context.runId,
           toolCallId: context.toolCallId,

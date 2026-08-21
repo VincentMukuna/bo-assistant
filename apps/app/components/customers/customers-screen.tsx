@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 
 const statusLabels = {
   confirmed: "Confirmed",
-  needs_approval: "Needs approval",
+  needs_approval: "Pending",
   in_progress: "In progress",
   completed: "Completed",
 } as const;

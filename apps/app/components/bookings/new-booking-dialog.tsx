@@ -207,7 +207,7 @@ export function NewBookingDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="needs_approval">Needs approval</SelectItem>
+                  <SelectItem value="needs_approval">Pending</SelectItem>
                   <SelectItem value="in_progress">In progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>

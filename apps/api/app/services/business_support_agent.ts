@@ -123,12 +123,10 @@ export class BusinessSupportAgentClient {
     };
   }
 
-  private context(
-    customer: Customer,
-    bookingCapability: string = issueBookingReadCapability(customer.id)
-  ) {
+  private context(customer: Customer, conversationId: string, bookingCapability?: string) {
     return {
-      bookingCapability,
+      bookingCapability:
+        bookingCapability ?? issueBookingReadCapability(customer.id, conversationId),
       customerName: customer.name,
       timezone: CUSTOMER_TIMEZONE,
       currentDate: DateTime.now().setZone(CUSTOMER_TIMEZONE).toISODate(),
@@ -168,7 +166,7 @@ export class BusinessSupportAgentClient {
       messages: [{ role: "user", content: message }],
       memory: { thread: threadId, resource: resourceId(customer.id) },
       maxSteps: 6,
-      requestContext: this.context(customer),
+      requestContext: this.context(customer, threadId),
     });
   }
 
@@ -237,13 +235,18 @@ export class BusinessSupportAgentClient {
       .filter((message): message is AgentMessage => Boolean(message));
   }
 
-  async appendOwnerMessage(customer: Customer, threadId: string, message: string) {
+  async appendOwnerMessage(
+    customer: Customer,
+    threadId: string,
+    message: string,
+    messageId: string = crypto.randomUUID()
+  ) {
     await this.request(`/memory/save-messages?agentId=${encodeURIComponent(AGENT_ID)}`, {
       method: "POST",
       body: JSON.stringify({
         messages: [
           {
-            id: crypto.randomUUID(),
+            id: messageId,
             threadId,
             resourceId: resourceId(customer.id),
             role: "assistant",
@@ -294,6 +297,7 @@ export class BusinessSupportAgentClient {
 
   decideToolCall(input: {
     customer: Customer;
+    threadId: string;
     decision: "approve" | "decline";
     runId: string;
     toolCallId: string;
@@ -302,7 +306,7 @@ export class BusinessSupportAgentClient {
     return this.stream(`/agents/${AGENT_ID}/resume-stream`, {
       runId: input.runId,
       toolCallId: input.toolCallId,
-      requestContext: this.context(input.customer),
+      requestContext: this.context(input.customer, input.threadId),
       resumeData:
         input.decision === "approve"
           ? { approved: true }

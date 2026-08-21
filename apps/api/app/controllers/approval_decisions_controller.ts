@@ -83,6 +83,7 @@ export default class ApprovalDecisionsController {
 
       const agentStream = await businessSupportAgent.decideToolCall({
         customer,
+        threadId: conversation.id,
         decision: decision.decision,
         runId: call.runId,
         toolCallId: call.toolCallId,

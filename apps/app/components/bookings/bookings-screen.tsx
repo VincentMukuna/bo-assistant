@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 const statusLabels = {
   confirmed: "Confirmed",
-  needs_approval: "Needs approval",
+  needs_approval: "Pending",
   in_progress: "In progress",
   completed: "Completed",
 } as const;
@@ -76,20 +76,14 @@ function weekRangeLabel(start: Date) {
     : `${startMonth} ${start.getUTCDate()}–${endMonth} ${end.getUTCDate()}, ${year}`;
 }
 
-function BookingRow({
-  booking,
-  onOpen,
-}: {
-  booking: Booking;
-  onOpen: (booking: Booking) => void;
-}) {
+function BookingRow({ booking, onOpen }: { booking: Booking; onOpen: (booking: Booking) => void }) {
   const date = displayDate(booking);
 
   return (
     <button
       type="button"
       onClick={() => onOpen(booking)}
-      className="group grid w-full grid-cols-[58px_minmax(0,1fr)] gap-4 bg-white px-4 py-4 text-left transition-colors hover:bg-zinc-50 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400 focus-visible:outline-none sm:grid-cols-[76px_minmax(0,1fr)_minmax(140px,0.55fr)_auto] sm:gap-5 sm:px-5"
+      className="group grid w-full grid-cols-[58px_minmax(0,1fr)] gap-4 bg-white px-4 py-4 text-left transition-colors hover:bg-zinc-50 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:outline-none focus-visible:ring-inset sm:grid-cols-[76px_minmax(0,1fr)_minmax(140px,0.55fr)_auto] sm:gap-5 sm:px-5"
       aria-label={`Open ${booking.service} booking for ${booking.customer.name}`}
     >
       <div className="border-border/60 border-r pr-4">

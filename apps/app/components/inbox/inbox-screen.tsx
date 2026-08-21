@@ -36,7 +36,6 @@ import {
   inboxQueryOptions,
   queryKeys,
 } from "@/lib/queries";
-import { useInboxEvents } from "@/lib/use-inbox-events";
 import { cn } from "@/lib/utils";
 
 const inboxListWidth = {
@@ -199,7 +198,7 @@ function ConversationList({
                     </span>
                     {conversation.preview ? (
                       <span
-                        className="mt-0.5 block overflow-hidden text-[11px] leading-4 text-zinc-500 text-ellipsis whitespace-nowrap"
+                        className="mt-0.5 block overflow-hidden text-[11px] leading-4 text-ellipsis whitespace-nowrap text-zinc-500"
                         title={conversation.preview}
                       >
                         {conversation.preview}
@@ -276,13 +275,20 @@ function AttentionCard({
 }) {
   const context = attention.context;
   const awaitingCustomer = attention.status === "approved";
+  const bookingConfirmation = attention.actionType === "booking_confirmation";
   return (
     <div className="my-5 overflow-hidden rounded-xl bg-amber-50/90">
       <div className="p-4 sm:p-5">
         <div className="flex items-center gap-2 text-amber-900">
           <ShieldCheck className="size-4" />
           <span className="text-sm font-semibold">
-            {awaitingCustomer ? "Authorized · waiting for customer" : causeLabels[attention.cause]}
+            {bookingConfirmation
+              ? awaitingCustomer
+                ? "Confirmed · notifying customer"
+                : "New pending booking"
+              : awaitingCustomer
+                ? "Authorized · waiting for customer"
+                : causeLabels[attention.cause]}
           </span>
         </div>
         <p className="mt-3 text-sm font-medium text-zinc-900">{attention.summary}</p>
@@ -307,23 +313,39 @@ function AttentionCard({
             </div>
           </div>
         ) : null}
+        {bookingConfirmation ? (
+          <div className="mt-4 grid gap-2 rounded-lg bg-white/70 p-3.5 text-xs text-zinc-600">
+            <span className="font-medium text-zinc-900">{dateTime(context.scheduledAt)}</span>
+            <span>
+              {String(context.service ?? "Booking")} · {String(context.staff ?? "Staff unassigned")}
+            </span>
+            <span>{Number(context.durationMinutes) || 0} minutes · Pending</span>
+          </div>
+        ) : null}
         {attention.outcomeSummary ? (
           <p className="mt-3 text-xs leading-5 text-zinc-600">{attention.outcomeSummary}</p>
         ) : null}
       </div>
-      {attention.status === "pending" ? (
+      {attention.status === "pending" || (bookingConfirmation && awaitingCustomer) ? (
         <div className="flex gap-2 bg-amber-100/50 p-3 sm:px-5">
           <Button size="sm" onClick={() => onDecide("approve")} disabled={deciding}>
-            <Check className="size-4" /> Authorize change
+            <Check className="size-4" />
+            {bookingConfirmation
+              ? awaitingCustomer
+                ? "Retry customer notice"
+                : "Confirm booking"
+              : "Authorize change"}
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onDecide("decline")}
-            disabled={deciding}
-          >
-            Decline
-          </Button>
+          {!bookingConfirmation ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onDecide("decline")}
+              disabled={deciding}
+            >
+              Decline
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -351,6 +373,7 @@ function ConversationPanel({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.inbox }),
       queryClient.invalidateQueries({ queryKey: queryKeys.inboxConversation(id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings }),
     ]);
   };
   const ownershipMutation = useMutation({
@@ -645,7 +668,13 @@ function CustomerContext({ conversation }: { conversation: InboxConversationSumm
               <div className="mt-3">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-medium">{booking.service}</p>
-                  <StatusBadge status={booking.status.replaceAll("_", " ")} />
+                  <StatusBadge
+                    status={
+                      booking.status === "needs_approval"
+                        ? "Pending"
+                        : booking.status.replaceAll("_", " ")
+                    }
+                  />
                 </div>
                 <div className="mt-3 space-y-2 text-xs text-zinc-600">
                   <p className="flex items-center gap-2">
@@ -672,7 +701,6 @@ function CustomerContext({ conversation }: { conversation: InboxConversationSumm
 export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }) {
   const router = useRouter();
   const conversationsQuery = useQuery(inboxQueryOptions);
-  useInboxEvents();
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
   const contextResizeHandleRef = useRef<HTMLDivElement>(null);
