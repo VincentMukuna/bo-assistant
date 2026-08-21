@@ -14,6 +14,8 @@ COPY packages/better-sqlite3 packages/better-sqlite3
 RUN --mount=type=cache,id=bo-assistant-bun,target=/root/.bun/install/cache,sharing=locked bun ci
 
 
+# Coolify requests every final target together. Keep the builder stages chained
+# below so only one compiler runs at a time on memory-constrained hosts.
 FROM dependencies AS api-builder
 
 ARG ADONIS_URL=http://api:3333
