@@ -116,10 +116,10 @@ function printSummary(summary: ExperimentSummary, datasetVersion: number) {
 
 async function main() {
   loadEnvironment();
-  const { mastra } = await import("@/index");
+  const { evaluationMastra } = await import("@/evals/mastra");
 
   try {
-    const synced = await syncEvaluationDataset(mastra);
+    const synced = await syncEvaluationDataset(evaluationMastra);
     const changes = synced.changes;
     console.log(
       `Dataset ${evaluationDatasetId} v${synced.version}: ${synced.itemCount} items ` +
@@ -146,7 +146,7 @@ async function main() {
 
     printSummary(summary, synced.version);
   } finally {
-    await mastra.shutdown();
+    await evaluationMastra.shutdown();
   }
 }
 

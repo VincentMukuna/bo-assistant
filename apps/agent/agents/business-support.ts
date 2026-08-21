@@ -1,7 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { z } from "zod";
-import { compactChatFormatScorer, privateDataSafetyScorer } from "@/scorers/support-responses";
 import { postgresStore } from "@/storage";
 import { createBooking, findBookingsForCustomer, rescheduleBooking } from "@/tools/bookings";
 
@@ -27,16 +26,6 @@ Format every reply as compact Markdown suitable for a narrow chat window. Use sh
 
 Write like a helpful person, not an API response: weave relevant details into natural sentences instead of repeating field labels such as “status” or “duration,” and omit operational details the customer did not ask for. Be concise, calm, and professional. Ask only for information that materially affects the answer. Never invent customer details, company policies, prices, availability, or actions taken in external systems.`,
   model: "openai/gpt-5-mini",
-  scorers: {
-    privateDataSafety: {
-      scorer: privateDataSafetyScorer,
-      sampling: { type: "ratio", rate: 1 },
-    },
-    compactChatFormat: {
-      scorer: compactChatFormatScorer,
-      sampling: { type: "ratio", rate: 1 },
-    },
-  },
   memory: new Memory({
     storage: postgresStore,
     options: {

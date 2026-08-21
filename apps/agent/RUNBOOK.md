@@ -2,9 +2,10 @@
 
 Run these commands from the repository root.
 
-The `apps/agent` directory is the source root: `index.ts` assembles the runtime, while `agents/`,
-`tools/`, `lib/`, `scorers/`, `evals/`, and `tests/` keep each responsibility directly visible.
-Internal imports use the `@/` root alias, and there is no additional `src/mastra` wrapper.
+The `apps/agent` directory is the source root: `index.ts` assembles the lean chat runtime, while
+`evals/mastra.ts` assembles the separate evaluation runtime. `agents/`, `tools/`, `lib/`, `scorers/`,
+`evals/`, and `tests/` keep each responsibility directly visible. Internal imports use the `@/`
+root alias, and there is no additional `src/mastra` wrapper.
 
 ## Fastest loop
 
@@ -14,7 +15,8 @@ bun run dev
 
 This starts Postgres, the app, API, demo, and agent together. Open [http://localhost:4111](http://localhost:4111), edit the agent, and test it in Studio. Source changes reload automatically. Press `Ctrl+C` when you are done.
 
-Studio records traces, model and tool spans, token and latency metrics, scores, and debug-level logs. Use the **Observability**, **Metrics**, and **Logs** screens to inspect agent runs. Agent state, evaluation data, and telemetry use Postgres. Booking capabilities are redacted from stored traces.
+The chat runtime writes ordinary structured logs and keeps conversation memory in Postgres. It does
+not persist traces, metrics, debug spans, or scores, so Studio's observability screens are empty.
 
 Edit the instructions here:
 
@@ -37,9 +39,8 @@ unknown pricing, friendly booking dates, 90-day search windows, ambiguous and ex
 and prompt-injection attempts. Mastra Quick Checks provide the deterministic checks; the
 LLM-judged pricing rubric is reported as a quality signal.
 
-Experiment history is stored locally in `apps/agent/.data/evaluations.db`. Open **Datasets →
-Business support regression** in Mastra Studio to inspect item results or compare prompt and code
-versions. Ordinary agent runs also record the zero-cost private-data and compact-format scores.
+Experiment history and scores are stored locally in `apps/agent/.data/evaluations.db`. The explicit
+evaluation runtime owns these records; ordinary agent runs do not execute or persist scorers.
 
 To run only the agent and Studio, start its database first:
 
