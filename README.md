@@ -1,4 +1,4 @@
-# Oak — supervised operations for service businesses
+# Oak - supervised operations for service businesses
 
 Oak is a working prototype of a supervised AI back office for owner-operated service businesses. It
 handles routine customer work, keeps the owner informed, and stops at decisions that should still
