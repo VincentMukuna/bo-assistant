@@ -16,9 +16,16 @@ const dmMono = DM_Mono({
   weight: ["400", "500"],
 });
 
+const title = "Oak | Supervised operations for service businesses";
+const description =
+  "Delegate routine customer work while keeping human control over the decisions and commitments that matter.";
+
 export const metadata: Metadata = {
-  title: "Oak & Pine Workspace",
-  description: "Manage Oak & Pine bookings, customers, and conversations",
+  metadataBase: new URL("https://bo.builtby.vin"),
+  title,
+  description,
+  openGraph: { title, description, type: "website" },
+  twitter: { card: "summary_large_image", title, description, images: ["/opengraph-image.png"] },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

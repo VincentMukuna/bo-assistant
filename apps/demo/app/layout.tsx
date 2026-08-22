@@ -9,10 +9,16 @@ const sans = Manrope({
   variable: "--font-sans",
 });
 
+const title = "Oak & Pine | Thoughtful care for your home";
+const description =
+  "Trusted home cleaning and repair services across San Francisco. Straightforward booking, exceptional care, and one dependable team.";
+
 export const metadata: Metadata = {
-  title: "Oak & Pine | Thoughtful care for your home",
-  description:
-    "Trusted home cleaning and repair services across San Francisco. Straightforward booking, exceptional care, and one dependable team.",
+  metadataBase: new URL("https://oak.builtby.vin"),
+  title,
+  description,
+  openGraph: { title, description, type: "website" },
+  twitter: { card: "summary_large_image", title, description, images: ["/opengraph-image.png"] },
 };
 
 export const viewport: Viewport = {
