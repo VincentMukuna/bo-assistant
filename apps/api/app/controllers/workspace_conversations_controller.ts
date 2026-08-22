@@ -73,6 +73,7 @@ function workspaceConversationQuery() {
 export default class WorkspaceConversationsController {
   async index() {
     const conversations = await workspaceConversationQuery()
+      .whereNotNull("firstMessageAt")
       .orderByRaw(
         "case when next_step_owner = 'owner' then 0 when outcome_status = 'failed' then 1 else 2 end"
       )

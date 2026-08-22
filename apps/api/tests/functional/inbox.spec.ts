@@ -33,6 +33,7 @@ async function createConversation(customer: Customer, title: string) {
     customerId: customer.id,
     title,
     lastMessagePreview: title,
+    firstMessageAt: DateTime.now(),
     status: "open",
   });
 }
@@ -49,7 +50,7 @@ test.group("Workspace Inbox", (group) => {
     deletion.assertStatus(401);
   });
 
-  test("lists every conversation by operational responsibility and returns decision-ready context", async ({
+  test("lists started conversations by operational responsibility and returns decision-ready context", async ({
     client,
   }) => {
     const owner = await createOwner();
@@ -61,6 +62,14 @@ test.group("Workspace Inbox", (group) => {
       customerId: null,
       visitorId: crypto.randomUUID(),
       title: "Window repair estimate",
+      firstMessageAt: DateTime.now(),
+      status: "open",
+    });
+    const emptyVisitorConversation = await SupportConversation.create({
+      id: crypto.randomUUID(),
+      customerId: null,
+      visitorId: crypto.randomUUID(),
+      title: "New conversation",
       status: "open",
     });
     const needsOwner = await createConversation(alice, "Move a booking");
@@ -112,6 +121,9 @@ test.group("Workspace Inbox", (group) => {
     });
     const ids = body.conversations.map((conversation) => conversation.id);
     if (!ids.includes(routine.id)) throw new Error("Routine conversations must remain visible");
+    if (ids.includes(emptyVisitorConversation.id)) {
+      throw new Error("Conversations without a visitor message must stay out of the Inbox");
+    }
     const visitorPayload = body.conversations.find(
       (conversation) => conversation.id === visitor.id
     );
