@@ -2,6 +2,9 @@
 import type { routes } from './index.ts'
 
 export interface ApiDefinition {
+  demoResets: {
+    show: typeof routes['demo_resets.show']
+  }
   demoSessions: {
     store: typeof routes['demo_sessions.store']
   }

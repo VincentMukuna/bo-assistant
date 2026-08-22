@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Mono, Instrument_Sans } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryProvider } from "@/components/query-provider";
+import { DemoResetGuard } from "@/components/demo-reset-guard";
 import { VersionPrompt } from "@/components/version-prompt";
 import "./globals.css";
 
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <QueryProvider>
           <TooltipProvider>
             {children}
+            <DemoResetGuard />
             <VersionPrompt />
           </TooltipProvider>
         </QueryProvider>

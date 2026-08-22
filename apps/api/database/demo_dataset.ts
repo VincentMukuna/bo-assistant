@@ -423,13 +423,18 @@ export async function seedDemoDataset(options: { includeConversations: boolean }
   }
 }
 
-export async function resetDemoDataset(options: { includeConversations: boolean }) {
+export async function resetDemoDataset(options: {
+  includeConversations: boolean;
+  onProgress?: (progress: number, message: string) => void | Promise<void>;
+}) {
   // Conversations span SQLite metadata and Mastra's Postgres memory store.
   // Clear the remote side first so a transient failure leaves this reset safe to retry.
+  await options.onProgress?.(15, "Clearing old conversations…");
   const deletedThreads = options.includeConversations
     ? await businessSupportAgent.deleteAllThreads()
     : 0;
 
+  await options.onProgress?.(40, "Clearing demo activity…");
   await db.from("inbox_annotations").delete();
   await db.from("inbox_attention_items").delete();
   await db.from("booking_reschedule_grants").delete();
@@ -439,7 +444,9 @@ export async function resetDemoDataset(options: { includeConversations: boolean 
   await db.from("customers").delete();
   await db.rawQuery("DELETE FROM sqlite_sequence WHERE name IN ('bookings', 'customers')");
 
+  await options.onProgress?.(65, "Rebuilding showcase customers and bookings…");
   await seedDemoDataset(options);
+  await options.onProgress?.(92, "Checking the showcase data…");
 
   return { deletedThreads };
 }

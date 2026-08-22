@@ -12,6 +12,7 @@ import router from "@adonisjs/core/services/router";
 import { controllers } from "#generated/controllers";
 
 const DemoSessionsController = () => import("#controllers/demo_sessions_controller");
+const DemoResetsController = () => import("#controllers/demo_resets_controller");
 const CustomerAccountsController = () => import("#controllers/customer_accounts_controller");
 const CustomerEmailVerificationsController = () =>
   import("#controllers/customer_email_verifications_controller");
@@ -48,6 +49,7 @@ router.get("/", () => {
   return { hello: "world" };
 });
 
+router.get("/api/v1/demo/reset", [DemoResetsController, "show"]);
 router
   .post("/api/v1/demo/session", [DemoSessionsController, "store"])
   .use(middleware.customerOrigin())

@@ -19,6 +19,7 @@ export const controllers = {
   CustomerAccounts: () => import('#controllers/customer_accounts_controller'),
   CustomerEmailVerifications: () => import('#controllers/customer_email_verifications_controller'),
   Customers: () => import('#controllers/customers_controller'),
+  DemoResets: () => import('#controllers/demo_resets_controller'),
   DemoSessions: () => import('#controllers/demo_sessions_controller'),
   InboxEvents: () => import('#controllers/inbox_events_controller'),
   OwnerAssistantMessages: () => import('#controllers/owner_assistant_messages_controller'),

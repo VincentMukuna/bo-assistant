@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { QueryProvider } from "@/components/query-provider";
+import { DemoResetGuard } from "@/components/demo-reset-guard";
 import { VersionPrompt } from "@/components/version-prompt";
 import "./globals.css";
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <QueryProvider>
           {children}
+          <DemoResetGuard />
           <VersionPrompt />
         </QueryProvider>
       </body>

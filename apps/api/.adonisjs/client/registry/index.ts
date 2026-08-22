@@ -6,6 +6,12 @@ import type { ApiDefinition } from './tree.d.ts'
 const placeholder: any = {}
 
 const routes = {
+  'demo_resets.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/demo/reset',
+    tokens: [{"old":"/api/v1/demo/reset","type":0,"val":"api","end":""},{"old":"/api/v1/demo/reset","type":0,"val":"v1","end":""},{"old":"/api/v1/demo/reset","type":0,"val":"demo","end":""},{"old":"/api/v1/demo/reset","type":0,"val":"reset","end":""}],
+    types: placeholder as Registry['demo_resets.show']['types'],
+  },
   'demo_sessions.store': {
     methods: ["POST"],
     pattern: '/api/v1/demo/session',

@@ -4,6 +4,7 @@ type ParamValue = string | number | bigint | boolean
 
 export type ScannedRoutes = {
   ALL: {
+    'demo_resets.show': { paramsTuple?: []; params?: {} }
     'demo_sessions.store': { paramsTuple?: []; params?: {} }
     'customer_accounts.store': { paramsTuple?: []; params?: {} }
     'customer_email_verifications.store': { paramsTuple?: []; params?: {} }
@@ -43,6 +44,7 @@ export type ScannedRoutes = {
     'owner_assistant_messages.store': { paramsTuple?: []; params?: {} }
   }
   GET: {
+    'demo_resets.show': { paramsTuple?: []; params?: {} }
     'conversations.index': { paramsTuple?: []; params?: {} }
     'conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'approval_requests.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -60,6 +62,7 @@ export type ScannedRoutes = {
     'owner_briefs.index': { paramsTuple?: []; params?: {} }
   }
   HEAD: {
+    'demo_resets.show': { paramsTuple?: []; params?: {} }
     'conversations.index': { paramsTuple?: []; params?: {} }
     'conversations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'approval_requests.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
