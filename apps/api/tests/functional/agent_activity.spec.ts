@@ -2,8 +2,10 @@ import Customer from "#models/customer";
 import InboxAnnotation from "#models/inbox_annotation";
 import SupportConversation from "#models/support_conversation";
 import User from "#models/user";
+import { OWNER_TIMEZONE } from "#services/owner_brief";
 import testUtils from "@adonisjs/core/services/test_utils";
 import { test } from "@japa/runner";
+import { DateTime } from "luxon";
 
 test.group("Agent activity", (group) => {
   group.each.setup(() => testUtils.db().wrapInGlobalTransaction());
@@ -39,6 +41,7 @@ test.group("Agent activity", (group) => {
       kind: "milestone",
       summary: "Agent handled the latest customer request",
       detail: "No owner decision was required.",
+      createdAt: DateTime.now().setZone(OWNER_TIMEZONE).startOf("day").plus({ hours: 1 }),
     });
     await InboxAnnotation.create({
       id: crypto.randomUUID(),

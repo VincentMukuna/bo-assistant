@@ -1,5 +1,6 @@
 import InboxAnnotation from "#models/inbox_annotation";
 import SupportConversation from "#models/support_conversation";
+import { OWNER_TIMEZONE } from "#services/owner_brief";
 import { DateTime } from "luxon";
 
 function categoryFor(kind: string, summary: string) {
@@ -14,7 +15,7 @@ function categoryFor(kind: string, summary: string) {
 
 export default class AgentActivitiesController {
   async index() {
-    const today = DateTime.now().startOf("day").toSQL();
+    const today = DateTime.now().setZone(OWNER_TIMEZONE).startOf("day").toSQL()!;
     const [annotations, needsOwner, agentHandling, completedToday, failures] = await Promise.all([
       InboxAnnotation.query()
         .preload("conversation", (query) => query.preload("customer"))
