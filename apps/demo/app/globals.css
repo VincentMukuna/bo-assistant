@@ -74,8 +74,18 @@ button { color: inherit; }
 .desktop-nav { display: flex; gap: 32px; font-size: 13px; font-weight: 650; }
 .desktop-nav a { transition: color 180ms ease; }
 .desktop-nav a:hover { color: #668011; }
+.header-actions { justify-self: end; display: flex; align-items: center; gap: 12px; }
+.maker-credit {
+  height: 28px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;
+  color: #69766f; font-size: 11px; transition: color 180ms ease, background 180ms ease;
+}
+.maker-credit-label { color: #929b96; }
+.maker-credit strong { font-weight: 650; }
+.maker-credit svg { opacity: .6; transition: transform 180ms ease; }
+.maker-credit:hover { color: var(--ink); background: rgba(23,59,50,.055); }
+.maker-credit:hover svg { transform: translate(1px, -1px); }
+.maker-credit:focus-visible { outline: 2px solid #7e9137; outline-offset: 2px; }
 .header-cta {
-  justify-self: end;
   display: inline-flex;
   align-items: center;
   gap: 8px;

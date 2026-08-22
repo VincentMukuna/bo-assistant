@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ArrowUpRight,
   CalendarCheck2,
   Check,
   Clock3,
@@ -66,12 +67,24 @@ export default function Home() {
           <a href="#support">Customer support</a>
         </nav>
 
-        <a className="header-cta" href="#support">
-          Get started <ArrowRight size={16} />
-        </a>
-        <a className="mobile-menu" href="#support" aria-label="Go to customer support">
-          <MessageCircle size={21} />
-        </a>
+        <div className="header-actions">
+          <a
+            className="maker-credit"
+            href="https://builtby.vin"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Built by Vin — open developer portfolio"
+          >
+            <span><span className="maker-credit-label">Built by </span><strong>Vin</strong></span>
+            <ArrowUpRight size={12} aria-hidden="true" />
+          </a>
+          <a className="header-cta" href="#support">
+            Get started <ArrowRight size={16} />
+          </a>
+          <a className="mobile-menu" href="#support" aria-label="Go to customer support">
+            <MessageCircle size={21} />
+          </a>
+        </div>
       </header>
 
       <section className="hero" id="top">

@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  ArrowUpRight,
   Bell,
   CalendarDays,
   Check,
@@ -67,6 +68,30 @@ function Brand() {
       </span>
       <span className="text-sm font-semibold tracking-[-0.015em]">Oak &amp; Pine</span>
     </Link>
+  );
+}
+
+function MakerCredit({ className }: { className?: string }) {
+  return (
+    <a
+      href="https://builtby.vin"
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "group text-muted-foreground hover:text-foreground focus-visible:ring-ring flex items-center gap-1.5 rounded-md text-[11px] transition-colors outline-none focus-visible:ring-2",
+        className
+      )}
+      aria-label="Built by Vin — open developer portfolio"
+    >
+      <span>
+        <span className="text-zinc-400">Built by </span>
+        <span className="font-medium">Vin</span>
+      </span>
+      <ArrowUpRight
+        className="size-3 opacity-60 transition-transform group-hover:translate-x-px group-hover:-translate-y-px"
+        aria-hidden="true"
+      />
+    </a>
   );
 }
 
@@ -137,7 +162,8 @@ function MobileNavigation({ pathname, onNavigate }: { pathname: string; onNaviga
           );
         })}
       </nav>
-      <div className="border-border text-muted-foreground border-t p-4 text-xs">
+      <div className="border-border text-muted-foreground space-y-2 border-t p-4 text-xs">
+        <MakerCredit className="bg-secondary/70 hover:bg-secondary h-10 justify-between px-3" />
         <div className="bg-secondary/70 flex items-center gap-2 rounded-lg px-3 py-2.5">
           <span className="bg-primary size-1.5 rounded-full" />
           Open until 6:00 PM
@@ -349,6 +375,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Brand />
         <DesktopNavigation pathname={pathname} />
         <div className="ml-auto flex items-center gap-3">
+          <MakerCredit className="hover:bg-secondary/70 hidden h-7 px-2 sm:flex" />
           <div className="text-muted-foreground hidden items-center gap-2 text-xs lg:flex">
             <span className="bg-primary size-1.5 rounded-full" />
             Open until 6:00 PM
