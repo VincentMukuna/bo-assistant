@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AgentActivityScreen } from "@/components/activity/agent-activity-screen";
 import type { AgentActivityFilter } from "@/lib/api";
 
-export const metadata: Metadata = { title: "Agent Activity · Oak & Pine" };
+export const metadata: Metadata = { title: "Oak Activity · Oak & Pine" };
 
 type ActivityPageProps = {
   searchParams: Promise<{ filter?: string | string[] }>;

@@ -17,16 +17,13 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Oak & Pine Operations",
-  description: "Daily operations for Oak & Pine Home Services",
+  title: "Oak & Pine Workspace",
+  description: "Manage Oak & Pine bookings, customers, and conversations",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${instrumentSans.variable} ${dmMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${instrumentSans.variable} ${dmMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <QueryProvider>
           <TooltipProvider>

@@ -123,8 +123,15 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
     );
   if (customersQuery.isError || bookingsQuery.isError)
     return (
-      <div className="flex h-full items-center justify-center text-sm text-red-600">
-        Unable to load customers.
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
+        <p className="text-red-600">Unable to load customers.</p>
+        <button
+          type="button"
+          className="font-medium text-zinc-700 underline underline-offset-4"
+          onClick={() => Promise.all([customersQuery.refetch(), bookingsQuery.refetch()])}
+        >
+          Try again
+        </button>
       </div>
     );
 
@@ -182,6 +189,11 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                     </div>
                   </Link>
                 ))}
+                {!filtered.length && search ? (
+                  <p className="px-4 py-10 text-center text-sm text-zinc-500">
+                    No customers match “{search}”.
+                  </p>
+                ) : null}
               </div>
             </ScrollArea>
           </div>
@@ -351,8 +363,18 @@ export function CustomersScreen({ selectedId }: { selectedId?: number }) {
                 </section>
               </div>
             ) : (
-              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-                Add your first customer to get started.
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                <p className="text-muted-foreground text-sm">
+                  Add your first customer to start booking services.
+                </p>
+                <Button
+                  onClick={() => {
+                    setEditingCustomer(undefined);
+                    setCustomerDialogOpen(true);
+                  }}
+                >
+                  <Plus /> Add customer
+                </Button>
               </div>
             )}
           </ScrollArea>

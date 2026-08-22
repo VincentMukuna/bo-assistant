@@ -53,6 +53,7 @@ import {
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-time";
+import { friendlyOperationalText } from "@/lib/display-copy";
 
 const inboxListWidth = {
   default: 350,
@@ -70,26 +71,17 @@ const inboxContextWidth = {
 
 const ownerLabels = {
   owner: "Needs you",
-  agent: "Agent handling",
+  agent: "Oak is handling",
   customer: "Waiting on customer",
-  none: "Handled",
+  none: "Complete",
 } as const;
 
 const causeLabels = {
   authority: "Approval",
-  judgment: "Needs judgment",
-  relationship: "Human touch",
-  failure: "Needs recovery",
+  judgment: "Needs your input",
+  relationship: "Personal reply needed",
+  failure: "Something went wrong",
 } as const;
-
-function directOperationalText(value: string | null) {
-  return (value ?? "")
-    .replace(/owner attention needed/gi, "Needs your attention")
-    .replace(/business approval needed/gi, "Your approval is needed")
-    .replace(/owner confirmation/gi, "your confirmation")
-    .replace(/owner decision/gi, "your decision")
-    .replace(/owner input/gi, "your input");
-}
 
 function relativeTime(value: string) {
   const delta = Date.now() - new Date(value).getTime();
@@ -227,7 +219,7 @@ function ConversationList({
               <CheckCircle2 className="mx-auto size-6 text-emerald-700" />
               <p className="mt-3 text-sm font-medium text-zinc-800">You’re caught up.</p>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
-                The agent is handling everything else.
+                Oak is handling everything else.
               </p>
               <Button
                 variant="link"
@@ -259,8 +251,8 @@ function Annotation({
   time: string;
 }) {
   const Icon = kind === "outcome" ? CheckCircle2 : kind === "failure" ? AlertTriangle : Bot;
-  const displaySummary = directOperationalText(summary);
-  const displayDetail = detail ? directOperationalText(detail) : null;
+  const displaySummary = friendlyOperationalText(summary);
+  const displayDetail = detail ? friendlyOperationalText(detail) : null;
   return (
     <div
       className="my-4 flex min-w-0 items-center justify-center gap-1.5 px-4 text-zinc-400"
@@ -303,14 +295,14 @@ function AttentionCard({
             {bookingConfirmation
               ? awaitingCustomer
                 ? "Confirmed · notifying customer"
-                : "New pending booking"
+                : "Booking needs confirmation"
               : awaitingCustomer
-                ? "Authorized · waiting for customer"
+                ? "Approved · waiting for customer"
                 : causeLabels[attention.cause]}
           </span>
         </div>
         <p className="mt-3 text-sm font-medium text-zinc-900">
-          {directOperationalText(attention.summary)}
+          {friendlyOperationalText(attention.summary)}
         </p>
         {attention.actionType === "booking_reschedule" ? (
           <div className="mt-4 grid gap-3 rounded-lg bg-zinc-50 p-3.5 text-xs text-zinc-600 sm:grid-cols-2">
@@ -349,7 +341,7 @@ function AttentionCard({
         ) : null}
         {attention.outcomeSummary ? (
           <p className="mt-3 text-xs leading-5 text-zinc-600">
-            {directOperationalText(attention.outcomeSummary)}
+            {friendlyOperationalText(attention.outcomeSummary)}
           </p>
         ) : null}
       </div>
@@ -361,7 +353,7 @@ function AttentionCard({
               ? awaitingCustomer
                 ? "Retry customer notice"
                 : "Confirm booking"
-              : "Authorize change"}
+              : "Approve change"}
           </Button>
           {!bookingConfirmation ? (
             <Button
@@ -454,8 +446,15 @@ function ConversationPanel({
     );
   if (!conversation)
     return (
-      <div className="flex h-full items-center justify-center text-sm text-red-600">
-        Unable to load conversation.
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
+        <p className="text-red-600">Unable to load conversation.</p>
+        <button
+          type="button"
+          className="font-medium text-zinc-700 underline underline-offset-4"
+          onClick={() => conversationQuery.refetch()}
+        >
+          Try again
+        </button>
       </div>
     );
 
@@ -529,9 +528,9 @@ function ConversationPanel({
               size="icon-sm"
               className="hidden xl:inline-flex"
               onClick={onToggleContext}
-              aria-label={showContext ? "Hide contact context" : "Show contact context"}
+              aria-label={showContext ? "Hide contact details" : "Show contact details"}
               aria-pressed={showContext}
-              title={showContext ? "Hide contact context" : "Show contact context"}
+              title={showContext ? "Hide contact details" : "Show contact details"}
             >
               {showContext ? <PanelRightClose /> : <PanelRightOpen />}
             </Button>
@@ -543,7 +542,7 @@ function ConversationPanel({
             onClick={() => ownershipMutation.mutate(ownerHasControl ? "agent" : "owner")}
           >
             {ownerHasControl ? <Bot className="size-4" /> : <Hand className="size-4" />}
-            {ownerHasControl ? "Return to agent" : "Take over"}
+            {ownerHasControl ? "Let Oak handle" : "Take over"}
           </Button>
           <Button
             variant="ghost"
@@ -565,7 +564,7 @@ function ConversationPanel({
           <DialogHeader>
             <DialogTitle>Delete this conversation?</DialogTitle>
             <DialogDescription>
-              Messages and Inbox activity for {conversation.contact.name} will be permanently
+              Messages and conversation history for {conversation.contact.name} will be permanently
               deleted. Any customer record and bookings will be kept.
             </DialogDescription>
           </DialogHeader>
@@ -599,7 +598,7 @@ function ConversationPanel({
       ) : null}
       {ownerHasControl ? (
         <div className="flex items-center gap-2 bg-sky-50 px-5 py-2 text-xs text-sky-800">
-          <Hand className="size-3.5" /> You have control. Automatic agent replies are paused.
+          <Hand className="size-3.5" /> You’re replying. Oak’s automatic replies are paused.
         </div>
       ) : null}
       <ScrollArea ref={scrollRef} className="min-h-0 flex-1 bg-zinc-50/35">
@@ -647,7 +646,7 @@ function ConversationPanel({
                     {business
                       ? message.author === "owner"
                         ? "You"
-                        : "Agent"
+                        : "Oak"
                       : conversation.contact.name.split(" ")[0]}
                     {message.createdAt ? ` · ${relativeTime(message.createdAt)}` : ""}
                   </div>
@@ -680,12 +679,10 @@ function ConversationPanel({
                 ) : (
                   <CheckCircle2 className="size-4" />
                 )}
-                {conversation.outcomeStatus === "failed"
-                  ? "Outcome incomplete"
-                  : "Outcome completed"}
+                {conversation.outcomeStatus === "failed" ? "Needs follow-up" : "Completed"}
               </div>
               <p className="mt-1.5 text-xs leading-5">
-                {directOperationalText(conversation.outcomeSummary)}
+                {friendlyOperationalText(conversation.outcomeSummary)}
               </p>
             </div>
           ) : null}
@@ -737,7 +734,7 @@ function ContactContext({ conversation }: { conversation: InboxConversationSumma
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{conversation.contact.name}</p>
               <p className="mt-0.5 text-xs text-zinc-500">
-                {conversation.contact.kind === "visitor" ? "Visitor context" : "Customer context"}
+                {conversation.contact.kind === "visitor" ? "New contact" : "Customer"}
               </p>
             </div>
           </div>
@@ -954,8 +951,15 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
     );
   if (conversationsQuery.isError)
     return (
-      <div className="flex h-full items-center justify-center text-sm text-red-600">
-        Unable to load the Inbox.
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
+        <p className="text-red-600">Unable to load the Inbox.</p>
+        <button
+          type="button"
+          className="font-medium text-zinc-700 underline underline-offset-4"
+          onClick={() => conversationsQuery.refetch()}
+        >
+          Try again
+        </button>
       </div>
     );
   if (!selected)
@@ -1045,7 +1049,7 @@ export function InboxScreen({ selectedId: requestedId }: { selectedId?: string }
             ref={contextResizeHandleRef}
             role="separator"
             tabIndex={0}
-            aria-label="Resize contact context"
+            aria-label="Resize contact details"
             aria-orientation="vertical"
             aria-valuemin={inboxContextWidth.min}
             aria-valuemax={inboxContextWidth.max}

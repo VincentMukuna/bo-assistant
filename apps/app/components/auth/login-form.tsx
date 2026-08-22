@@ -48,7 +48,7 @@ export function LoginForm() {
         </div>
         <div>
           <h1 className="font-semibold tracking-[-0.02em]">Oak &amp; Pine</h1>
-          <p className="text-muted-foreground text-sm">Sign in to operations</p>
+          <p className="text-muted-foreground text-sm">Sign in to your workspace</p>
         </div>
       </div>
       <div className="grid gap-4">

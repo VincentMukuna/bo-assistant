@@ -335,7 +335,7 @@ export function AskOakPanel(config: AskOakConfig) {
       aria-expanded={open}
       aria-controls="ask-oak-panel"
     >
-      <Bot /> {open ? "Close Oak" : "Ask Oak"}
+      <Bot /> {open ? "Close Ask Oak" : "Ask Oak"}
     </Button>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -176,8 +177,15 @@ export function BookingsScreen({
     );
   if (bookingsQuery.isError || customersQuery.isError)
     return (
-      <div className="text-destructive flex h-full items-center justify-center text-sm">
-        Unable to load bookings.
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
+        <p className="text-destructive">Unable to load bookings.</p>
+        <button
+          type="button"
+          className="font-medium text-zinc-700 underline underline-offset-4"
+          onClick={() => Promise.all([bookingsQuery.refetch(), customersQuery.refetch()])}
+        >
+          Try again
+        </button>
       </div>
     );
 
@@ -237,16 +245,27 @@ export function BookingsScreen({
                 </button>
               ))}
             </div>
-            <Button
-              className="h-8 px-3"
-              onClick={() => {
-                setEditing(undefined);
-                setDialogOpen(true);
-              }}
-              disabled={!customers.length}
-            >
-              <Plus /> <span className="hidden sm:inline">New booking</span>
-            </Button>
+            {customers.length ? (
+              <Button
+                className="h-8 px-3"
+                onClick={() => {
+                  setEditing(undefined);
+                  setDialogOpen(true);
+                }}
+              >
+                <Plus /> <span className="hidden sm:inline">New booking</span>
+              </Button>
+            ) : (
+              <Button asChild className="h-8 px-3">
+                <Link
+                  href="/customers"
+                  aria-label="Add a customer before creating a booking"
+                  title="Add a customer before creating a booking"
+                >
+                  <Plus /> <span className="hidden sm:inline">Add customer first</span>
+                </Link>
+              </Button>
+            )}
           </div>
         </header>
 
@@ -379,13 +398,19 @@ export function BookingsScreen({
                     All scheduled and pending appointments
                   </p>
                   <div className="border-border/70 mt-6 divide-y divide-zinc-100 overflow-hidden rounded-xl border bg-white shadow-sm shadow-zinc-950/[0.025]">
-                    {upcomingBookings.map((booking) => (
-                      <BookingRow
-                        key={booking.id}
-                        booking={booking}
-                        onOpen={(item) => router.push(bookingPath(item.id), { scroll: false })}
-                      />
-                    ))}
+                    {upcomingBookings.length ? (
+                      upcomingBookings.map((booking) => (
+                        <BookingRow
+                          key={booking.id}
+                          booking={booking}
+                          onOpen={(item) => router.push(bookingPath(item.id), { scroll: false })}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground px-5 py-10 text-center text-sm">
+                        No upcoming bookings.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -399,13 +424,19 @@ export function BookingsScreen({
                 A complete agenda of scheduled appointments
               </p>
               <div className="border-border/70 mt-6 divide-y divide-zinc-100 overflow-hidden rounded-xl border bg-white shadow-sm shadow-zinc-950/[0.025]">
-                {sortedBookings.map((booking) => (
-                  <BookingRow
-                    key={booking.id}
-                    booking={booking}
-                    onOpen={(item) => router.push(bookingPath(item.id), { scroll: false })}
-                  />
-                ))}
+                {sortedBookings.length ? (
+                  sortedBookings.map((booking) => (
+                    <BookingRow
+                      key={booking.id}
+                      booking={booking}
+                      onOpen={(item) => router.push(bookingPath(item.id), { scroll: false })}
+                    />
+                  ))
+                ) : (
+                  <p className="text-muted-foreground px-5 py-10 text-center text-sm">
+                    No bookings yet.
+                  </p>
+                )}
               </div>
             </div>
           </ScrollArea>

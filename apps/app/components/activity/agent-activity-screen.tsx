@@ -17,23 +17,24 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AgentActivity, AgentActivityCategory, AgentActivityFilter } from "@/lib/api";
+import { friendlyOperationalText } from "@/lib/display-copy";
 import { agentActivityQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const filters: Array<{ value: AgentActivityFilter; label: string }> = [
   { value: "all", label: "All activity" },
   { value: "attention", label: "Needs attention" },
-  { value: "decision", label: "Decisions" },
-  { value: "completed", label: "Handled" },
-  { value: "handoff", label: "Handoffs" },
+  { value: "decision", label: "Your decisions" },
+  { value: "completed", label: "Completed" },
+  { value: "handoff", label: "Passed to you" },
 ];
 
 const categoryLabels: Record<AgentActivityCategory, string> = {
   attention: "Needs attention",
   decision: "Your decision",
-  handoff: "Handoff",
-  completed: "Handled",
-  activity: "Activity",
+  handoff: "Passed to you",
+  completed: "Completed",
+  activity: "Update",
 };
 
 function categoryStyle(category: AgentActivityCategory) {
@@ -79,7 +80,9 @@ function ActivityRow({ activity }: { activity: AgentActivity }) {
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-sm font-semibold text-zinc-900">{activity.summary}</h3>
+          <h3 className="text-sm font-semibold text-zinc-900">
+            {friendlyOperationalText(activity.summary)}
+          </h3>
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
@@ -91,7 +94,9 @@ function ActivityRow({ activity }: { activity: AgentActivity }) {
           </span>
         </div>
         {activity.detail ? (
-          <p className="mt-1.5 max-w-2xl text-sm leading-5 text-zinc-600">{activity.detail}</p>
+          <p className="mt-1.5 max-w-2xl text-sm leading-5 text-zinc-600">
+            {friendlyOperationalText(activity.detail)}
+          </p>
         ) : null}
         <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
           <span className="font-medium text-zinc-700">{activity.contact.name}</span>
@@ -131,21 +136,28 @@ export function AgentActivityScreen({ filter }: { filter: AgentActivityFilter })
   if (activityQuery.isPending) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-zinc-500">
-        Loading agent activity…
+        Loading Oak’s activity…
       </div>
     );
   }
-  if (!feed) {
+  if (activityQuery.isError || !feed) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-red-600">
-        Unable to load agent activity.
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
+        <p className="text-red-600">Unable to load Oak’s activity.</p>
+        <button
+          type="button"
+          className="font-medium text-zinc-700 underline underline-offset-4"
+          onClick={() => activityQuery.refetch()}
+        >
+          Try again
+        </button>
       </div>
     );
   }
 
   const metrics = [
     { label: "Needs you", value: feed.metrics.needsOwner, tone: "text-amber-700" },
-    { label: "Agent handling", value: feed.metrics.agentHandling, tone: "text-sky-700" },
+    { label: "Oak is handling", value: feed.metrics.agentHandling, tone: "text-sky-700" },
     { label: "Completed today", value: feed.metrics.completedToday, tone: "text-emerald-700" },
     { label: "Failed", value: feed.metrics.failures, tone: "text-red-700" },
   ];
@@ -155,9 +167,9 @@ export function AgentActivityScreen({ filter }: { filter: AgentActivityFilter })
       <header className="shrink-0 border-b border-zinc-200/60 bg-white px-5 py-5 sm:px-7">
         <div className="mx-auto max-w-5xl">
           <div>
-            <h1 className="text-xl font-semibold tracking-[-0.02em]">Agent activity</h1>
+            <h1 className="text-xl font-semibold tracking-[-0.02em]">Oak activity</h1>
             <p className="mt-1 text-sm text-zinc-500">
-              What the agent handled, where it paused, and what changed.
+              What Oak handled, where it needs you, and what changed.
             </p>
           </div>
           <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
@@ -211,7 +223,7 @@ export function AgentActivityScreen({ filter }: { filter: AgentActivityFilter })
             <div className="py-20 text-center">
               <Sparkles className="mx-auto size-7 text-zinc-300" />
               <p className="mt-3 text-sm font-medium">No activity in this view</p>
-              <p className="mt-1 text-xs text-zinc-500">New agent actions will appear here live.</p>
+              <p className="mt-1 text-xs text-zinc-500">New updates from Oak will appear here.</p>
             </div>
           ) : null}
         </div>

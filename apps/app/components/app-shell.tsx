@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { api, type InboxAttention, type InboxConversationSummary } from "@/lib/api";
+import { friendlyOperationalText } from "@/lib/display-copy";
 import { errorMessage, inboxQueryOptions, queryKeys } from "@/lib/queries";
 import { useInboxEvents } from "@/lib/use-inbox-events";
 import { cn } from "@/lib/utils";
@@ -64,7 +65,7 @@ function Brand() {
         <span className="rounded-[1px] bg-current opacity-50" />
         <span className="rounded-[1px] bg-current opacity-95" />
       </span>
-      <span className="text-sm font-semibold tracking-[-0.015em]">Oak &amp; Pine Ops</span>
+      <span className="text-sm font-semibold tracking-[-0.015em]">Oak &amp; Pine</span>
     </Link>
   );
 }
@@ -177,7 +178,7 @@ function AccountMenu() {
         <DropdownMenuItem asChild className="px-2 py-2">
           <Link href="/agent-activity">
             <Activity className="size-4" />
-            Agent activity
+            Oak activity
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -268,7 +269,7 @@ function BookingNotifications() {
                     className="focus-visible:ring-ring block rounded-sm outline-none focus-visible:ring-2"
                   >
                     <span className="text-foreground block text-sm font-medium">
-                      {attention.summary}
+                      {friendlyOperationalText(attention.summary)}
                     </span>
                     <span className="text-muted-foreground mt-1 block text-xs leading-5">
                       {String(attention.context.service ?? "Booking")} · {conversation.contact.name}

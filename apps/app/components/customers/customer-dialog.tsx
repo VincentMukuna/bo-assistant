@@ -83,7 +83,9 @@ export function CustomerDialog({
           <DialogHeader>
             <DialogTitle>{customer ? "Edit customer" : "New customer"}</DialogTitle>
             <DialogDescription>
-              {customer ? "Update this customer’s CRM record." : "Add a customer to the CRM."}
+              {customer
+                ? "Update this customer’s contact details and notes."
+                : "Save their contact details and notes."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-5 sm:grid-cols-2">

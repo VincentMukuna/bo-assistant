@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+import { friendlyOperationalText } from "@/lib/display-copy";
 import { errorMessage, ownerBriefQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -244,10 +245,14 @@ export function OwnerOverviewScreen() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <span className="font-mono text-[10px] font-medium tracking-[0.08em] text-zinc-400 uppercase">
-                          {item.eyebrow} · {item.customerName}
+                          {friendlyOperationalText(item.eyebrow)} · {item.customerName}
                         </span>
-                        <h3 className="mt-1 text-sm font-semibold text-zinc-900">{item.title}</h3>
-                        <p className="mt-1 text-xs leading-5 text-zinc-500">{item.detail}</p>
+                        <h3 className="mt-1 text-sm font-semibold text-zinc-900">
+                          {friendlyOperationalText(item.title)}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-zinc-500">
+                          {friendlyOperationalText(item.detail)}
+                        </p>
                       </div>
                       <ArrowUpRight className="mt-1 size-4 shrink-0 text-zinc-300 transition-colors group-hover:text-zinc-700" />
                     </Link>
@@ -426,9 +431,11 @@ export function OwnerOverviewScreen() {
                       <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-rose-500" />
                       <div className="min-w-0 flex-1">
                         <h3 className="text-xs leading-5 font-semibold text-zinc-800">
-                          {item.title}
+                          {friendlyOperationalText(item.title)}
                         </h3>
-                        <p className="mt-0.5 text-[11px] leading-4 text-zinc-500">{item.detail}</p>
+                        <p className="mt-0.5 text-[11px] leading-4 text-zinc-500">
+                          {friendlyOperationalText(item.detail)}
+                        </p>
                       </div>
                       <ArrowUpRight className="mt-1 size-3.5 shrink-0 text-zinc-300 group-hover:text-zinc-600" />
                     </Link>
@@ -447,7 +454,7 @@ export function OwnerOverviewScreen() {
                   {brief.recentWins.slice(0, 4).map((item) => (
                     <Link key={item.id} href={item.link.href} className="group block">
                       <p className="text-xs leading-5 font-semibold text-zinc-800 group-hover:underline">
-                        {item.summary}
+                        {friendlyOperationalText(item.summary)}
                       </p>
                       <p className="mt-0.5 text-[11px] text-zinc-500">{item.customerName}</p>
                     </Link>
