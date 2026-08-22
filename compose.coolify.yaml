@@ -88,6 +88,48 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  demo-reset:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          reset_delay=$$(bun -e 'const now = new Date(); const next = new Date(now); next.setHours(4, 0, 0, 0); if (next <= now) next.setDate(next.getDate() + 1); console.log(Math.max(1, Math.ceil((next.getTime() - now.getTime()) / 1000)))')
+          echo "Next demo reset is at $$(date -d "+$${reset_delay} seconds" --iso-8601=seconds)"
+          sleep "$${reset_delay}"
+          until bun run ace.js db:seed; do
+            echo "Demo reset failed; retrying in 15 minutes"
+            sleep 900
+          done
+        done
+    environment:
+      TZ: America/Los_Angeles
+      PORT: 3333
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      LOG_LEVEL: info
+      DEMO_RESET_ON_SEED: "true"
+      APP_KEY: ${SERVICE_BASE64_64_API}
+      APP_URL: https://bo.builtby.vin
+      MASTRA_URL: http://agent:4111
+      MASTRA_INTERNAL_TOKEN: ${SERVICE_PASSWORD_64_MASTRA}
+      CUSTOMER_APP_ORIGIN: https://oak.builtby.vin
+      SESSION_DRIVER: cookie
+      MAIL_MAILER: resend
+      MAIL_FROM_NAME: Oak & Pine
+      MAIL_FROM_ADDRESS: support@mail.builtby.vin
+      RESEND_API_KEY: ${RESEND_API_KEY:?}
+    volumes:
+      - api-data:/workspace/apps/api/tmp
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
   app:
     build:
       context: .

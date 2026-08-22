@@ -5,6 +5,7 @@ import InboxAttentionItem from "#models/inbox_attention_item";
 import SupportConversation from "#models/support_conversation";
 import User from "#models/user";
 import { businessSupportAgent, type SeedAgentMessage } from "#services/business_support_agent";
+import db from "@adonisjs/lucid/services/db";
 import { DateTime } from "luxon";
 
 const BUSINESS_TIMEZONE = "America/Los_Angeles";
@@ -420,4 +421,25 @@ export async function seedDemoDataset(options: { includeConversations: boolean }
   if (options.includeConversations && pendingBooking) {
     await seedShowcaseConversations(customers, pendingBooking, now);
   }
+}
+
+export async function resetDemoDataset(options: { includeConversations: boolean }) {
+  // Conversations span SQLite metadata and Mastra's Postgres memory store.
+  // Clear the remote side first so a transient failure leaves this reset safe to retry.
+  const deletedThreads = options.includeConversations
+    ? await businessSupportAgent.deleteAllThreads()
+    : 0;
+
+  await db.from("inbox_annotations").delete();
+  await db.from("inbox_attention_items").delete();
+  await db.from("booking_reschedule_grants").delete();
+  await db.from("customer_email_verifications").delete();
+  await db.from("support_conversations").delete();
+  await db.from("bookings").delete();
+  await db.from("customers").delete();
+  await db.rawQuery("DELETE FROM sqlite_sequence WHERE name IN ('bookings', 'customers')");
+
+  await seedDemoDataset(options);
+
+  return { deletedThreads };
 }
