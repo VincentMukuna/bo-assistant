@@ -143,3 +143,8 @@ bun run evals
 
 For agent-only development, evaluation details, background processes, and logs, see the
 [agent runbook](apps/agent/RUNBOOK.md).
+
+## License
+
+This repository is source-available for portfolio review and evaluation, but it is not open source.
+See the [BO Assistant Proprietary License](LICENSE.md) for the applicable terms.
